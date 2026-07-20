@@ -649,7 +649,7 @@ def create_demo_company(site_url: str, brand: dict, wl_manager_id=None) -> tuple
            support_phone, support_email, telegram, website,
            working_hours, pdf_footer_address)
         VALUES (%s,%s,%s,'company',TRUE,TRUE,
-                10, NOW() + INTERVAL '14 days',
+                10, NOW() + INTERVAL '10 days',
                 %s,%s,%s,
                 %s,%s,%s,
                 %s,%s,%s,%s,

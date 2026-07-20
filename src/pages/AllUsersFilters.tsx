@@ -1,14 +1,15 @@
 import Icon from "@/components/ui/icon";
 import { ROLE_LABELS } from "./masterAdminTypes";
 
-type SubFilter = "all" | "active" | "expiring" | "expired" | "none";
+type SubFilter = "all" | "trial" | "trial_expiring" | "paid" | "blocked" | "none";
 
 const SUB_FILTERS: { id: SubFilter; label: string; color: string }[] = [
-  { id: "all",      label: "Все",           color: "#94a3b8" },
-  { id: "active",   label: "Активна",       color: "#10b981" },
-  { id: "expiring", label: "Скоро кончится", color: "#f59e0b" },
-  { id: "expired",  label: "Истекла",       color: "#ef4444" },
-  { id: "none",     label: "Нет подписки",  color: "#64748b" },
+  { id: "all",            label: "Все",              color: "#94a3b8" },
+  { id: "trial",          label: "Пробный период",   color: "#10b981" },
+  { id: "trial_expiring", label: "Пробный кончается", color: "#f59e0b" },
+  { id: "paid",           label: "Есть сметы",       color: "#10b981" },
+  { id: "blocked",        label: "Доступ закрыт",    color: "#ef4444" },
+  { id: "none",           label: "Без пробного",     color: "#64748b" },
 ];
 
 interface Props {
@@ -46,7 +47,7 @@ export default function AllUsersFilters({
           className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[10px] font-semibold flex-shrink-0 transition"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <Icon name="ArrowUpDown" size={11} />
-          <span className="hidden sm:inline">{sortBy === "created" ? "по дате" : "по подписке"}</span>
+          <span className="hidden sm:inline">{sortBy === "created" ? "по дате" : "по пробному"}</span>
         </button>
       </div>
 
@@ -64,8 +65,8 @@ export default function AllUsersFilters({
 
         <div className="w-px h-4 bg-white/[0.08] flex-shrink-0" />
 
-        {/* Группа «без подписки»: Клиент / Дизайнер / Прораб */}
-        <span className="text-[9px] text-white/20 uppercase tracking-wider">без подписки</span>
+        {/* Группа без пробного периода: Клиент / Дизайнер / Прораб */}
+        <span className="text-[9px] text-white/20 uppercase tracking-wider">без пробного</span>
         {(["client","designer","foreman"] as const).map(role => {
           const r = ROLE_LABELS[role];
           const active = roleFilters.has(role);
@@ -82,8 +83,8 @@ export default function AllUsersFilters({
 
         <div className="w-px h-4 bg-white/[0.08] flex-shrink-0" />
 
-        {/* Группа «с подпиской»: Монтажник / Компания */}
-        <span className="text-[9px] text-white/20 uppercase tracking-wider">с подпиской</span>
+        {/* Группа с пробным периодом: Монтажник / Компания */}
+        <span className="text-[9px] text-white/20 uppercase tracking-wider">с пробным</span>
         {(["installer","company"] as const).map(role => {
           const r = ROLE_LABELS[role];
           const active = roleFilters.has(role);

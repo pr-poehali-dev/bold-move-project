@@ -20,6 +20,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"is_master": check_is_master(token, cur, SCHEMA)})
 
     if action == "pending-users" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         role_filter = params.get("role_group", "business")
         roles = ("installer", "company") if role_filter == "business" else ("designer", "foreman")
         cur.execute(f"""
@@ -31,6 +32,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                                "role": r[4], "discount": r[5] or 0, "created_at": str(r[6])[:19]} for r in rows]})
 
     if action == "pro-users" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         cur.execute(f"""
             SELECT id, email, name, phone, role, approved, discount, created_at FROM {SCHEMA}.users
             WHERE role IN ('designer', 'foreman') AND removed_at IS NULL ORDER BY created_at DESC
@@ -41,6 +43,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                                "created_at": str(r[7])[:19]} for r in rows]})
 
     if action == "approve-user" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = body.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"UPDATE {SCHEMA}.users SET approved=true, rejected=false WHERE id=%s", (int(user_id),))
@@ -48,31 +51,15 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"ok": True})
 
     if action == "reject-user" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = body.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"UPDATE {SCHEMA}.users SET approved=false, rejected=true WHERE id=%s", (int(user_id),))
         conn.commit()
         return ok({"ok": True})
 
-    if action == "set-subscription" and method == "POST":
-        user_id = body.get("user_id")
-        days    = body.get("days")
-        if user_id is None or days is None: return err("user_id и days обязательны")
-        cur.execute(f"""
-            UPDATE {SCHEMA}.users
-            SET subscription_start = COALESCE(subscription_start, NOW()),
-                subscription_end   = GREATEST(COALESCE(subscription_end, NOW()), NOW()) + INTERVAL '%s days',
-                approved=true, rejected=false
-            WHERE id = %s
-        """, (int(days), int(user_id)))
-        conn.commit()
-        cur.execute(f"SELECT subscription_start, subscription_end FROM {SCHEMA}.users WHERE id=%s", (int(user_id),))
-        row = cur.fetchone()
-        return ok({"ok": True,
-                   "subscription_start": str(row[0])[:19] if row[0] else None,
-                   "subscription_end":   str(row[1])[:19] if row[1] else None})
-
     if action == "set-discount" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id  = body.get("user_id")
         discount = body.get("discount")
         if user_id is None or discount is None: return err("user_id и discount обязательны")
@@ -81,6 +68,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"ok": True})
 
     if action == "business-users" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         sf = params.get("status", "all")
         if sf == "pending":   where = "WHERE role IN ('installer','company') AND approved=false AND rejected=false AND removed_at IS NULL"
         elif sf == "approved": where = "WHERE role IN ('installer','company') AND approved=true AND removed_at IS NULL"
@@ -88,7 +76,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         else:                  where = "WHERE role IN ('installer','company') AND removed_at IS NULL"
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.rejected, u.discount,
-                   u.created_at, u.subscription_start, u.subscription_end, u.estimates_balance,
+                   u.created_at, u.estimates_balance,
                    u.has_own_agent, u.agent_purchased_at, u.trial_until,
                    COALESCE(SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END), 0) AS total_bought
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.balance_transactions bt ON bt.user_id = u.id
@@ -99,15 +87,14 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "rejected": r[6], "discount": r[7] or 0,
             "created_at": str(r[8])[:19],
-            "subscription_start": str(r[9])[:19] if r[9] else None,
-            "subscription_end":   str(r[10])[:19] if r[10] else None,
-            "estimates_balance": r[11] or 0, "has_own_agent": bool(r[12]),
-            "agent_purchased_at": str(r[13])[:19] if r[13] else None,
-            "trial_until": str(r[14])[:19] if r[14] else None,
-            "total_bought": int(r[15] or 0),
+            "estimates_balance": r[9] or 0, "has_own_agent": bool(r[10]),
+            "agent_purchased_at": str(r[11])[:19] if r[11] else None,
+            "trial_until": str(r[12])[:19] if r[12] else None,
+            "total_bought": int(r[13] or 0),
         } for r in rows]})
 
     if action == "admin-user-transactions" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         uid = params.get("user_id")
         if not uid: return err("user_id обязателен")
         cur.execute(f"""
@@ -119,9 +106,10 @@ def handle(action, method, params, body, token, event, conn, cur):
                                       "created_at": str(r[3])[:19] if r[3] else ""} for r in rows]})
 
     if action == "admin-users" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         cur.execute(f"""
             SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.discount, u.created_at,
-                   COUNT(e.id) as estimates_count, u.rejected, u.subscription_start, u.subscription_end,
+                   COUNT(e.id) as estimates_count, u.rejected,
                    u.estimates_balance, u.trial_until, u.has_own_agent, u.agent_purchased_at
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC
@@ -131,12 +119,10 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4] or "client", "approved": r[5], "discount": r[6] or 0,
             "created_at": str(r[7])[:19], "estimates_count": r[8], "rejected": r[9] or False,
-            "subscription_start": str(r[10])[:19] if r[10] else None,
-            "subscription_end":   str(r[11])[:19] if r[11] else None,
-            "estimates_balance": r[12] or 0,
-            "trial_until": str(r[13])[:19] if r[13] else None,
-            "has_own_agent": bool(r[14]),
-            "agent_purchased_at": str(r[15])[:19] if r[15] else None,
+            "estimates_balance": r[10] or 0,
+            "trial_until": str(r[11])[:19] if r[11] else None,
+            "has_own_agent": bool(r[12]),
+            "agent_purchased_at": str(r[13])[:19] if r[13] else None,
         } for r in rows]})
 
     if action == "admin-toggle-own-agent" and method == "POST":
@@ -192,6 +178,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"balance_before": balance, "balance_after": max(balance, min_balance), "added": added})
 
     if action == "admin-user-estimates" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = params.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"""
@@ -205,6 +192,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                                    "status": r[3], "created_at": str(r[4])[:19], "crm_status": r[5]} for r in rows]})
 
     if action == "add-balance" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = body.get("user_id")
         amount  = body.get("amount")
         reason  = body.get("reason", "admin_manual")
@@ -218,6 +206,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"ok": True, "estimates_balance": new_bal})
 
     if action == "balance-history" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = params.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"""
@@ -228,6 +217,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"history": [{"id": r[0], "amount": r[1], "reason": r[2], "created_at": str(r[3])[:19]} for r in rows]})
 
     if action == "delete-user" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = body.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"""
@@ -240,6 +230,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"ok": True})
 
     if action == "restore-user" and method == "POST":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         user_id = body.get("user_id")
         if not user_id: return err("user_id required")
         cur.execute(f"""
@@ -251,13 +242,14 @@ def handle(action, method, params, body, token, event, conn, cur):
         return ok({"ok": True})
 
     if action == "removed-users" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         role_group = params.get("group", "all")
         if role_group == "business":   where = "WHERE role IN ('installer','company') AND removed_at IS NOT NULL"
         elif role_group == "pro":      where = "WHERE role IN ('designer','foreman') AND removed_at IS NOT NULL"
         else:                          where = "WHERE removed_at IS NOT NULL"
         cur.execute(f"""
             SELECT id, removed_email, removed_name, role, removed_at, approved, rejected, discount,
-                   created_at, subscription_start, subscription_end
+                   created_at
             FROM {SCHEMA}.users {where} ORDER BY removed_at DESC
         """)
         rows = cur.fetchall()
@@ -265,23 +257,24 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": r[0], "email": r[1] or "", "name": r[2], "role": r[3],
             "removed_at": str(r[4])[:19], "approved": r[5], "rejected": r[6], "discount": r[7] or 0,
             "created_at": str(r[8])[:19],
-            "subscription_start": str(r[9])[:19] if r[9] else None,
-            "subscription_end":   str(r[10])[:19] if r[10] else None,
         } for r in rows]})
 
     if action == "admin-stats" and method == "GET":
+        if not check_is_master(token, cur, SCHEMA): return err("Доступ только для мастера", 403)
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users")
         total_users = cur.fetchone()[0]
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE role IN ('installer','company') AND approved=false AND rejected=false")
         pending = cur.fetchone()[0]
-        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE subscription_end > NOW()")
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE role IN ('installer','company') AND estimates_balance > 0 AND removed_at IS NULL")
         active_subs = cur.fetchone()[0]
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.saved_estimates")
         total_estimates = cur.fetchone()[0]
         cur.execute(f"""
-            SELECT id, email, name, phone, role, subscription_end, telegram FROM {SCHEMA}.users
-            WHERE subscription_end > NOW() AND subscription_end < NOW() + INTERVAL '7 days'
-            ORDER BY subscription_end ASC
+            SELECT id, email, name, phone, role, trial_until, telegram FROM {SCHEMA}.users
+            WHERE role IN ('installer','company') AND removed_at IS NULL
+              AND trial_until > NOW() AND trial_until < NOW() + INTERVAL '3 days'
+              AND estimates_balance <= 0
+            ORDER BY trial_until ASC
         """)
         expiring = cur.fetchall()
         cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users WHERE created_at > NOW() - INTERVAL '7 days'")

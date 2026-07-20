@@ -180,7 +180,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.nav_config, u.nav_hidden_ids,
                    u.is_demo, u.demo_expires_at, u.role_selected,
                    (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password,
-                   u.google_id, u.yandex_id, u.vk_id, u.telegram_id
+                   u.google_id, u.yandex_id, u.vk_id, u.telegram_id, u.rejected
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -197,7 +197,7 @@ def handle(action, method, params, body, token, event, conn, cur):
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, max_bot_token, max_notify_chat_id,
          nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected, has_password,
-         google_id, yandex_id, vk_id, tg_social_id) = row
+         google_id, yandex_id, vk_id, tg_social_id, rejected) = row
 
         login_methods = []
         if has_password: login_methods.append("password")
@@ -209,17 +209,21 @@ def handle(action, method, params, body, token, event, conn, cur):
         is_master    = (email == MASTER_EMAIL)
         trial_expired = False
         if not is_master and role in BUSINESS_ROLES and trial_until:
-            cur.execute(f"SELECT subscription_end FROM {SCHEMA}.users WHERE id=%s", (uid,))
-            sub_row = cur.fetchone()
-            subscription_end = sub_row[0] if sub_row else None
             now = datetime.utcnow()
             trial_expired_flag = trial_until.replace(tzinfo=None) < now
-            has_paid_sub = subscription_end and subscription_end.replace(tzinfo=None) > now
-            if trial_expired_flag and not has_paid_sub:
+            has_estimates = (estimates_balance or 0) > 0
+            if trial_expired_flag and not has_estimates:
+                # Пробный период кончился и смет на балансе нет — доступ закрываем
                 trial_expired  = True
                 approved       = False
                 has_own_agent  = False
                 cur.execute(f"UPDATE {SCHEMA}.users SET approved=FALSE WHERE id=%s AND approved=TRUE", (uid,))
+                conn.commit()
+            elif trial_expired_flag and has_estimates and not approved and not rejected:
+                # Пробный истёк, но мастер пополнил баланс смет — восстанавливаем доступ автоматически
+                # (если мастер явно отклонил компанию — авто-восстановление не трогаем)
+                approved = True
+                cur.execute(f"UPDATE {SCHEMA}.users SET approved=TRUE WHERE id=%s", (uid,))
                 conn.commit()
 
         if is_demo and demo_expires_at:

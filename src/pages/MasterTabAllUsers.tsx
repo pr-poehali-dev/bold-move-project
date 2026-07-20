@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { AppUser, UserEstimate } from "./masterAdminTypes";
-import { subStatus } from "./masterAdminTypes";
+import { accessStatus } from "./masterAdminTypes";
 import AllUsersFilters, { type SubFilter } from "./AllUsersFilters";
 import AllUsersTable from "./AllUsersTable";
 import AllUsersPanel from "./AllUsersPanel";
@@ -49,18 +49,16 @@ export default function MasterTabAllUsers({
         (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
         (u.name  || "").toLowerCase().includes(search.toLowerCase());
       const matchRole = roleFilters.size === 0 || roleFilters.has(u.role);
-      const ss = subStatus(u);
-      const hasSubRole = ["installer","company"].includes(u.role);
-      const matchSub = subFilter === "all"
-        || (subFilter === "none" ? hasSubRole && ss === "none" : ss === subFilter);
+      const as = accessStatus(u);
+      const matchSub = subFilter === "all" || as === subFilter;
       return matchSearch && matchRole && matchSub;
     })
     .sort((a, b) => {
       if (sortBy === "sub_end") {
-        if (!a.subscription_end && !b.subscription_end) return 0;
-        if (!a.subscription_end) return 1;
-        if (!b.subscription_end) return -1;
-        return new Date(a.subscription_end).getTime() - new Date(b.subscription_end).getTime();
+        if (!a.trial_until && !b.trial_until) return 0;
+        if (!a.trial_until) return 1;
+        if (!b.trial_until) return -1;
+        return new Date(a.trial_until).getTime() - new Date(b.trial_until).getTime();
       }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });

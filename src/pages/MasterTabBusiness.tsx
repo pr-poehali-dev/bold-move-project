@@ -60,23 +60,34 @@ function trialDaysLeft(trial_until: string | null): number {
   return Math.ceil((new Date(trial_until).getTime() - Date.now()) / 86400000);
 }
 
+const PACKAGES = [
+  { id: "start",    label: "Старт",    estimates: 5,   price: 490 },
+  { id: "standard", label: "Стандарт", estimates: 20,  price: 990 },
+  { id: "pro",      label: "Про",      estimates: 60,  price: 1990 },
+  { id: "business", label: "Бизнес",   estimates: 150, price: 3990 },
+];
+
 // ── Карточка пользователя ─────────────────────────────────────────────────
-function BusinessCard({ u, actionId, onApprove, onReject, onDelete }: {
+function BusinessCard({ u, actionId, onApprove, onReject, onDelete, onAddBalance }: {
   u: BusinessUser;
   actionId: number | null;
   onApprove: (id: number) => void;
   onReject:  (id: number) => void;
   onDelete:  () => void;
+  onAddBalance: (userId: number, amount: number, reason: string) => Promise<void>;
 }) {
   const [expanded, setExpanded]         = useState(false);
   const [txLoading, setTxLoading]       = useState(false);
   const [transactions, setTransactions] = useState<UserTransaction[] | null>(null);
+  const [showPackages, setShowPackages] = useState(false);
+  const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
 
   const isLoading   = actionId === u.id;
   const borderColor = u.rejected ? "#ef444430" : u.approved ? "#10b98130" : "#f59e0b30";
   const trialLeft   = trialDaysLeft(u.trial_until);
   const hasTrial    = u.trial_until !== null;
   const trialActive = trialLeft > 0;
+  const hasBalance  = u.estimates_balance > 0;
 
   const loadTransactions = async () => {
     if (transactions) { setExpanded(v => !v); return; }
@@ -88,13 +99,21 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete }: {
     setTxLoading(false);
   };
 
-  // Статус демо-доступа
-  const getDemoStatus = () => {
-    if (!hasTrial) return { label: "Демо не выдан", color: "#475569", icon: "CircleDashed" };
-    if (trialActive) return { label: `Демо активен · ${trialLeft} дн. осталось`, color: "#10b981", icon: "CheckCircle2" };
-    return { label: "Демо истёк", color: "#ef4444", icon: "XCircle" };
+  const handleAddPackage = async (pkg: typeof PACKAGES[0]) => {
+    setAddingPkg(pkg.id);
+    await onAddBalance(u.id, pkg.estimates, `package_${pkg.id}`);
+    setAddingPkg(null);
+    setShowPackages(false);
   };
-  const demo = getDemoStatus();
+
+  // Статус пробного периода
+  const getTrialStatus = () => {
+    if (!hasTrial) return { label: "Пробный не выдан", color: "#475569", icon: "CircleDashed" };
+    if (trialActive) return { label: `Пробный активен · ${trialLeft} дн. осталось`, color: "#10b981", icon: "CheckCircle2" };
+    if (hasBalance)   return { label: "Пробный истёк · доступ по балансу смет", color: "#10b981", icon: "CheckCircle2" };
+    return { label: "Пробный истёк · доступ закрыт", color: "#ef4444", icon: "XCircle" };
+  };
+  const trial = getTrialStatus();
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: "#0d0d1b", border: `1.5px solid ${borderColor}` }}>
@@ -168,12 +187,12 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete }: {
             <div className="text-[10px] text-white/30 mt-0.5">{daysSince(u.created_at)} дн. назад · ID #{u.id}</div>
           </div>
 
-          {/* Демо-доступ */}
+          {/* Пробный период */}
           <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-            <div className="text-[9px] uppercase tracking-wider text-white/25 mb-1">Демо-доступ</div>
+            <div className="text-[9px] uppercase tracking-wider text-white/25 mb-1">Пробный период</div>
             <div className="flex items-center gap-1.5">
-              <Icon name={demo.icon as "CheckCircle2"} size={11} style={{ color: demo.color }} />
-              <span className="text-[11px] font-semibold" style={{ color: demo.color }}>{demo.label}</span>
+              <Icon name={trial.icon as "CheckCircle2"} size={11} style={{ color: trial.color }} />
+              <span className="text-[11px] font-semibold" style={{ color: trial.color }}>{trial.label}</span>
             </div>
             {hasTrial && (
               <div className="text-[10px] text-white/30 mt-0.5">
@@ -230,6 +249,41 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete }: {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Пополнить баланс смет */}
+        <div className="mt-3">
+          {showPackages ? (
+            <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.15)" }}>
+              <div className="text-[9px] text-white/30 mb-1.5">Выберите пакет для начисления:</div>
+              {PACKAGES.map(pkg => (
+                <button key={pkg.id}
+                  onClick={() => handleAddPackage(pkg)}
+                  disabled={addingPkg === pkg.id}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition disabled:opacity-50"
+                  style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>
+                  <span className="font-semibold">{pkg.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/40">+{pkg.estimates} смет</span>
+                    <span className="font-bold">{pkg.price.toLocaleString("ru-RU")} ₽</span>
+                    {addingPkg === pkg.id && (
+                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                </button>
+              ))}
+              <button onClick={() => setShowPackages(false)}
+                className="w-full text-center text-[10px] text-white/25 hover:text-white/50 py-1 transition">
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowPackages(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition"
+              style={{ background: "#7c3aed15", color: "#a78bfa", border: "1px solid #7c3aed28" }}>
+              <Icon name="Plus" size={12} /> Пополнить баланс смет
+            </button>
+          )}
         </div>
 
         {/* История транзакций */}
@@ -323,6 +377,14 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
     onReload();
   };
 
+  const doAddBalance = async (userId: number, amount: number, reason: string) => {
+    await fetch(`${AUTH_URL}?action=add-balance`, {
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ user_id: userId, amount, reason }),
+    });
+    onReload();
+  };
+
   return (
     <div className="p-5 max-w-4xl mx-auto">
       {/* Переключатель активные / удалённые */}
@@ -368,6 +430,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
               onApprove={doApprove}
               onReject={doReject}
               onDelete={() => setConfirmDel(u)}
+              onAddBalance={doAddBalance}
             />
           ))}
         </div>

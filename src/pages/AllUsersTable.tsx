@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
 import type { AppUser } from "./masterAdminTypes";
-import { fmtDate, subStatus, daysLeft, ROLE_LABELS } from "./masterAdminTypes";
+import { fmtDate, accessStatus, daysLeft, ROLE_LABELS } from "./masterAdminTypes";
 
 interface SubBadge {
   label: string;
@@ -10,10 +10,11 @@ interface SubBadge {
 }
 
 function getSubBadge(u: AppUser): SubBadge | null {
-  const ss = subStatus(u);
-  if (ss === "active")   return { label: `${daysLeft(u.subscription_end)} дн.`, color: "#10b981", bg: "#10b98118" };
-  if (ss === "expiring") return { label: `⚠ ${daysLeft(u.subscription_end)} дн.`, color: "#f59e0b", bg: "#f59e0b18" };
-  if (ss === "expired")  return { label: "Истекла", color: "#ef4444", bg: "#ef444418" };
+  const as = accessStatus(u);
+  if (as === "trial")          return { label: `Пробный · ${daysLeft(u.trial_until ?? null)} дн.`, color: "#10b981", bg: "#10b98118" };
+  if (as === "trial_expiring") return { label: `⚠ Пробный · ${daysLeft(u.trial_until ?? null)} дн.`, color: "#f59e0b", bg: "#f59e0b18" };
+  if (as === "paid")           return { label: `Сметы: ${u.estimates_balance}`, color: "#10b981", bg: "#10b98118" };
+  if (as === "blocked")        return { label: "Доступ закрыт", color: "#ef4444", bg: "#ef444418" };
   return null;
 }
 
@@ -50,7 +51,7 @@ export default function AllUsersTable({ users, loading, selectedUser, onSelectUs
       <div className="hidden sm:block">
         <div className="grid px-5 py-2 border-b border-white/[0.05] sticky top-0 z-10"
           style={{ gridTemplateColumns: GRID, background: "#07070f" }}>
-          {["Пользователь", "Роль", "Зарегистрирован", "Подписка до", "Смет", ""].map(h => (
+          {["Пользователь", "Роль", "Зарегистрирован", "Доступ", "Смет", ""].map(h => (
             <div key={h} className="text-[10px] font-bold text-white/22 uppercase tracking-wider">{h}</div>
           ))}
         </div>
@@ -87,11 +88,8 @@ export default function AllUsersTable({ users, loading, selectedUser, onSelectUs
                 <div className="text-[10px] text-white/35">{fmtDate(u.created_at)}</div>
                 <div>
                   {hasSubRole ? (badge ? (
-                    <div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
-                      {u.subscription_end && <div className="text-[9px] text-white/25 mt-0.5">{fmtDate(u.subscription_end)}</div>}
-                    </div>
-                  ) : <span className="text-[10px] text-white/20">нет подписки</span>) : <span className="text-[10px] text-white/15">—</span>}
+                    <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+                  ) : <span className="text-[10px] text-white/20">—</span>) : <span className="text-[10px] text-white/15">—</span>}
                 </div>
                 <div>
                   {u.estimates_count > 0 ? <span className="text-xs font-bold" style={{ color: "#10b981" }}>{u.estimates_count}</span> : <span className="text-[10px] text-white/20">0</span>}

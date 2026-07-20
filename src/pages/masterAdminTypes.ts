@@ -8,8 +8,6 @@ export interface BusinessUser {
   rejected: boolean;
   discount: number;
   created_at: string;
-  subscription_start: string | null;
-  subscription_end: string | null;
   estimates_balance: number;
   has_own_agent: boolean;
   agent_purchased_at: string | null;
@@ -47,8 +45,6 @@ export interface AppUser {
   discount: number;
   created_at: string;
   estimates_count: number;
-  subscription_start: string | null;
-  subscription_end: string | null;
   estimates_balance: number;
   has_own_agent?: boolean;
   agent_purchased_at?: string | null;
@@ -71,7 +67,7 @@ export interface ExpiringUser {
   name: string | null;
   phone: string | null;
   role: string;
-  subscription_end: string;
+  subscription_end: string; // дата окончания пробного периода (trial_until)
   telegram: string | null;
 }
 
@@ -96,14 +92,17 @@ export const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   manager:   { label: "Менеджер",  color: "#94a3b8" },
 };
 
-export function subStatus(user: { subscription_end: string | null; approved: boolean }): "active" | "expiring" | "expired" | "none" {
-  if (!user.subscription_end) return "none";
-  const end = new Date(user.subscription_end);
+// Статус доступа компании/монтажника: пробный период идёт, пробный истёк но есть сметы (оплаченный доступ),
+// пробный истёк и смет нет (доступ закрыт), либо вообще без пробного (не бизнес-роль).
+export function accessStatus(user: { trial_until?: string | null; estimates_balance?: number }): "trial" | "trial_expiring" | "paid" | "blocked" | "none" {
+  if (!user.trial_until) return "none";
+  const end = new Date(user.trial_until);
   const now = new Date();
-  const diff = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diff < 0) return "expired";
-  if (diff <= 7) return "expiring";
-  return "active";
+  const diffDays = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  const hasBalance = (user.estimates_balance || 0) > 0;
+  if (diffDays < 0) return hasBalance ? "paid" : "blocked";
+  if (diffDays <= 3) return "trial_expiring";
+  return "trial";
 }
 
 export function fmtDate(s: string | null): string {

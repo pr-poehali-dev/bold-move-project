@@ -54,7 +54,7 @@ export default function MasterTabDashboard({ stats, loading }: Props) {
   const statCards = [
     { label: "Пользователей", value: stats.total_users, icon: "Users",       color: "#10b981" },
     { label: "Ожидают",       value: stats.pending,      icon: "Clock",       color: "#f59e0b" },
-    { label: "Подписок",      value: stats.active_subs,  icon: "CreditCard",  color: "#60a5fa" },
+    { label: "Со сметами",    value: stats.active_subs,  icon: "CreditCard",  color: "#60a5fa" },
     { label: "Смет создано",  value: stats.total_estimates, icon: "FileText", color: "#a78bfa" },
     { label: "Новых за неделю", value: stats.new_week,   icon: "TrendingUp",  color: "#34d399" },
   ];
@@ -98,14 +98,14 @@ export default function MasterTabDashboard({ stats, loading }: Props) {
         </div>
       </div>
 
-      {/* ⚠️ Заканчивается подписка */}
+      {/* ⚠️ Заканчивается пробный период (и смет на балансе нет) */}
       {stats.expiring_soon.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ border: "1.5px solid rgba(245,158,11,0.4)" }}>
           <div className="px-5 py-3 flex items-center gap-2"
             style={{ background: "rgba(245,158,11,0.12)" }}>
             <Icon name="AlertTriangle" size={15} style={{ color: "#f59e0b" }} />
             <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>
-              Заканчивается подписка — {stats.expiring_soon.length} чел.
+              Заканчивается пробный период — {stats.expiring_soon.length} чел.
             </span>
           </div>
           <div className="divide-y" style={{ divideColor: "rgba(255,255,255,0.04)" }}>
@@ -155,7 +155,7 @@ export default function MasterTabDashboard({ stats, loading }: Props) {
         <div className="rounded-2xl p-6 flex items-center gap-3"
           style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.2)" }}>
           <Icon name="CheckCircle2" size={18} style={{ color: "#10b981" }} />
-          <span className="text-sm text-emerald-300/70">Подписки в порядке — нет заканчивающихся в ближайшие 7 дней</span>
+          <span className="text-sm text-emerald-300/70">Все в порядке — нет пробных периодов, заканчивающихся в ближайшие 3 дня без смет на балансе</span>
         </div>
       )}
 
