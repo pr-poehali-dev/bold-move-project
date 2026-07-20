@@ -22,24 +22,20 @@ interface Props {
   estLoading:    boolean;
   approvingId:   number | null;
   onApprove:     (id: number) => void;
-  onReject?:     (id: number) => void;
   onConfirmDel:  (u: AppUser) => void;
   onAddBalance:  (userId: number, amount: number, reason: string) => Promise<void>;
   onToggleOwnAgent: (userId: number, enable: boolean) => Promise<void>;
-  onSetDiscount?: (userId: number, discount: number) => Promise<void>;
 }
 
 export default function AllUsersPanel({
   selectedUser, userEstimates, estLoading, approvingId,
-  onApprove, onReject, onConfirmDel, onAddBalance, onToggleOwnAgent, onSetDiscount,
+  onApprove, onConfirmDel, onAddBalance, onToggleOwnAgent,
 }: Props) {
   const { user: masterUser } = useAuth();
   const [agentBusy,  setAgentBusy]  = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [addingPkg,    setAddingPkg]    = useState<string | null>(null);
   const [loginBusy,  setLoginBusy]  = useState(false);
-  const [editDiscount, setEditDiscount] = useState<string | null>(null);
-  const [discountBusy, setDiscountBusy] = useState(false);
 
   const loginAsUser = async () => {
     if (!selectedUser) return;
@@ -74,14 +70,6 @@ export default function AllUsersPanel({
     await onAddBalance(selectedUser.id, pkg.estimates, `package_${pkg.id}`);
     setAddingPkg(null);
     setShowPackages(false);
-  };
-
-  const handleSaveDiscount = async () => {
-    if (!selectedUser || editDiscount === null || !onSetDiscount) return;
-    setDiscountBusy(true);
-    await onSetDiscount(selectedUser.id, parseInt(editDiscount) || 0);
-    setDiscountBusy(false);
-    setEditDiscount(null);
   };
 
   if (!selectedUser) {
@@ -154,37 +142,6 @@ export default function AllUsersPanel({
           </div>
         ))}
       </div>
-
-      {/* Скидка (для дизайнеров/прорабов) */}
-      {["designer", "foreman"].includes(selectedUser.role) && onSetDiscount && (
-        <div className="px-5 py-3 border-b border-white/[0.05]">
-          <div className="text-[9px] font-bold text-white/25 uppercase tracking-wider mb-2">Скидка</div>
-          {editDiscount !== null ? (
-            <div className="flex items-center gap-2">
-              <input type="number" min={0} max={100}
-                value={editDiscount}
-                onChange={e => setEditDiscount(e.target.value)}
-                className="w-16 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none"
-                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(167,139,250,0.35)", color: "#fff" }} />
-              <span className="text-xs text-white/30">%</span>
-              <button onClick={handleSaveDiscount} disabled={discountBusy}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                style={{ background: "#a78bfa" }}>
-                {discountBusy ? "..." : "✓"}
-              </button>
-              <button onClick={() => setEditDiscount(null)}
-                className="px-2 py-1.5 rounded-lg text-xs text-white/30 hover:text-white/60 transition">✕</button>
-            </div>
-          ) : (
-            <button onClick={() => setEditDiscount(String(selectedUser.discount))}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition"
-              style={{ background: "#a78bfa15", color: "#a78bfa", border: "1px solid #a78bfa28" }}>
-              <Icon name="Percent" size={12} />
-              {selectedUser.discount > 0 ? `${selectedUser.discount}% скидка` : "Скидка 0%"}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Баланс смет (для монтажников/компаний) */}
       {hasSubRole && (
@@ -311,23 +268,16 @@ export default function AllUsersPanel({
         );
       })()}
 
-      {/* Одобрить / Отклонить */}
+      {/* Одобрить */}
       {!selectedUser.approved && !selectedUser.rejected && (
-        <div className="px-5 py-3 border-b border-white/[0.05] flex gap-2">
+        <div className="px-5 py-3 border-b border-white/[0.05]">
           <button onClick={() => onApprove(selectedUser.id)} disabled={approvingId === selectedUser.id}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
             style={{ background: "#10b981" }}>
             {approvingId === selectedUser.id
               ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : <><Icon name="Check" size={13} /> Одобрить</>}
           </button>
-          {onReject && (
-            <button onClick={() => onReject(selectedUser.id)}
-              className="px-3 py-2 rounded-xl text-xs font-bold transition"
-              style={{ background: "#ef444415", color: "#ef4444", border: "1px solid #ef444430" }}>
-              <Icon name="X" size={13} />
-            </button>
-          )}
         </div>
       )}
 

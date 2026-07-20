@@ -91,22 +91,6 @@ export default function MasterTabAllUsers({
     onReload();
   };
 
-  const doSetDiscount = async (userId: number, discount: number) => {
-    await fetch(`${AUTH_URL}?action=set-discount`, {
-      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ user_id: userId, discount }),
-    });
-    onReload();
-  };
-
-  const doReject = async (userId: number) => {
-    await fetch(`${AUTH_URL}?action=reject-user`, {
-      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ user_id: userId }),
-    });
-    onReload();
-  };
-
   return (
     <div className="flex h-[calc(100vh-112px)] relative">
 
@@ -145,11 +129,9 @@ export default function MasterTabAllUsers({
           estLoading={estLoading}
           approvingId={approvingId}
           onApprove={onApprove}
-          onReject={doReject}
           onConfirmDel={setConfirmDel}
           onAddBalance={doAddBalance}
           onToggleOwnAgent={doToggleOwnAgent}
-          onSetDiscount={doSetDiscount}
         />
       </div>
 
@@ -172,11 +154,9 @@ export default function MasterTabAllUsers({
                 estLoading={estLoading}
                 approvingId={approvingId}
                 onApprove={onApprove}
-                onReject={doReject}
                 onConfirmDel={setConfirmDel}
                 onAddBalance={doAddBalance}
                 onToggleOwnAgent={doToggleOwnAgent}
-                onSetDiscount={doSetDiscount}
               />
             </div>
           </div>
