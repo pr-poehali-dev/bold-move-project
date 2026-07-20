@@ -3,9 +3,9 @@ import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 import { TOKEN_KEY } from "@/context/useAuthInit";
 import { masterHeaders } from "./masterAuthFetch";
-import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
-import MasterTabProfessionals from "./MasterTabProfessionals";
+import type { MasterTab, BusinessUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
 import MasterTabAllUsers      from "./MasterTabAllUsers";
+import MasterTabCompanies     from "./MasterTabCompanies";
 import MasterTabDashboard     from "./MasterTabDashboard";
 import MasterTabWhiteLabel    from "./MasterTabWhiteLabel";
 import { WLStaff }            from "./whitelabel/WLStaff";
@@ -23,15 +23,9 @@ export default function MasterAdmin() {
   const [stats,        setStats]        = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Business
+  // Business (компании и монтажники — используется во вкладке "Компании")
   const [bizUsers,   setBizUsers]   = useState<BusinessUser[]>([]);
   const [bizLoading, setBizLoading] = useState(false);
-
-  // Pro
-  const [proUsers,       setProUsers]       = useState<ProUser[]>([]);
-  const [proLoading,     setProLoading]     = useState(false);
-  const [editDiscount,   setEditDiscount]   = useState<{ id: number; value: string } | null>(null);
-  const [savingDiscount, setSavingDiscount] = useState(false);
 
   // All users
   const [users,         setUsers]         = useState<AppUser[]>([]);
@@ -78,14 +72,6 @@ export default function MasterAdmin() {
     setBizLoading(false);
   }, []);
 
-  const loadPro = useCallback(async () => {
-    setProLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=pro-users`, { headers: masterHeaders() });
-    const d = await r.json();
-    setProUsers(d.users || []);
-    setProLoading(false);
-  }, []);
-
   const loadAll = useCallback(async () => {
     setAllLoading(true);
     const r = await fetch(`${AUTH_URL}?action=admin-users`, { headers: masterHeaders() });
@@ -102,10 +88,10 @@ export default function MasterAdmin() {
 
   useEffect(() => {
     if (!authed) return;
-    if (tab === "dashboard")     loadStats();
-    else if (tab === "professionals") { loadBiz(); loadPro(); }
-    else if (tab === "all")      loadAll();
-  }, [tab, authed, loadStats, loadBiz, loadPro, loadAll]);
+    if (tab === "dashboard")  loadStats();
+    else if (tab === "users") loadAll();
+    else if (tab === "companies") loadBiz();
+  }, [tab, authed, loadStats, loadBiz, loadAll]);
 
   const approveUser = async (id: number) => {
     setApprovingId(id);
@@ -115,18 +101,6 @@ export default function MasterAdmin() {
     });
     setApprovingId(null);
     loadAll();
-  };
-
-  const saveDiscount = async () => {
-    if (!editDiscount) return;
-    setSavingDiscount(true);
-    await fetch(`${AUTH_URL}?action=set-discount`, {
-      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ user_id: editDiscount.id, discount: parseInt(editDiscount.value) || 0 }),
-    });
-    setSavingDiscount(false);
-    setEditDiscount(null);
-    loadPro();
   };
 
   const openUser = async (user: AppUser) => {
@@ -171,12 +145,11 @@ export default function MasterAdmin() {
   }
 
   const TABS: { id: MasterTab; label: string; icon: string; badge?: number }[] = [
-    { id: "dashboard",     label: "Дашборд",         icon: "LayoutDashboard" },
-    { id: "professionals", label: "Одобрение",        icon: "Users2", badge: pendingCount },
-    { id: "all",           label: "Все пользователи", icon: "Users" },
-    { id: "whitelabel",    label: "White-Label",      icon: "Sparkles" },
-    { id: "wl-staff",      label: "WL Сотрудники",   icon: "UserCheck" },
-    { id: "default-rules", label: "Дефолты по ролям", icon: "ShieldCheck" },
+    { id: "dashboard",  label: "Дашборд",  icon: "LayoutDashboard" },
+    { id: "users",      label: "Пользователи", icon: "Users", badge: pendingCount },
+    { id: "companies",  label: "Компании", icon: "Building2" },
+    { id: "whitelabel", label: "White-Label", icon: "Sparkles" },
+    { id: "settings",   label: "Настройки", icon: "Settings" },
   ];
 
   return (
@@ -231,18 +204,7 @@ export default function MasterAdmin() {
         <MasterTabDashboard stats={stats} loading={statsLoading} />
       )}
 
-      {tab === "professionals" && (
-        <MasterTabProfessionals
-          bizUsers={bizUsers}   bizLoading={bizLoading}
-          proUsers={proUsers}   proLoading={proLoading}
-          editDiscount={editDiscount} savingDiscount={savingDiscount}
-          pendingCount={pendingCount}
-          onEditDiscount={setEditDiscount} onSaveDiscount={saveDiscount}
-          onReloadBiz={loadBiz} onReloadPro={loadPro}
-        />
-      )}
-
-      {tab === "all" && (
+      {tab === "users" && (
         <MasterTabAllUsers
           users={users} loading={allLoading} search={search}
           selectedUser={selectedUser} userEstimates={userEstimates}
@@ -252,15 +214,24 @@ export default function MasterAdmin() {
         />
       )}
 
-      {tab === "whitelabel" && <MasterTabWhiteLabel />}
+      {tab === "companies" && (
+        <MasterTabCompanies
+          companies={bizUsers} loading={bizLoading}
+          onReload={loadBiz}
+          masterToken={localStorage.getItem(TOKEN_KEY)}
+        />
+      )}
 
-      {tab === "wl-staff" && (
-        <div className="max-w-4xl mx-auto px-5 py-8">
-          <WLStaff />
+      {tab === "whitelabel" && (
+        <div className="space-y-8">
+          <MasterTabWhiteLabel />
+          <div className="max-w-4xl mx-auto px-5 pb-8">
+            <WLStaff />
+          </div>
         </div>
       )}
 
-      {tab === "default-rules" && (
+      {tab === "settings" && (
         <div className="max-w-2xl mx-auto px-5 py-8">
           <TabDefaultAutoRules isDark />
         </div>
