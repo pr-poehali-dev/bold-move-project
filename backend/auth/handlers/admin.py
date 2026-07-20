@@ -15,6 +15,10 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "packages" and method == "GET":
         return ok({"packages": [{"id": k, **v} for k, v in PACKAGES.items()]})
 
+    if action == "check-master" and method == "GET":
+        if not token: return ok({"is_master": False})
+        return ok({"is_master": check_is_master(token, cur, SCHEMA)})
+
     if action == "pending-users" and method == "GET":
         role_filter = params.get("role_group", "business")
         roles = ("installer", "company") if role_filter == "business" else ("designer", "foreman")

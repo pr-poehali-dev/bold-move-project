@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
+import { TOKEN_KEY } from "@/context/useAuthInit";
 import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
 import MasterTabProfessionals from "./MasterTabProfessionals";
 import MasterTabAllUsers      from "./MasterTabAllUsers";
@@ -10,12 +11,11 @@ import { WLStaff }            from "./whitelabel/WLStaff";
 import TabDefaultAutoRules    from "./admin/TabDefaultAutoRules";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
-const MASTER_PASSWORD = "Sdauxbasstre228";
+
+type AuthState = "checking" | "authed" | "denied";
 
 export default function MasterAdmin() {
-  const [authed,  setAuthed]  = useState(() => sessionStorage.getItem("master_token") === MASTER_PASSWORD);
-  const [pass,    setPass]    = useState("");
-  const [passErr, setPassErr] = useState("");
+  const [authState, setAuthState] = useState<AuthState>("checking");
   const [tab,     setTab]     = useState<MasterTab>("dashboard");
 
   // Stats
@@ -41,14 +41,25 @@ export default function MasterAdmin() {
   const [search,        setSearch]        = useState("");
   const [approvingId,   setApprovingId]   = useState<number | null>(null);
 
-  const login = () => {
-    if (pass === MASTER_PASSWORD) {
-      sessionStorage.setItem("master_token", pass);
-      setAuthed(true);
-    } else {
-      setPassErr("Неверный пароль");
-    }
-  };
+  // Проверяем через backend, что текущий залогиненный пользователь — реальный мастер-аккаунт
+  useEffect(() => {
+    const checkMaster = async () => {
+      const userToken = localStorage.getItem(TOKEN_KEY) || "";
+      if (!userToken) { setAuthState("denied"); return; }
+      try {
+        const r = await fetch(`${AUTH_URL}?action=check-master`, {
+          headers: { "X-Authorization": `Bearer ${userToken}` },
+        });
+        const d = await r.json();
+        setAuthState(d.is_master ? "authed" : "denied");
+      } catch {
+        setAuthState("denied");
+      }
+    };
+    checkMaster();
+  }, []);
+
+  const authed = authState === "authed";
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -128,29 +139,31 @@ export default function MasterAdmin() {
 
   const pendingCount = bizUsers.filter(u => !u.approved && !u.rejected).length;
 
-  // ── Экран входа ──
-  if (!authed) {
+  // ── Проверка доступа ──
+  if (authState === "checking") {
     return (
       <div className="min-h-screen bg-[#07070f] flex items-center justify-center">
-        <div className="rounded-2xl p-8 w-full max-w-sm shadow-2xl"
+        <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (authState === "denied") {
+    return (
+      <div className="min-h-screen bg-[#07070f] flex items-center justify-center px-4">
+        <div className="rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center"
           style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-              <Icon name="ShieldCheck" size={20} style={{ color: "#10b981" }} />
-            </div>
-            <div>
-              <div className="text-base font-bold text-white">Мастер-Админка</div>
-              <div className="text-xs text-white/30">SaaS управление</div>
-            </div>
+          <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center mx-auto mb-4">
+            <Icon name="ShieldAlert" size={20} style={{ color: "#ef4444" }} />
           </div>
-          <input type="password" value={pass} onChange={e => setPass(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && login()} placeholder="Пароль"
-            className="w-full rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }} />
-          {passErr && <p className="text-red-400 text-xs mb-3">{passErr}</p>}
-          <button onClick={login} className="w-full py-3 rounded-xl text-sm font-bold text-white" style={{ background: "#10b981" }}>
-            Войти
-          </button>
+          <div className="text-base font-bold text-white mb-1">Доступ закрыт</div>
+          <p className="text-xs text-white/35 mb-5">
+            Мастер-админка доступна только мастер-аккаунту. Войдите на сайте под своей учётной записью.
+          </p>
+          <a href="/" className="block w-full py-3 rounded-xl text-sm font-bold text-white"
+            style={{ background: "#10b981" }}>
+            На главную
+          </a>
         </div>
       </div>
     );
@@ -186,7 +199,7 @@ export default function MasterAdmin() {
             <Icon name="ArrowLeft" size={12} />
             <span className="hidden sm:inline">В бот</span>
           </a>
-          <button onClick={() => { sessionStorage.removeItem("master_token"); setAuthed(false); }}
+          <button onClick={() => { localStorage.removeItem(TOKEN_KEY); window.location.href = "/"; }}
             className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition">
             <Icon name="LogOut" size={14} />
             <span className="hidden sm:inline">Выйти</span>
