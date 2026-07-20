@@ -4,6 +4,7 @@ import RoleBadge from "./MasterRoleBadge";
 import type { RemovedUser } from "./masterAdminTypes";
 import { fmtDate } from "./masterAdminTypes";
 import func2url from "@/../backend/func2url.json";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -20,7 +21,7 @@ export default function MasterRemovedUsers({ group }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=removed-users&group=${group}`);
+    const r = await fetch(`${AUTH_URL}?action=removed-users&group=${group}`, { headers: masterHeaders() });
     const d = await r.json();
     setUsers(d.users || []);
     setLoading(false);
@@ -31,7 +32,7 @@ export default function MasterRemovedUsers({ group }: Props) {
   const doRestore = async (id: number) => {
     setRestoringId(id);
     await fetch(`${AUTH_URL}?action=restore-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: id }),
     });
     setRestoringId(null);
@@ -41,7 +42,7 @@ export default function MasterRemovedUsers({ group }: Props) {
   const doPermDelete = async (u: RemovedUser) => {
     setDeletingId(u.id);
     await fetch(`${AUTH_URL}?action=perm-delete-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: u.id }),
     });
     setDeletingId(null);

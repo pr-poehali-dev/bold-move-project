@@ -3,6 +3,7 @@ import type { AdminStats, ExpiringUser } from "./masterAdminTypes";
 import { fmtDate, daysLeft, ROLE_LABELS } from "./masterAdminTypes";
 import func2url from "@/../backend/func2url.json";
 import { useState } from "react";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -32,7 +33,7 @@ export default function MasterTabDashboard({ stats, loading }: Props) {
     try {
       await fetch(`${AUTH_URL}?action=send-tg-notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: masterHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ user_id: tgUser.id, message: tgText }),
       });
       setTgDone(tgUser.id);

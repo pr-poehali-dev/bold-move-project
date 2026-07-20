@@ -6,6 +6,7 @@ import { fmtDate } from "./masterAdminTypes";
 import { FilterTabs } from "./MasterTabBusiness";
 import MasterTabRemoved from "./MasterTabRemoved";
 import func2url from "@/../backend/func2url.json";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -51,7 +52,7 @@ export default function MasterTabPro({
   const doDelete = async (u: ProUser) => {
     setDeletingId(u.id);
     await fetch(`${AUTH_URL}?action=delete-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: u.id }),
     });
     setDeletingId(null);

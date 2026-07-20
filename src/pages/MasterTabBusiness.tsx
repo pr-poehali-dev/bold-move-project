@@ -5,6 +5,7 @@ import type { BusinessUser, UserTransaction } from "./masterAdminTypes";
 import { fmtDate } from "./masterAdminTypes";
 import MasterTabRemoved from "./MasterTabRemoved";
 import func2url from "@/../backend/func2url.json";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -81,7 +82,7 @@ function BusinessCard({ u, actionId, onApprove, onReject, onDelete }: {
     if (transactions) { setExpanded(v => !v); return; }
     setTxLoading(true);
     setExpanded(true);
-    const r = await fetch(`${AUTH_URL}?action=admin-user-transactions&user_id=${u.id}`);
+    const r = await fetch(`${AUTH_URL}?action=admin-user-transactions&user_id=${u.id}`, { headers: masterHeaders() });
     const d = await r.json();
     setTransactions(d.transactions || []);
     setTxLoading(false);
@@ -294,7 +295,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   const doApprove = async (id: number) => {
     setActionId(id);
     await fetch(`${AUTH_URL}?action=approve-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: id }),
     });
     setActionId(null);
@@ -304,7 +305,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   const doReject = async (id: number) => {
     setActionId(id);
     await fetch(`${AUTH_URL}?action=reject-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: id }),
     });
     setActionId(null);
@@ -314,7 +315,7 @@ export default function MasterTabBusiness({ users, loading, onReload }: Props) {
   const doDelete = async (u: BusinessUser) => {
     setDeletingId(u.id);
     await fetch(`${AUTH_URL}?action=delete-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: u.id }),
     });
     setDeletingId(null);

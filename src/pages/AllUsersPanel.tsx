@@ -5,6 +5,7 @@ import type { AppUser, UserEstimate } from "./masterAdminTypes";
 import { fmtDate, ROLE_LABELS } from "./masterAdminTypes";
 import func2url from "@/../backend/func2url.json";
 import { useAuth } from "@/context/AuthContext";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -42,10 +43,7 @@ export default function AllUsersPanel({
     try {
       const r = await fetch(`${AUTH_URL}?action=admin-login-as`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Authorization": `Bearer ${localStorage.getItem("mp_user_token")}`,
-        },
+        headers: masterHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ user_id: selectedUser.id }),
       });
       const d = await r.json();

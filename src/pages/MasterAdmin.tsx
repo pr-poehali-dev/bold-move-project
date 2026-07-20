@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import func2url from "@/../backend/func2url.json";
 import { TOKEN_KEY } from "@/context/useAuthInit";
+import { masterHeaders } from "./masterAuthFetch";
 import type { MasterTab, BusinessUser, ProUser, AppUser, UserEstimate, AdminStats } from "./masterAdminTypes";
 import MasterTabProfessionals from "./MasterTabProfessionals";
 import MasterTabAllUsers      from "./MasterTabAllUsers";
@@ -63,7 +64,7 @@ export default function MasterAdmin() {
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=admin-stats`);
+    const r = await fetch(`${AUTH_URL}?action=admin-stats`, { headers: masterHeaders() });
     const d = await r.json();
     setStats(d);
     setStatsLoading(false);
@@ -71,7 +72,7 @@ export default function MasterAdmin() {
 
   const loadBiz = useCallback(async () => {
     setBizLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=business-users&status=all`);
+    const r = await fetch(`${AUTH_URL}?action=business-users&status=all`, { headers: masterHeaders() });
     const d = await r.json();
     setBizUsers(d.users || []);
     setBizLoading(false);
@@ -79,7 +80,7 @@ export default function MasterAdmin() {
 
   const loadPro = useCallback(async () => {
     setProLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=pro-users`);
+    const r = await fetch(`${AUTH_URL}?action=pro-users`, { headers: masterHeaders() });
     const d = await r.json();
     setProUsers(d.users || []);
     setProLoading(false);
@@ -87,7 +88,7 @@ export default function MasterAdmin() {
 
   const loadAll = useCallback(async () => {
     setAllLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=admin-users`);
+    const r = await fetch(`${AUTH_URL}?action=admin-users`, { headers: masterHeaders() });
     const d = await r.json();
     setUsers(d.users || []);
     setAllLoading(false);
@@ -109,7 +110,7 @@ export default function MasterAdmin() {
   const approveUser = async (id: number) => {
     setApprovingId(id);
     await fetch(`${AUTH_URL}?action=approve-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: id }),
     });
     setApprovingId(null);
@@ -120,7 +121,7 @@ export default function MasterAdmin() {
     if (!editDiscount) return;
     setSavingDiscount(true);
     await fetch(`${AUTH_URL}?action=set-discount`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: editDiscount.id, discount: parseInt(editDiscount.value) || 0 }),
     });
     setSavingDiscount(false);
@@ -131,7 +132,7 @@ export default function MasterAdmin() {
   const openUser = async (user: AppUser) => {
     setSelectedUser(user);
     setEstLoading(true);
-    const res  = await fetch(`${AUTH_URL}?action=admin-user-estimates&user_id=${user.id}`);
+    const res  = await fetch(`${AUTH_URL}?action=admin-user-estimates&user_id=${user.id}`, { headers: masterHeaders() });
     const data = await res.json();
     setUserEstimates(data.estimates || []);
     setEstLoading(false);

@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import RoleBadge from "./MasterRoleBadge";
 import { fmtDate } from "./masterAdminTypes";
 import func2url from "@/../backend/func2url.json";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -28,7 +29,7 @@ export default function MasterTabRemoved({ group }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(`${AUTH_URL}?action=removed-users&group=${group}`);
+    const r = await fetch(`${AUTH_URL}?action=removed-users&group=${group}`, { headers: masterHeaders() });
     const d = await r.json();
     setUsers(d.users || []);
     setLoading(false);
@@ -39,7 +40,7 @@ export default function MasterTabRemoved({ group }: Props) {
   const doRestore = async (u: RemovedUser) => {
     setRestoringId(u.id);
     await fetch(`${AUTH_URL}?action=restore-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: u.id }),
     });
     setRestoringId(null);

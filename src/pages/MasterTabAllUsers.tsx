@@ -6,6 +6,7 @@ import AllUsersFilters, { type SubFilter } from "./AllUsersFilters";
 import AllUsersTable from "./AllUsersTable";
 import AllUsersPanel from "./AllUsersPanel";
 import func2url from "@/../backend/func2url.json";
+import { masterHeaders } from "./masterAuthFetch";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
@@ -67,7 +68,7 @@ export default function MasterTabAllUsers({
   const doDelete = async (u: AppUser) => {
     setDeletingId(u.id);
     await fetch(`${AUTH_URL}?action=delete-user`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: u.id }),
     });
     setDeletingId(null);
@@ -77,17 +78,16 @@ export default function MasterTabAllUsers({
 
   const doAddBalance = async (userId: number, amount: number, reason: string) => {
     await fetch(`${AUTH_URL}?action=add-balance`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: userId, amount, reason }),
     });
     onReload();
   };
 
   const doToggleOwnAgent = async (userId: number, enable: boolean) => {
-    const masterToken = localStorage.getItem("mp_user_token") || "";
     await fetch(`${AUTH_URL}?action=admin-toggle-own-agent`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${masterToken}` },
+      headers: masterHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ user_id: userId, enable }),
     });
     onReload();
