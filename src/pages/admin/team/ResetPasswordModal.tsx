@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { resetMemberPassword, type TeamMember } from "./teamApi";
@@ -12,26 +12,25 @@ interface Props {
 
 export default function ResetPasswordModal({ isDark, member, onClose, onReset }: Props) {
   const { token } = useAuth();
-  const [busy,    setBusy]    = useState(true);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy,    setBusy]    = useState(false);
   const [tempPwd, setTempPwd] = useState<string | null>(null);
   const [err,     setErr]     = useState("");
   const [copied,  setCopied]  = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const pwd = await resetMemberPassword(token, member.id);
-        if (!cancelled) { setTempPwd(pwd); onReset?.(); }
-      } catch (e: unknown) {
-        if (!cancelled) setErr(e instanceof Error ? e.message : "Ошибка");
-      } finally {
-        if (!cancelled) setBusy(false);
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, member.id]);
+  const doReset = async () => {
+    setConfirmed(true);
+    setBusy(true);
+    setErr("");
+    try {
+      const pwd = await resetMemberPassword(token, member.id);
+      setTempPwd(pwd); onReset?.();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const copyAll = async () => {
     if (!tempPwd) return;
@@ -63,6 +62,35 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
         </div>
 
         <div className="px-6 py-5 space-y-4">
+          {/* Шаг 1 — подтверждение */}
+          {!confirmed && (
+            <>
+              <div className="rounded-xl px-4 py-3.5 text-[13px] flex items-start gap-2.5"
+                style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.28)", color: "#fbbf24" }}>
+                <Icon name="TriangleAlert" size={16} className="mt-0.5 flex-shrink-0" />
+                <span>
+                  Точно сбросить пароль сотруднику <b>{member.name || member.email}</b>?
+                  <br /><br />
+                  Он <b>потеряет доступ</b> и не сможет войти в систему, пока вы не передадите ему новый пароль для входа.
+                  Все его активные сессии будут завершены.
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={onClose}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold transition"
+                  style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: muted, border: `1px solid ${border}` }}>
+                  Отмена
+                </button>
+                <button onClick={doReset}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
+                  style={{ background: "#7c3aed" }}>
+                  <Icon name="KeyRound" size={14} />
+                  Да, сбросить
+                </button>
+              </div>
+            </>
+          )}
+
           {busy && (
             <div className="flex items-center justify-center py-6">
               <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
@@ -97,11 +125,13 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
             </>
           )}
 
-          <button onClick={onClose}
-            className="w-full py-2.5 rounded-xl text-xs font-medium transition"
-            style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: muted, border: `1px solid ${border}` }}>
-            Закрыть
-          </button>
+          {confirmed && (
+            <button onClick={onClose}
+              className="w-full py-2.5 rounded-xl text-xs font-medium transition"
+              style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: muted, border: `1px solid ${border}` }}>
+              Закрыть
+            </button>
+          )}
         </div>
       </div>
     </div>
