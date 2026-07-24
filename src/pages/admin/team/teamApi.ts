@@ -16,6 +16,7 @@ export interface TeamMember {
   team_role_id?: number | null;
   company_id?: number | null;
   company_name?: string | null;
+  active?: boolean;
 }
 
 export interface TeamRole {
@@ -37,6 +38,19 @@ export async function fetchTeam(token: string | null): Promise<TeamMember[]> {
   const d   = await res.json();
   if (!res.ok || d.error) throw new Error(d.error || "Ошибка загрузки команды");
   return d.members ?? [];
+}
+
+export async function toggleMemberActive(
+  token: string | null,
+  memberId: number,
+  active: boolean,
+): Promise<void> {
+  const res = await fetch(`${AUTH_URL}?action=team-toggle-active`, {
+    method: "POST", headers: authHeaders(token),
+    body: JSON.stringify({ member_id: memberId, active }),
+  });
+  const d = await res.json();
+  if (!res.ok || d.error) throw new Error(d.error || "Не удалось изменить статус");
 }
 
 export async function inviteMember(

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
-import { fetchTeam, removeMember, type TeamMember } from "./teamApi";
+import { fetchTeam, removeMember, toggleMemberActive, type TeamMember } from "./teamApi";
 import InviteMemberModal from "./InviteMemberModal";
 import ResetPasswordModal from "./ResetPasswordModal";
 import EditPermissionsModal from "./EditPermissionsModal";
@@ -39,6 +39,18 @@ export default function TeamPanel({ isDark }: Props) {
   };
 
   useEffect(() => { reload();   }, [token]);
+
+  const doToggleActive = async (m: TeamMember, next: boolean) => {
+    // оптимистично обновляем UI
+    setMembers(prev => prev.map(x => x.id === m.id ? { ...x, active: next } : x));
+    try {
+      await toggleMemberActive(token, m.id, next);
+    } catch (e: unknown) {
+      // откат при ошибке
+      setMembers(prev => prev.map(x => x.id === m.id ? { ...x, active: !next } : x));
+      setErr(e instanceof Error ? e.message : "Ошибка изменения статуса");
+    }
+  };
 
   const doDelete = async () => {
     if (!confirmDel) return;
@@ -157,6 +169,7 @@ export default function TeamPanel({ isDark }: Props) {
           <div className="flex flex-col gap-2">
             {members.map(m => (
               <MemberCard key={m.id} member={m} isDark={isDark} showCompany={isMaster}
+                onToggleActive={(next) => doToggleActive(m, next)}
                 onEditPermissions={() => setEditFor(m)}
                 onResetPassword={() => setResetFor(m)}
                 onRemove={() => setConfirmDel(m)} />
@@ -189,8 +202,9 @@ export default function TeamPanel({ isDark }: Props) {
   );
 }
 
-function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPassword, onRemove }: {
+function MemberCard({ member, isDark, showCompany, onToggleActive, onEditPermissions, onResetPassword, onRemove }: {
   member: TeamMember; isDark: boolean; showCompany?: boolean;
+  onToggleActive: (next: boolean) => void;
   onEditPermissions: () => void;
   onResetPassword: () => void;
   onRemove: () => void;
@@ -199,6 +213,7 @@ function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPas
   const border = isDark ? "rgba(255,255,255,0.07)" : "#e5e7eb";
   const bg     = isDark ? "rgba(255,255,255,0.03)" : "#ffffff";
   const initials = (member.name || member.email).slice(0, 1).toUpperCase();
+  const isActive = member.active !== false;
 
   // Подсчёт активных прав
   const activeCount = member.permissions
@@ -210,10 +225,13 @@ function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPas
   const accessColor = activeCount === 0 ? "#ef4444" : activeCount === totalCount ? "#10b981" : "#a78bfa";
 
   return (
-    <div className="rounded-xl px-3.5 py-2.5 flex items-center gap-3"
+    <div className="rounded-xl px-3.5 py-2.5 flex items-center gap-3 transition"
       style={{
         background: bg,
-        border: isPwdPending ? "1.5px solid rgba(251,191,36,0.4)" : `1px solid ${border}`,
+        border: !isActive
+          ? "1.5px solid rgba(239,68,68,0.4)"
+          : isPwdPending ? "1.5px solid rgba(251,191,36,0.4)" : `1px solid ${border}`,
+        opacity: isActive ? 1 : 0.55,
       }}>
       {/* Аватар */}
       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black flex-shrink-0"
@@ -233,6 +251,14 @@ function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPas
               {member.company_name}
             </span>
           )}
+          {!isActive && (
+            <span title="Сотрудник выключен — не может войти и работать"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
+              style={{ background: "rgba(239,68,68,0.14)", color: "#ef4444" }}>
+              <Icon name="Ban" size={9} />
+              выключен
+            </span>
+          )}
           {isPwdPending && (
             <span title="Пароль не передан — сотрудник пока не может войти"
               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
@@ -246,6 +272,18 @@ function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPas
           {member.email}{member.phone ? ` · ${member.phone}` : ""}
         </div>
       </div>
+
+      {/* Слайдер включён/выключен */}
+      <button onClick={() => onToggleActive(!isActive)}
+        title={isActive ? "Выключить сотрудника" : "Включить сотрудника"}
+        className="relative flex-shrink-0 rounded-full transition"
+        style={{
+          width: 40, height: 22, opacity: 1,
+          background: isActive ? "#10b981" : "rgba(255,255,255,0.18)",
+        }}>
+        <span className="absolute top-0.5 rounded-full bg-white transition-all"
+          style={{ width: 18, height: 18, left: isActive ? 20 : 2 }} />
+      </button>
 
       {/* Доступ (бейдж) */}
       <div title="Открытых разделов" className="flex-shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold text-center"

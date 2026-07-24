@@ -104,6 +104,15 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Team toggle active unauthorized",
+      "method": "POST",
+      "path": "/?action=team-toggle-active",
+      "body": {"member_id": 1, "active": false},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

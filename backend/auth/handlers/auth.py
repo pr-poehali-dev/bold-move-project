@@ -137,13 +137,13 @@ def handle(action, method, params, body, token, event, conn, cur):
         if not email or not password:
             return err("Email и пароль обязательны")
         cur.execute(
-            f"SELECT id, name, email, role, approved, discount, email_verified, password_hash FROM {SCHEMA}.users WHERE email=%s",
+            f"SELECT id, name, email, role, approved, discount, email_verified, password_hash, active FROM {SCHEMA}.users WHERE email=%s",
             (email,)
         )
         row = cur.fetchone()
         if not row or not verify_password(password, row[7]):
             return err("Неверный email или пароль")
-        user_id, name, email_db, role, approved, discount, email_verified, pwd_hash = row
+        user_id, name, email_db, role, approved, discount, email_verified, pwd_hash, active = row
         if needs_rehash(pwd_hash):
             cur.execute(f"UPDATE {SCHEMA}.users SET password_hash=%s WHERE id=%s", (hash_password(password), user_id))
             conn.commit()
@@ -152,6 +152,9 @@ def handle(action, method, params, body, token, event, conn, cur):
             return ok({"email_verification_required": True, "email": email_db})
         if not approved and not is_master:
             return ok({"pending": True, "role": role})
+        # Выключенный админом сотрудник не может войти
+        if role == "manager" and active is False:
+            return err("Ваш доступ отключён администратором компании", 403)
         new_token = secrets.token_hex(32)
         cur.execute(f"INSERT INTO {SCHEMA}.user_sessions (user_id, token) VALUES (%s,%s)", (user_id, new_token))
         conn.commit()
@@ -180,7 +183,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.nav_config, u.nav_hidden_ids,
                    u.is_demo, u.demo_expires_at, u.role_selected,
                    (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password,
-                   u.google_id, u.yandex_id, u.vk_id, u.telegram_id, u.rejected
+                   u.google_id, u.yandex_id, u.vk_id, u.telegram_id, u.rejected, u.active
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -197,7 +200,11 @@ def handle(action, method, params, body, token, event, conn, cur):
          brand_logo_url_dark, brand_logo_orientation, pdf_logo_bg, bot_avatar_bg, kanban_enabled,
          tg_bot_token, tg_notify_chat_id, max_bot_token, max_notify_chat_id,
          nav_config, nav_hidden_ids, is_demo, demo_expires_at, role_selected, has_password,
-         google_id, yandex_id, vk_id, tg_social_id, rejected) = row
+         google_id, yandex_id, vk_id, tg_social_id, rejected, active) = row
+
+        # Выключенный админом сотрудник теряет доступ даже при активной сессии
+        if role == "manager" and active is False:
+            return err("Ваш доступ отключён администратором компании", 403)
 
         login_methods = []
         if has_password: login_methods.append("password")

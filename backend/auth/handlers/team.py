@@ -30,7 +30,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             cur.execute(f"""
                 SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
                        u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
-                       u.team_role_id, c.name AS company_name
+                       u.team_role_id, c.name AS company_name, u.active
                 FROM {SCHEMA}.users u
                 LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
                 WHERE u.company_id IS NOT NULL AND u.removed_at IS NULL
@@ -40,7 +40,7 @@ def handle(action, method, params, body, token, event, conn, cur):
             cur.execute(f"""
                 SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
                        u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
-                       u.team_role_id, c.name AS company_name
+                       u.team_role_id, c.name AS company_name, u.active
                 FROM {SCHEMA}.users u
                 LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
                 WHERE u.company_id = %s AND u.removed_at IS NULL AND u.id <> %s
@@ -51,8 +51,35 @@ def handle(action, method, params, body, token, event, conn, cur):
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
             "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
-            "team_role_id": r[10], "company_name": r[11],
+            "team_role_id": r[10], "company_name": r[11], "active": r[12],
         } for r in rows]})
+
+    if action == "team-toggle-active" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, is_master = owner
+        member_id = body.get("member_id") or body.get("user_id")
+        if not member_id:
+            return err("member_id обязателен")
+        enable = bool(body.get("active"))
+        # Компания управляет только своими сотрудниками, мастер — любыми
+        if is_master:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET active=%s
+                WHERE id=%s AND role='manager' AND removed_at IS NULL
+                RETURNING id
+            """, (enable, int(member_id)))
+        else:
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET active=%s
+                WHERE id=%s AND company_id=%s AND role='manager' AND removed_at IS NULL
+                RETURNING id
+            """, (enable, int(member_id), owner_id))
+        updated = cur.fetchone()
+        if not updated:
+            return err("Сотрудник не найден", 404)
+        conn.commit()
+        return ok({"id": updated[0], "active": enable})
 
     # ── РОЛИ КОМАНДЫ (шаблоны наборов прав) ─────────────────────────────────
     if action == "team-roles-list" and method == "GET":
