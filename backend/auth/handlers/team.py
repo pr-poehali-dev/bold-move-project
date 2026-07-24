@@ -85,17 +85,24 @@ def handle(action, method, params, body, token, event, conn, cur):
     if action == "team-roles-list" and method == "GET":
         owner, e = get_owner_or_err()
         if e: return e
-        owner_id, _, is_master = owner
-        cmp = owner_id if not is_master else owner_id  # мастер тоже видит только свои шаблоны
+        owner_id, _, _ = owner
+        # Показываем: общие шаблоны (кроме скрытых этой компанией) + собственные роли компании
         cur.execute(f"""
-            SELECT id, name, permissions, created_at
+            SELECT id, name, permissions, created_at, is_template
             FROM {SCHEMA}.team_roles
-            WHERE company_id=%s AND removed_at IS NULL
-            ORDER BY created_at ASC
-        """, (cmp,))
+            WHERE removed_at IS NULL
+              AND (
+                    company_id=%s
+                    OR (is_template=true AND id NOT IN (
+                          SELECT template_id FROM {SCHEMA}.team_role_hidden_templates WHERE company_id=%s
+                    ))
+                  )
+            ORDER BY is_template DESC, created_at ASC
+        """, (owner_id, owner_id))
         rows = cur.fetchall()
         return ok({"roles": [{
             "id": r[0], "name": r[1], "permissions": r[2], "created_at": str(r[3])[:19],
+            "is_template": r[4],
         } for r in rows]})
 
     if action == "team-roles-create" and method == "POST":
@@ -123,9 +130,31 @@ def handle(action, method, params, body, token, event, conn, cur):
         permissions = body.get("permissions")
         if not role_id:
             return err("role_id обязателен")
-        cur.execute(f"SELECT id FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL", (int(role_id), owner_id))
-        if not cur.fetchone():
+        # Ищем роль: либо собственную роль компании, либо общий шаблон
+        cur.execute(f"""
+            SELECT id, name, permissions, is_template
+            FROM {SCHEMA}.team_roles
+            WHERE id=%s AND removed_at IS NULL
+              AND (company_id=%s OR is_template=true)
+        """, (int(role_id), owner_id))
+        found = cur.fetchone()
+        if not found:
             return err("Роль не найдена", 404)
+        is_template_role = found[3]
+
+        # Правка шаблона не меняет общий шаблон — создаём личную копию компании и правим её
+        if is_template_role:
+            new_name = name or found[1]
+            new_perms = permissions if permissions is not None else found[2]
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.team_roles (company_id, name, permissions, is_template)
+                VALUES (%s, %s, %s::jsonb, false) RETURNING id, created_at
+            """, (owner_id, new_name, json.dumps(new_perms)))
+            new_id, created_at = cur.fetchone()
+            conn.commit()
+            return ok({"role": {"id": new_id, "name": new_name, "permissions": new_perms,
+                                "created_at": str(created_at)[:19], "is_template": False}})
+
         sets, vals = [], []
         if name:
             sets.append("name=%s"); vals.append(name)
@@ -151,12 +180,30 @@ def handle(action, method, params, body, token, event, conn, cur):
         role_id = body.get("role_id")
         if not role_id:
             return err("role_id обязателен")
+        cur.execute(f"SELECT is_template FROM {SCHEMA}.team_roles WHERE id=%s AND removed_at IS NULL", (int(role_id),))
+        row = cur.fetchone()
+        if not row:
+            return err("Роль не найдена", 404)
+
+        # Шаблон не удаляем глобально — прячем только для этой компании
+        if row[0]:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.team_role_hidden_templates (company_id, template_id)
+                VALUES (%s, %s) ON CONFLICT DO NOTHING
+            """, (owner_id, int(role_id)))
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET team_role_id=NULL
+                WHERE team_role_id=%s AND company_id=%s
+            """, (int(role_id), owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
         cur.execute(f"""
             UPDATE {SCHEMA}.team_roles SET removed_at=NOW()
             WHERE id=%s AND company_id=%s AND removed_at IS NULL
         """, (int(role_id), owner_id))
         # Отвязываем сотрудников от удалённой роли (их текущие права сохраняются как есть)
-        cur.execute(f"UPDATE {SCHEMA}.users SET team_role_id=NULL WHERE team_role_id=%s", (int(role_id),))
+        cur.execute(f"UPDATE {SCHEMA}.users SET team_role_id=NULL WHERE team_role_id=%s AND company_id=%s", (int(role_id), owner_id))
         conn.commit()
         return ok({"ok": True})
 
