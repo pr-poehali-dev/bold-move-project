@@ -113,6 +113,15 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Team update member unauthorized",
+      "method": "POST",
+      "path": "/?action=team-update-member",
+      "body": {"member_id": 1, "name": "Test"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

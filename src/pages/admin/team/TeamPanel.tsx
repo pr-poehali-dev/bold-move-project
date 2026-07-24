@@ -5,6 +5,7 @@ import { fetchTeam, removeMember, toggleMemberActive, type TeamMember } from "./
 import InviteMemberModal from "./InviteMemberModal";
 import ResetPasswordModal from "./ResetPasswordModal";
 import EditPermissionsModal from "./EditPermissionsModal";
+import EditMemberModal from "./EditMemberModal";
 import TeamRolesPanel from "./TeamRolesPanel";
 import { ALL_PERM_KEYS } from "./PermissionsEditor";
 
@@ -23,6 +24,7 @@ export default function TeamPanel({ isDark }: Props) {
   const [showInvite, setShowInvite] = useState(false);
   const [resetFor,   setResetFor]   = useState<TeamMember | null>(null);
   const [editFor,    setEditFor]    = useState<TeamMember | null>(null);
+  const [editInfoFor, setEditInfoFor] = useState<TeamMember | null>(null);
   const [confirmDel, setConfirmDel] = useState<TeamMember | null>(null);
   const [delBusy,    setDelBusy]    = useState(false);
 
@@ -170,6 +172,7 @@ export default function TeamPanel({ isDark }: Props) {
             {members.map(m => (
               <MemberCard key={m.id} member={m} isDark={isDark} showCompany={isMaster}
                 onToggleActive={(next) => doToggleActive(m, next)}
+                onEditInfo={() => setEditInfoFor(m)}
                 onEditPermissions={() => setEditFor(m)}
                 onResetPassword={() => setResetFor(m)}
                 onRemove={() => setConfirmDel(m)} />
@@ -190,6 +193,11 @@ export default function TeamPanel({ isDark }: Props) {
           onClose={() => setEditFor(null)}
           onSaved={(m) => setMembers(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x))} />
       )}
+      {editInfoFor && (
+        <EditMemberModal isDark={isDark} member={editInfoFor}
+          onClose={() => setEditInfoFor(null)}
+          onSaved={(m) => { setMembers(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x)); setEditInfoFor(null); }} />
+      )}
       {resetFor && (
         <ResetPasswordModal isDark={isDark} member={resetFor} onClose={() => setResetFor(null)}
           onReset={() => setMembers(prev => prev.map(x => x.id === resetFor.id ? { ...x, has_pending_password: false } : x))} />
@@ -202,9 +210,10 @@ export default function TeamPanel({ isDark }: Props) {
   );
 }
 
-function MemberCard({ member, isDark, showCompany, onToggleActive, onEditPermissions, onResetPassword, onRemove }: {
+function MemberCard({ member, isDark, showCompany, onToggleActive, onEditInfo, onEditPermissions, onResetPassword, onRemove }: {
   member: TeamMember; isDark: boolean; showCompany?: boolean;
   onToggleActive: (next: boolean) => void;
+  onEditInfo: () => void;
   onEditPermissions: () => void;
   onResetPassword: () => void;
   onRemove: () => void;
@@ -293,6 +302,11 @@ function MemberCard({ member, isDark, showCompany, onToggleActive, onEditPermiss
 
       {/* Действия */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        <button onClick={onEditInfo} title="Редактировать сотрудника"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition"
+          style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.28)" }}>
+          <Icon name="Pencil" size={14} />
+        </button>
         <button onClick={onEditPermissions} title="Настроить доступ"
           className="flex items-center justify-center w-8 h-8 rounded-lg transition"
           style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.32)" }}>

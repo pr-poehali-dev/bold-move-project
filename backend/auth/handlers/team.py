@@ -245,6 +245,56 @@ def handle(action, method, params, body, token, event, conn, cur):
         conn.commit()
         return ok({"ok": True})
 
+    if action == "team-update-member" and method == "POST":
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, is_master = owner
+        member_id = body.get("member_id")
+        if not member_id:
+            return err("member_id обязателен")
+        member_id = int(member_id)
+
+        name  = (body.get("name") or "").strip() or None
+        phone = (body.get("phone") or "").strip() or None
+        email = (body.get("email") or "").strip().lower() or None
+        role_id_provided = "role_id" in body
+        role_id = body.get("role_id")
+
+        company_clause = "" if is_master else "AND company_id=%s"
+        find_params = (member_id,) if is_master else (member_id, owner_id)
+        cur.execute(f"""
+            SELECT id, company_id FROM {SCHEMA}.users
+            WHERE id=%s {company_clause} AND role='manager' AND removed_at IS NULL
+        """, find_params)
+        found = cur.fetchone()
+        if not found:
+            return err("Сотрудник не найден", 404)
+        member_company_id = found[1]
+
+        # Email — логин, должен быть уникален
+        if email:
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email=%s AND id<>%s", (email, member_id))
+            if cur.fetchone():
+                return err("Этот email уже занят другим пользователем")
+
+        # Роль команды должна принадлежать той же компании
+        if role_id_provided and role_id:
+            cur.execute(f"SELECT id FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL",
+                        (int(role_id), member_company_id))
+            if not cur.fetchone():
+                return err("Роль не найдена")
+
+        sets = ["name=%s", "phone=%s"]
+        vals = [name, phone]
+        if email:
+            sets.append("email=%s"); vals.append(email)
+        if role_id_provided:
+            sets.append("team_role_id=%s"); vals.append(int(role_id) if role_id else None)
+        vals.append(member_id)
+        cur.execute(f"UPDATE {SCHEMA}.users SET {', '.join(sets)} WHERE id=%s", tuple(vals))
+        conn.commit()
+        return ok({"ok": True})
+
     if action == "team-show-password" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e

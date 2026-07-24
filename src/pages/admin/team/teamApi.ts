@@ -53,6 +53,19 @@ export async function toggleMemberActive(
   if (!res.ok || d.error) throw new Error(d.error || "Не удалось изменить статус");
 }
 
+export async function updateMember(
+  token: string | null,
+  memberId: number,
+  payload: { name?: string; phone?: string; email?: string; role_id?: number | null },
+): Promise<void> {
+  const res = await fetch(`${AUTH_URL}?action=team-update-member`, {
+    method: "POST", headers: authHeaders(token),
+    body: JSON.stringify({ member_id: memberId, ...payload }),
+  });
+  const d = await res.json();
+  if (!res.ok || d.error) throw new Error(d.error || "Не удалось сохранить изменения");
+}
+
 export async function inviteMember(
   token: string | null,
   payload: { email: string; name?: string; phone?: string; role_id?: number | null },
