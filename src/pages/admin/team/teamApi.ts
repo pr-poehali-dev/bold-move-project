@@ -24,6 +24,7 @@ export interface TeamRole {
   name: string;
   permissions: Permissions;
   created_at: string;
+  is_template?: boolean;
 }
 
 function authHeaders(token: string | null) {

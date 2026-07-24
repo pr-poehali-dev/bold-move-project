@@ -247,7 +247,11 @@ def handle(action, method, params, body, token, event, conn, cur):
         role_id = body.get("role_id")
         final_permissions = default_permissions
         if role_id:
-            cur.execute(f"SELECT permissions FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL", (int(role_id), owner_id))
+            cur.execute(f"""
+                SELECT permissions FROM {SCHEMA}.team_roles
+                WHERE id=%s AND removed_at IS NULL
+                  AND (is_template=true OR company_id=%s)
+            """, (int(role_id), owner_id))
             role_row = cur.fetchone()
             if not role_row:
                 return err("Роль не найдена", 404)
@@ -324,10 +328,13 @@ def handle(action, method, params, body, token, event, conn, cur):
             if cur.fetchone():
                 return err("Этот email уже занят другим пользователем")
 
-        # Роль команды должна принадлежать той же компании
+        # Роль должна быть общим шаблоном ИЛИ принадлежать компании сотрудника
         if role_id_provided and role_id:
-            cur.execute(f"SELECT id FROM {SCHEMA}.team_roles WHERE id=%s AND company_id=%s AND removed_at IS NULL",
-                        (int(role_id), member_company_id))
+            cur.execute(f"""
+                SELECT id FROM {SCHEMA}.team_roles
+                WHERE id=%s AND removed_at IS NULL
+                  AND (is_template=true OR company_id=%s)
+            """, (int(role_id), member_company_id))
             if not cur.fetchone():
                 return err("Роль не найдена")
 

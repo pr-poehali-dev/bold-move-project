@@ -157,7 +157,15 @@ function RoleCard({ role, isDark, onEdit, onDelete }: {
         <Icon name="Tag" size={15} style={{ color: "#a78bfa" }} />
       </div>
 
-      <div className="flex-1 min-w-0 text-[13px] font-bold truncate">{role.name}</div>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="text-[13px] font-bold truncate">{role.name}</span>
+        {role.is_template && (
+          <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wide"
+            style={{ background: "rgba(96,165,250,0.18)", color: "#60a5fa" }}>
+            Шаблон
+          </span>
+        )}
+      </div>
 
       <div title="Открытых разделов" className="flex-shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold text-center"
         style={{ background: `${accessColor}18`, color: accessColor, minWidth: 52 }}>
