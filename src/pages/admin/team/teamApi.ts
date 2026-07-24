@@ -14,6 +14,8 @@ export interface TeamMember {
   permissions?: Permissions | null;
   has_pending_password?: boolean;
   team_role_id?: number | null;
+  company_id?: number | null;
+  company_name?: string | null;
 }
 
 export interface TeamRole {

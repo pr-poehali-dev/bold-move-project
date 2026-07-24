@@ -28,28 +28,30 @@ def handle(action, method, params, body, token, event, conn, cur):
         if is_master:
             # Мастер видит всех сотрудников всех компаний (любая роль, привязанная к company_id)
             cur.execute(f"""
-                SELECT id, email, name, phone, role, approved, created_at,
-                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id,
-                       team_role_id
-                FROM {SCHEMA}.users
-                WHERE company_id IS NOT NULL AND removed_at IS NULL
-                ORDER BY created_at DESC
+                SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
+                       u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
+                       u.team_role_id, c.name AS company_name
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
+                WHERE u.company_id IS NOT NULL AND u.removed_at IS NULL
+                ORDER BY u.company_id, u.created_at DESC
             """)
         else:
             cur.execute(f"""
-                SELECT id, email, name, phone, role, approved, created_at,
-                       permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id,
-                       team_role_id
-                FROM {SCHEMA}.users
-                WHERE company_id = %s AND removed_at IS NULL AND id <> %s
-                ORDER BY created_at DESC
+                SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
+                       u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
+                       u.team_role_id, c.name AS company_name
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
+                WHERE u.company_id = %s AND u.removed_at IS NULL AND u.id <> %s
+                ORDER BY u.created_at DESC
             """, (owner_id, owner_id))
         rows = cur.fetchall()
         return ok({"members": [{
             "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
             "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
             "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
-            "team_role_id": r[10],
+            "team_role_id": r[10], "company_name": r[11],
         } for r in rows]})
 
     # ── РОЛИ КОМАНДЫ (шаблоны наборов прав) ─────────────────────────────────

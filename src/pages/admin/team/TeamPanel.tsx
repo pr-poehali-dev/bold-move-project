@@ -13,7 +13,8 @@ interface Props { isDark: boolean }
 type SubView = "members" | "roles";
 
 export default function TeamPanel({ isDark }: Props) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isMaster = user?.is_master === true;
   const [view, setView] = useState<SubView>("members");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +156,7 @@ export default function TeamPanel({ isDark }: Props) {
         ) : (
           <div className="flex flex-col gap-2">
             {members.map(m => (
-              <MemberCard key={m.id} member={m} isDark={isDark}
+              <MemberCard key={m.id} member={m} isDark={isDark} showCompany={isMaster}
                 onEditPermissions={() => setEditFor(m)}
                 onResetPassword={() => setResetFor(m)}
                 onRemove={() => setConfirmDel(m)} />
@@ -188,8 +189,8 @@ export default function TeamPanel({ isDark }: Props) {
   );
 }
 
-function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemove }: {
-  member: TeamMember; isDark: boolean;
+function MemberCard({ member, isDark, showCompany, onEditPermissions, onResetPassword, onRemove }: {
+  member: TeamMember; isDark: boolean; showCompany?: boolean;
   onEditPermissions: () => void;
   onResetPassword: () => void;
   onRemove: () => void;
@@ -224,6 +225,14 @@ function MemberCard({ member, isDark, onEditPermissions, onResetPassword, onRemo
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[13px] font-bold truncate">{member.name || member.email}</span>
+          {showCompany && member.company_name && (
+            <span title="Компания сотрудника"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
+              style={{ background: "rgba(96,165,250,0.14)", color: "#60a5fa" }}>
+              <Icon name="Building2" size={9} />
+              {member.company_name}
+            </span>
+          )}
           {isPwdPending && (
             <span title="Пароль не передан — сотрудник пока не может войти"
               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
