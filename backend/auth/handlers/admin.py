@@ -80,7 +80,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.has_own_agent, u.agent_purchased_at, u.trial_until,
                    COALESCE(SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END), 0) AS total_bought,
                    EXISTS(SELECT 1 FROM {SCHEMA}.demo_companies dc WHERE dc.company_id = u.id) AS invited_by_master,
-                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.role = 'manager' AND m.removed_at IS NULL) AS members_count
+                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.removed_at IS NULL) AS members_count
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.balance_transactions bt ON bt.user_id = u.id
             {where} GROUP BY u.id ORDER BY u.created_at DESC
         """)
@@ -119,7 +119,7 @@ def handle(action, method, params, body, token, event, conn, cur):
                    u.company_id,
                    COALESCE((SELECT SUM(CASE WHEN bt.amount > 0 THEN bt.amount ELSE 0 END)
                              FROM {SCHEMA}.balance_transactions bt WHERE bt.user_id = u.id), 0) AS total_bought,
-                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.role = 'manager' AND m.removed_at IS NULL) AS members_count
+                   (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.company_id = u.id AND m.removed_at IS NULL) AS members_count
             FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.saved_estimates e ON e.user_id = u.id
             WHERE u.removed_at IS NULL GROUP BY u.id ORDER BY u.created_at DESC
         """)

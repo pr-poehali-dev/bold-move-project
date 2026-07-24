@@ -26,13 +26,13 @@ def handle(action, method, params, body, token, event, conn, cur):
         if e: return e
         owner_id, _, is_master = owner
         if is_master:
-            # Мастер видит сотрудников всех компаний
+            # Мастер видит всех сотрудников всех компаний (любая роль, привязанная к company_id)
             cur.execute(f"""
                 SELECT id, email, name, phone, role, approved, created_at,
                        permissions, (temp_password_plain IS NOT NULL) AS has_pending_password, company_id,
                        team_role_id
                 FROM {SCHEMA}.users
-                WHERE role = 'manager' AND removed_at IS NULL
+                WHERE company_id IS NOT NULL AND removed_at IS NULL
                 ORDER BY created_at DESC
             """)
         else:
