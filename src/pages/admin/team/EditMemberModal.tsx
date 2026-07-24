@@ -31,6 +31,7 @@ export default function EditMemberModal({ isDark, member, onClose, onSaved }: Pr
   const text   = isDark ? "#fff"    : "#0f1623";
   const muted  = isDark ? "rgba(255,255,255,0.4)" : "#6b7280";
   const fieldBg = isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6";
+  const optBg   = isDark ? "#13131f" : "#ffffff";
 
   const save = async () => {
     if (!email.trim()) { setErr("Email обязателен — это логин для входа"); return; }
@@ -94,8 +95,8 @@ export default function EditMemberModal({ isDark, member, onClose, onSaved }: Pr
             <select value={roleId ?? ""} onChange={e => setRoleId(e.target.value ? Number(e.target.value) : null)}
               className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none appearance-none cursor-pointer"
               style={fieldStyle}>
-              <option value="">Индивидуальные права</option>
-              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              <option value="" style={{ background: optBg, color: text }}>Индивидуальные права</option>
+              {roles.map(r => <option key={r.id} value={r.id} style={{ background: optBg, color: text }}>{r.name}</option>)}
             </select>
             <div className="text-[10.5px] mt-1.5" style={{ color: muted }}>
               При выборе роли сотруднику применится её набор прав
