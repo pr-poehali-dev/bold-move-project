@@ -21,6 +21,7 @@ import { OrdersListView } from "./OrdersListView";
 import type { Substatus } from "./OrdersTabs";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { OrderSourcesContext } from "./orderSourcesContext";
+import { SourceStats } from "./SourceStats";
 
 interface Props {
   clients: Client[];
@@ -275,6 +276,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           </div>
         </div>
       </div>
+
+      {/* Мини-статистика по источникам */}
+      <SourceStats
+        clients={allClients}
+        sources={sources}
+        active={sourceFilter}
+        onPick={name => setSourceFilter(name === sourceFilter ? "" : name)}
+      />
 
       {/* Events panel: overdue + upcoming */}
       <OrdersEventsPanel
