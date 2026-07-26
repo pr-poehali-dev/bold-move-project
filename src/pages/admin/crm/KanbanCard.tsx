@@ -5,6 +5,7 @@ import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
 import { ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 
 
 function InstallProgress({ client, color }: { client: Client; color: string }) {
@@ -42,6 +43,8 @@ interface Props {
 
 export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragging }: Props) {
   const t = useTheme();
+  const sources = useOrderSourcesCtx();
+  const src = sourceDisplay(client.source, sources);
   const [stepping, setStepping] = useState(false);
   const color = colColor || STATUS_COLORS[client.status] || "#8b5cf6";
   const next = NEXT_STATUS[client.status];
@@ -87,10 +90,15 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
           </span>
           {isInstall
             ? <InstallProgress client={client} color={color} />
-            : <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                style={{ background: color + "20", color }}>
-                {STATUS_LABELS[client.status] || client.status}
-              </span>
+            : src
+              ? <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                  style={{ background: src.color + "20", color: src.color }}>
+                  {src.label}
+                </span>
+              : <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                  style={{ background: color + "20", color }}>
+                  {STATUS_LABELS[client.status] || client.status}
+                </span>
           }
         </div>
 

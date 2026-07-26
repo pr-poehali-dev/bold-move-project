@@ -19,6 +19,8 @@ import { OrdersEventsPanel } from "./OrdersEventsPanel";
 import { OrdersKanbanView } from "./OrdersKanbanView";
 import { OrdersListView } from "./OrdersListView";
 import type { Substatus } from "./OrdersTabs";
+import { useOrderSources } from "@/hooks/useOrderSources";
+import { OrderSourcesContext } from "./orderSourcesContext";
 
 interface Props {
   clients: Client[];
@@ -49,6 +51,12 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [activeTab, setActiveTab] = useState("leads");
   const [selected, setSelected]   = useState<Client | null>(null);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const { sources } = useOrderSources();
+
+  const clients = sourceFilter
+    ? allClients.filter(c => (c.source || "") === sourceFilter)
+    : allClients;
 
   // Open client from URL ?order= or from calendar
   const [initialHandled, setInitialHandled] = useState(false);
@@ -205,6 +213,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   };
 
   return (
+    <OrderSourcesContext.Provider value={sources}>
     <div className="space-y-4">
 
       {/* Header */}
@@ -242,6 +251,20 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
             <span className="hidden sm:inline">Заявка</span>
           </button>
 
+          {/* Фильтр по источнику */}
+          <div className="relative flex-shrink-0">
+            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+              className="appearance-none pl-3 pr-7 py-2.5 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+              style={sourceFilter
+                ? { background: "#10b98118", color: "#10b981", border: "1px solid #10b98140" }
+                : { background: t.surface, color: t.textMute, border: `1px solid ${t.border}` }}>
+              <option value="">Все источники</option>
+              {sources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+            <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: sourceFilter ? "#10b981" : t.textMute }} />
+          </div>
+
           {/* Search */}
           <div className="relative flex-1 sm:w-64 sm:flex-none min-w-[140px]">
             <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
@@ -263,7 +286,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
       {/* Kanban or list/grid view */}
       {viewMode === "kanban" ? (
         <OrdersKanbanView
-          allClients={allClients}
+          allClients={clients}
           search={search}
           onSearch={setSearch}
           onStatusChange={onStatusChange}
@@ -272,7 +295,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
         />
       ) : (
         <OrdersListView
-          allClients={allClients}
+          allClients={clients}
           loading={loading}
           viewMode={viewMode}
           search={search}
@@ -339,5 +362,6 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
         />
       )}
     </div>
+    </OrderSourcesContext.Provider>
   );
 }

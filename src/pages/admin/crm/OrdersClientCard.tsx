@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 
 const SNAP_WIDTH = 88;
 const THRESHOLD  = 44;
@@ -91,6 +92,8 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
   onSwipeAgent?: (client: Client) => void;
 }) {
   const t = useTheme();
+  const orderSources = useOrderSourcesCtx();
+  const src = sourceDisplay(c.source, orderSources);
   const [stepping, setStepping]             = useState(false);
   const [localSubStatus, setLocalSubStatus] = useState<string | null>(c.sub_status ?? null);
 
@@ -235,6 +238,12 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
                       style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
                       ДЕМО
+                    </span>
+                  )}
+                  {src && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                      style={{ background: src.color + "20", color: src.color }}>
+                      {src.label}
                     </span>
                   )}
                   {isInstall
