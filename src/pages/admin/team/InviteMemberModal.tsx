@@ -139,7 +139,7 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
 
   const copyAll = async () => {
     if (!tempPwd || !member) return;
-    const txt = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте, в разделе «Войти».`;
+    const txt = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте https://ai-potolki.ru/ в разделе «Войти».`;
     const ok = await copyText(txt);
     if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
     else setErr("Не удалось скопировать. Выделите пароль вручную и скопируйте.");

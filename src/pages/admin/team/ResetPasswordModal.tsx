@@ -35,7 +35,7 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
 
   const copyAll = async () => {
     if (!tempPwd) return;
-    const text = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте, в разделе «Войти».`;
+    const text = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте https://ai-potolki.ru/ в разделе «Войти».`;
     const ok = await copyText(text);
     if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
     else setErr("Не удалось скопировать. Выделите пароль вручную и скопируйте.");
