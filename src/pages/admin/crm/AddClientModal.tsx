@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { useOrderSources } from "@/hooks/useOrderSources";
+import { OrderSourcesModal } from "./OrderSourcesModal";
 
 interface Props {
   onClose: () => void;
@@ -15,8 +17,15 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
   const [phone,   setPhone]   = useState("");
   const [address, setAddress] = useState("");
   const [notes,   setNotes]   = useState("");
+  const [source,  setSource]  = useState("");
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState("");
+  const [showSources, setShowSources] = useState(false);
+  const { sources, create, update, remove } = useOrderSources();
+
+  useEffect(() => {
+    if (!source && sources.length > 0) setSource(sources[0].name);
+  }, [sources, source]);
 
   const formatPhone = (raw: string): string => {
     // Оставляем только цифры
@@ -50,6 +59,7 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("Введите имя клиента"); return; }
+    if (!source.trim()) { setError("Выберите источник заявки"); return; }
     setSaving(true); setError("");
     try {
       const res = await crmFetch("clients", {
@@ -60,7 +70,7 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
           address:     address.trim() || undefined,
           notes:       notes.trim() || undefined,
           status:      "new",
-          source:      "manual",
+          source:      source.trim(),
         }),
       }) as { id?: number };
       // Если привязан проект — связываем заявку с проектом
@@ -149,6 +159,31 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
             />
           </div>
 
+          {/* Источник */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold" style={{ color: t.textSub }}>
+                Источник <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <button type="button" onClick={() => setShowSources(true)}
+                className="text-[11px] font-semibold flex items-center gap-1 transition hover:opacity-80"
+                style={{ color: t.accentLight }}>
+                <Icon name="Settings2" size={11} /> Настроить
+              </button>
+            </div>
+            <select
+              value={source}
+              onChange={e => setSource(e.target.value)}
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"
+              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+            >
+              {sources.length === 0 && <option value="">Загрузка...</option>}
+              {sources.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Адрес */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold" style={{ color: t.textSub }}>Адрес объекта</label>
@@ -198,6 +233,16 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
           </div>
         </form>
       </div>
+
+      {showSources && (
+        <OrderSourcesModal
+          sources={sources}
+          onClose={() => setShowSources(false)}
+          onCreate={async (n, c) => { await create(n, c); }}
+          onUpdate={async (id, patch) => { await update(id, patch); }}
+          onRemove={async (id) => { await remove(id); }}
+        />
+      )}
     </div>
   );
 }

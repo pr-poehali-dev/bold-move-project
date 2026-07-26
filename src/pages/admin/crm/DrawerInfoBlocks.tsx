@@ -5,7 +5,38 @@ import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
 import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues, type CustomClientField } from "./clientFieldsStore";
+import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
+
+const SOURCE_LABELS: Record<string, string> = {
+  chat: "Чат", plan: "Построитель", manual: "Вручную",
+};
+
+function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const t = useTheme();
+  const { sources } = useOrderSources();
+  const current = sources.find(s => s.name === value);
+  const techLabel = SOURCE_LABELS[value];
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5">
+      <span className="text-xs" style={{ color: t.textMute }}>Источник</span>
+      <div className="flex items-center gap-2">
+        {current && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: current.color }} />}
+        <select
+          value={value || ""}
+          onChange={e => onSave(e.target.value)}
+          className="text-sm font-semibold rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+        >
+          {!value && <option value="">Не указан</option>}
+          {techLabel && <option value={value}>{techLabel}</option>}
+          {sources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+          {value && !current && !techLabel && <option value={value}>{value}</option>}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 function AddRowInline({ color, onAdd, onDone }: { color: string; onAdd: (label: string) => void; onDone?: () => void }) {
   const [open, setOpen] = useState(false);
@@ -178,6 +209,10 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
           </RowWithToggle>
         );
       })}
+      <SourceRow
+        value={data.source || ""}
+        onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
+      />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );

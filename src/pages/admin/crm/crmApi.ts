@@ -130,6 +130,13 @@ export interface ClientStatus {
   sort_order: number;
 }
 
+export interface OrderSource {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
 export interface Client {
   id: number;
   session_id: string;

@@ -583,6 +583,75 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"ok": True})
 
+        # ── ORDER SOURCES (Источники заявок) ──────────────────────────────────
+        if resource == "order_sources":
+            cid_filter = company_id if company_id is not None else master_uid
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT id, name, color, sort_order FROM {SCHEMA}.order_sources
+                    WHERE company_id = %s ORDER BY sort_order, id
+                """, (cid_filter,))
+                rows = [{"id": r[0], "name": r[1], "color": r[2], "sort_order": r[3]} for r in cur.fetchall()]
+                if not rows:
+                    defaults = [
+                        ("Авито", "#10b981"), ("Директ", "#3b82f6"), ("Квиз", "#f59e0b"),
+                    ]
+                    for i, (name, color) in enumerate(defaults):
+                        cur.execute(f"""
+                            INSERT INTO {SCHEMA}.order_sources (company_id, name, color, sort_order)
+                            VALUES (%s, %s, %s, %s) RETURNING id
+                        """, (cid_filter, name, color, i))
+                        new_id = cur.fetchone()[0]
+                        rows.append({"id": new_id, "name": name, "color": color, "sort_order": i})
+                    conn.commit()
+                return ok(rows)
+
+            if method == "POST":
+                name = (body.get("name") or "").strip()
+                color = body.get("color", "#7c3aed")
+                if not name:
+                    return err("name required")
+                cur.execute(f"SELECT COALESCE(MAX(sort_order)+1,0) FROM {SCHEMA}.order_sources WHERE company_id=%s", (cid_filter,))
+                sort_order = cur.fetchone()[0]
+                try:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.order_sources (company_id, name, color, sort_order)
+                        VALUES (%s,%s,%s,%s) RETURNING id
+                    """, (cid_filter, name, color, sort_order))
+                    new_id = cur.fetchone()[0]
+                    conn.commit()
+                except psycopg2.IntegrityError:
+                    conn.rollback()
+                    return err("Источник с таким названием уже есть", 409)
+                return ok({"id": new_id, "name": name, "color": color, "sort_order": sort_order})
+
+            if method == "PUT":
+                sid = qs.get("id") or body.get("id")
+                if not sid:
+                    return err("id required")
+                sets, vals = [], []
+                if "name" in body:
+                    sets.append("name=%s"); vals.append(body["name"])
+                if "color" in body:
+                    sets.append("color=%s"); vals.append(body["color"])
+                if "sort_order" in body:
+                    sets.append("sort_order=%s"); vals.append(body["sort_order"])
+                if not sets:
+                    return err("nothing to update")
+                vals.extend([int(sid), cid_filter])
+                cur.execute(f"UPDATE {SCHEMA}.order_sources SET {', '.join(sets)} WHERE id=%s AND company_id=%s", vals)
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                sid = qs.get("id") or body.get("id")
+                if not sid:
+                    return err("id required")
+                cur.execute(f"DELETE FROM {SCHEMA}.order_sources WHERE id=%s AND company_id=%s", (int(sid), cid_filter))
+                conn.commit()
+                return ok({"ok": True})
+
         # ── STATS ─────────────────────────────────────────────────────────────
         if resource == "stats":
             S = SCHEMA
