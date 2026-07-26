@@ -5,7 +5,7 @@ export const OrderSourcesContext = createContext<OrderSource[]>([]);
 export const useOrderSourcesCtx = () => useContext(OrderSourcesContext);
 
 export const SOURCE_TECH_LABELS: Record<string, string> = {
-  chat: "Чат", plan: "Построитель", manual: "Вручную",
+  chat: "Чат", plan: "Построитель", manual: "Не указано",
 };
 
 export function sourceDisplay(

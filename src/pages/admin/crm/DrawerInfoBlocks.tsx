@@ -9,7 +9,7 @@ import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
 
 const SOURCE_LABELS: Record<string, string> = {
-  chat: "Чат", plan: "Построитель", manual: "Вручную",
+  chat: "Чат", plan: "Построитель", manual: "Не указано",
 };
 
 function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => void }) {
@@ -19,16 +19,16 @@ function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => vo
   const techLabel = SOURCE_LABELS[value];
   return (
     <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-xs" style={{ color: t.textMute }}>Источник</span>
-      <div className="flex items-center gap-2">
-        {current && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: current.color }} />}
+      <span className="text-xs" style={{ color: "#d4d4d4" }}>Источник</span>
+      <div className="flex items-center gap-1.5">
+        {current && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: current.color }} />}
         <select
           value={value || ""}
           onChange={e => onSave(e.target.value)}
-          className="text-sm font-semibold rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
+          className="text-xs font-medium rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }}
         >
-          {!value && <option value="">Не указан</option>}
+          {!value && <option value="">Не указано</option>}
           {techLabel && <option value={value}>{techLabel}</option>}
           {sources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
           {value && !current && !techLabel && <option value={value}>{value}</option>}

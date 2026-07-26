@@ -266,6 +266,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
               style={{ color: sourceFilter ? "#10b981" : t.textMute }} />
           </div>
 
+          {/* Статистика по источникам */}
+          <SourceStats
+            clients={allClients}
+            sources={sources}
+            active={sourceFilter}
+            onPick={name => setSourceFilter(name === sourceFilter ? "" : name)}
+          />
+
           {/* Search */}
           <div className="relative flex-1 sm:w-64 sm:flex-none min-w-[140px]">
             <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
@@ -276,14 +284,6 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           </div>
         </div>
       </div>
-
-      {/* Мини-статистика по источникам */}
-      <SourceStats
-        clients={allClients}
-        sources={sources}
-        active={sourceFilter}
-        onPick={name => setSourceFilter(name === sourceFilter ? "" : name)}
-      />
 
       {/* Events panel: overdue + upcoming */}
       <OrdersEventsPanel
