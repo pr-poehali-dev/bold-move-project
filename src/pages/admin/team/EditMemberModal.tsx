@@ -43,8 +43,11 @@ export default function EditMemberModal({ isDark, member, onClose, onSaved }: Pr
         email: email.trim(),
         role_id: roleId,
       });
+      // При выборе роли бэкенд применяет её права — отражаем их сразу в списке (бейдж)
+      const selectedRole = roleId != null ? roles.find(r => r.id === roleId) : null;
       onSaved({ ...member, name: name.trim() || null, phone: phone.trim() || null,
-        email: email.trim().toLowerCase(), team_role_id: roleId });
+        email: email.trim().toLowerCase(), team_role_id: roleId,
+        ...(selectedRole ? { permissions: selectedRole.permissions } : {}) });
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Ошибка");
     } finally {
