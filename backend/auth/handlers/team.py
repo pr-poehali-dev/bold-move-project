@@ -329,14 +329,17 @@ def handle(action, method, params, body, token, event, conn, cur):
                 return err("Этот email уже занят другим пользователем")
 
         # Роль должна быть общим шаблоном ИЛИ принадлежать компании сотрудника
+        role_permissions = None
         if role_id_provided and role_id:
             cur.execute(f"""
-                SELECT id FROM {SCHEMA}.team_roles
+                SELECT permissions FROM {SCHEMA}.team_roles
                 WHERE id=%s AND removed_at IS NULL
                   AND (is_template=true OR company_id=%s)
             """, (int(role_id), member_company_id))
-            if not cur.fetchone():
+            role_row = cur.fetchone()
+            if not role_row:
                 return err("Роль не найдена")
+            role_permissions = role_row[0]
 
         sets = ["name=%s", "phone=%s"]
         vals = [name, phone]
@@ -344,6 +347,9 @@ def handle(action, method, params, body, token, event, conn, cur):
             sets.append("email=%s"); vals.append(email)
         if role_id_provided:
             sets.append("team_role_id=%s"); vals.append(int(role_id) if role_id else None)
+            # При выборе роли применяем её набор прав сотруднику
+            if role_permissions is not None:
+                sets.append("permissions=%s::jsonb"); vals.append(json.dumps(role_permissions))
         vals.append(member_id)
         cur.execute(f"UPDATE {SCHEMA}.users SET {', '.join(sets)} WHERE id=%s", tuple(vals))
         conn.commit()
