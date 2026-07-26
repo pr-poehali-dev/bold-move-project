@@ -1,4 +1,5 @@
 import json, secrets
+import psycopg2
 from shared import SCHEMA, MASTER_EMAIL, ok, err, hash_password
 
 
@@ -220,9 +221,14 @@ def handle(action, method, params, body, token, event, conn, cur):
             return err("Укажите email сотрудника")
         if "@" not in invitee_email or "." not in invitee_email:
             return err("Некорректный email")
-        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email=%s", (invitee_email,))
+        # Проверяем занятость без учёта регистра, но только среди НЕ удалённых
+        # (у удалённых email переименован в '_removed_<id>_...', занятым не считается).
+        cur.execute(
+            f"SELECT id FROM {SCHEMA}.users WHERE LOWER(email)=LOWER(%s) AND removed_at IS NULL",
+            (invitee_email,),
+        )
         if cur.fetchone():
-            return err("Пользователь с таким email уже зарегистрирован")
+            return err("Пользователь с таким email уже зарегистрирован", 409)
 
         temp_password = secrets.token_urlsafe(8)[:10]
         default_permissions = {
@@ -257,20 +263,24 @@ def handle(action, method, params, body, token, event, conn, cur):
                 return err("Роль не найдена", 404)
             final_permissions = role_row[0]
 
-        cur.execute(f"""
-            INSERT INTO {SCHEMA}.users
-              (email, password_hash, name, phone, role, approved, company_id, invited_by,
-               permissions, temp_password_plain, team_role_id)
-            VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s, %s) RETURNING id
-        """, (
-            invitee_email, hash_password(temp_password),
-            invitee_name or None, invitee_phone or None,
-            owner_id, owner_id,
-            json.dumps(final_permissions), temp_password,
-            int(role_id) if role_id else None,
-        ))
-        new_id = cur.fetchone()[0]
-        conn.commit()
+        try:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.users
+                  (email, password_hash, name, phone, role, approved, company_id, invited_by,
+                   permissions, temp_password_plain, team_role_id)
+                VALUES (%s, %s, %s, %s, 'manager', TRUE, %s, %s, %s::jsonb, %s, %s) RETURNING id
+            """, (
+                invitee_email, hash_password(temp_password),
+                invitee_name or None, invitee_phone or None,
+                owner_id, owner_id,
+                json.dumps(final_permissions), temp_password,
+                int(role_id) if role_id else None,
+            ))
+            new_id = cur.fetchone()[0]
+            conn.commit()
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            return err("Пользователь с таким email уже зарегистрирован", 409)
         return ok({"ok": True, "member_id": new_id, "email": invitee_email})
 
     if action == "team-update-permissions" and method == "POST":

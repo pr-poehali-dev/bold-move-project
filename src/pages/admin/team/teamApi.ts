@@ -74,8 +74,11 @@ export async function inviteMember(
   const res = await fetch(`${AUTH_URL}?action=team-invite`, {
     method: "POST", headers: authHeaders(token), body: JSON.stringify(payload),
   });
-  const d = await res.json();
-  if (!res.ok || d.error) throw new Error(d.error || "Не удалось пригласить");
+  const d = await res.json().catch(() => ({} as { error?: string }));
+  if (!res.ok || d.error) {
+    if (res.status === 409) throw new Error(d.error || "Этот email уже используется другим пользователем");
+    throw new Error(d.error || "Не удалось пригласить сотрудника. Попробуйте ещё раз");
+  }
   return { member: d.member };
 }
 
