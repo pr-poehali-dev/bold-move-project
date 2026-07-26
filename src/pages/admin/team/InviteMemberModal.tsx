@@ -4,6 +4,7 @@ import { useAuth, type Permissions } from "@/context/AuthContext";
 import { inviteMember, updatePermissions, showMemberPassword, fetchTeamRoles, type TeamMember, type TeamRole } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
 import RoleSelectDropdown from "./RoleSelectDropdown";
+import { copyText } from "@/lib/clipboard";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { isEmailValid } from "@/lib/validation";
 import { isPhoneValid } from "@/hooks/use-phone";
@@ -139,8 +140,9 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
   const copyAll = async () => {
     if (!tempPwd || !member) return;
     const txt = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте, в разделе «Войти».`;
-    try { await navigator.clipboard.writeText(txt); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-    catch { /* ignore */ }
+    const ok = await copyText(txt);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    else setErr("Не удалось скопировать. Выделите пароль вручную и скопируйте.");
   };
 
   return (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { resetMemberPassword, type TeamMember } from "./teamApi";
+import { copyText } from "@/lib/clipboard";
 
 interface Props {
   isDark: boolean;
@@ -35,8 +36,9 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
   const copyAll = async () => {
     if (!tempPwd) return;
     const text = `Логин: ${member.email}\nПароль: ${tempPwd}\n\nВходи на сайте, в разделе «Войти».`;
-    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-    catch { /* ignore */ }
+    const ok = await copyText(text);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    else setErr("Не удалось скопировать. Выделите пароль вручную и скопируйте.");
   };
 
   const bg     = isDark ? "#0e0e1c" : "#ffffff";
