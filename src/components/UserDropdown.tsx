@@ -18,7 +18,19 @@ interface Props {
 export default function UserDropdown({ onShowProfile }: Props) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const updatePos = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+  };
+
+  const toggle = () => {
+    if (!open) updatePos();
+    setOpen(o => !o);
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -28,6 +40,17 @@ export default function UserDropdown({ onShowProfile }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onScrollResize = () => updatePos();
+    window.addEventListener("resize", onScrollResize);
+    window.addEventListener("scroll", onScrollResize, true);
+    return () => {
+      window.removeEventListener("resize", onScrollResize);
+      window.removeEventListener("scroll", onScrollResize, true);
+    };
+  }, [open]);
+
   if (!user) return null;
 
   const initials = (user.name || user.email || "?").slice(0, 2).toUpperCase();
@@ -35,7 +58,7 @@ export default function UserDropdown({ onShowProfile }: Props) {
   return (
     <div ref={ref} className="relative">
       {/* Кнопка — аватар + имя */}
-      <button onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} onClick={toggle}
         className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all hover:bg-white/[0.06]"
         style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0"
@@ -50,8 +73,8 @@ export default function UserDropdown({ onShowProfile }: Props) {
 
       {/* Дропдаун */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl overflow-hidden shadow-2xl z-[200]"
-          style={{ background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="fixed w-52 rounded-2xl overflow-hidden shadow-2xl z-[1000]"
+          style={{ top: pos.top, right: pos.right, background: "#0e0e1c", border: "1px solid rgba(255,255,255,0.08)" }}>
 
           {/* Шапка */}
           <div className="px-4 py-3 border-b border-white/[0.06]">
