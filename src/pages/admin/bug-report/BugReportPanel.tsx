@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { crmFetch } from "@/pages/admin/crm/crmApi";
-import { STATUS, type Report } from "./bugReportTypes";
+import { STATUS, REPORT_TYPE, SEVERITY, type Report } from "./bugReportTypes";
 import FilterChip from "./FilterChip";
 import ReportCard from "./ReportCard";
 import BugReportForm from "./BugReportForm";
@@ -15,6 +15,8 @@ export default function BugReportPanel() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sevFilter, setSevFilter] = useState<string>("all");
 
   const load = () => {
     setLoading(true);
@@ -39,12 +41,34 @@ export default function BugReportPanel() {
     crmFetch("bug_reports", { method: "DELETE", body: JSON.stringify({ id }) }).catch(() => load());
   };
 
-  const filtered = filter === "all" ? reports : reports.filter(r => r.status === filter);
+  const filtered = reports.filter(r =>
+    (filter === "all"     || r.status === filter) &&
+    (typeFilter === "all" || r.report_type === typeFilter) &&
+    (sevFilter === "all"  || r.severity === sevFilter)
+  );
+
+  // Счётчики считаем с учётом других активных фильтров
+  const matchType = (r: Report) => typeFilter === "all" || r.report_type === typeFilter;
+  const matchSev  = (r: Report) => sevFilter === "all"  || r.severity === sevFilter;
+  const matchStatus = (r: Report) => filter === "all"   || r.status === filter;
 
   const counts = STATUS.reduce((acc, s) => {
-    acc[s.id] = reports.filter(r => r.status === s.id).length;
+    acc[s.id] = reports.filter(r => r.status === s.id && matchType(r) && matchSev(r)).length;
     return acc;
   }, {} as Record<string, number>);
+  const statusAllCount = reports.filter(r => matchType(r) && matchSev(r)).length;
+
+  const typeCounts = REPORT_TYPE.reduce((acc, t) => {
+    acc[t.id] = reports.filter(r => r.report_type === t.id && matchStatus(r) && matchSev(r)).length;
+    return acc;
+  }, {} as Record<string, number>);
+  const typeAllCount = reports.filter(r => matchStatus(r) && matchSev(r)).length;
+
+  const sevCounts = SEVERITY.reduce((acc, s) => {
+    acc[s.id] = reports.filter(r => r.severity === s.id && matchStatus(r) && matchType(r)).length;
+    return acc;
+  }, {} as Record<string, number>);
+  const sevAllCount = reports.filter(r => matchStatus(r) && matchType(r)).length;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -68,10 +92,28 @@ export default function BugReportPanel() {
       </div>
 
       {/* Фильтры по статусам */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <FilterChip label="Все" count={reports.length} active={filter === "all"} color="#8b5cf6" onClick={() => setFilter("all")} />
+      <div className="flex flex-wrap gap-2 mb-3">
+        <FilterChip label="Все" count={statusAllCount} active={filter === "all"} color="#8b5cf6" onClick={() => setFilter("all")} />
         {STATUS.map(s => (
           <FilterChip key={s.id} label={s.label} count={counts[s.id]} active={filter === s.id} color={s.color} onClick={() => setFilter(s.id)} />
+        ))}
+      </div>
+
+      {/* Фильтры по типу */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mr-1">Тип</span>
+        <FilterChip label="Все" count={typeAllCount} active={typeFilter === "all"} color="#8b5cf6" onClick={() => setTypeFilter("all")} />
+        {REPORT_TYPE.map(t => (
+          <FilterChip key={t.id} label={t.label} count={typeCounts[t.id]} active={typeFilter === t.id} color="#60a5fa" onClick={() => setTypeFilter(t.id)} />
+        ))}
+      </div>
+
+      {/* Фильтры по важности */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mr-1">Важность</span>
+        <FilterChip label="Все" count={sevAllCount} active={sevFilter === "all"} color="#8b5cf6" onClick={() => setSevFilter("all")} />
+        {SEVERITY.map(s => (
+          <FilterChip key={s.id} label={s.label} count={sevCounts[s.id]} active={sevFilter === s.id} color={s.color} onClick={() => setSevFilter(s.id)} />
         ))}
       </div>
 
