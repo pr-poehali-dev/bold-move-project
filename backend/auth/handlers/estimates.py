@@ -199,10 +199,13 @@ def handle(action, method, params, body, token, event, conn, cur):
 
         if not linked_chat_id or not chat_id:
             session_id = f"estimate-{estimate_id}-{sec.token_hex(6)}"
+            # created_via='chat' — смета составляется в чате на публичной странице (/),
+            # заявка попадает в CRM после сохранения сметы. Явно проставляем канал,
+            # чтобы не полагаться на DEFAULT колонки.
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.live_chats
-                  (session_id, client_name, phone, status, source, contract_sum, material_cost, install_cost, management_cost, company_id)
-                VALUES (%s, %s, %s, 'new', 'estimate', %s, %s, %s, %s, %s) RETURNING id
+                  (session_id, client_name, phone, status, source, created_via, contract_sum, material_cost, install_cost, management_cost, company_id)
+                VALUES (%s, %s, %s, 'new', 'estimate', 'chat', %s, %s, %s, %s, %s) RETURNING id
             """, (
                 session_id, user_name or email, phone or "", total_standard,
                 material_cost_total if material_cost_total > 0 else None,

@@ -111,18 +111,20 @@ def seed_demo(cur, SCHEMA: str, user_id: int) -> None:
          prep_conf, extra_conf, created_dt, measure_dt, install_dt) in demo_clients:
 
         session_id = f"demo_{secrets.token_hex(8)}"
+        # Канал создания демо-заявки: ручной источник -> CRM, всё остальное -> чат (страница /).
+        demo_created_via = "manual" if source == "manual" else "chat"
         cur.execute(f"""
             INSERT INTO {SCHEMA}.live_chats
             (session_id, client_name, phone, status, address, area, budget,
              contract_sum, prepayment, extra_payment,
              material_cost, measure_cost, install_cost, management_cost,
-             notes, source, sub_status, tags,
+             notes, source, created_via, sub_status, tags,
              prepayment_confirmed, extra_payment_confirmed,
              company_id, created_at, measure_date, install_date, updated_at)
             VALUES (%s,%s,%s,%s,%s,%s,%s,
                     %s,%s,%s,
                     %s,%s,%s,%s,
-                    %s,%s,%s,%s,
+                    %s,%s,%s,%s,%s,
                     %s,%s,
                     %s,%s,%s,%s,%s)
             RETURNING id
@@ -130,7 +132,7 @@ def seed_demo(cur, SCHEMA: str, user_id: int) -> None:
             session_id, cname, phone, status, address, area, budget,
             contract_sum, prepayment, extra_payment,
             mat_cost, meas_cost, inst_cost, mgmt_cost,
-            notes, source, sub_status, tags,
+            notes, source, demo_created_via, sub_status, tags,
             prep_conf, extra_conf,
             user_id, created_dt, measure_dt, install_dt, created_dt
         ))
