@@ -1,0 +1,3 @@
+ALTER TABLE t_p45929761_bold_move_project.live_chats
+  ADD COLUMN IF NOT EXISTS status_before_removal TEXT NULL,
+  ADD COLUMN IF NOT EXISTS removed_at TIMESTAMP WITH TIME ZONE NULL;
