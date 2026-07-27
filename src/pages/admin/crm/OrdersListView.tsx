@@ -85,12 +85,14 @@ export function OrdersListView({
     );
   };
 
-  // На вкладке "Замеры" — сортируем по дате замера (ближайшие первыми, без даты — в конце)
-  const sortByMeasureDate = (list: Client[]) => {
-    if (activeTab !== "measures") return list;
+  // На вкладке "Замеры" сортируем по дате замера, на "Монтажи" — по дате монтажа.
+  // Ближайшие по времени — первыми, заявки без даты — в конце.
+  const sortByDate = (list: Client[]) => {
+    const field = activeTab === "measures" ? "measure_date" : activeTab === "installs" ? "install_date" : null;
+    if (!field) return list;
     return [...list].sort((a, b) => {
-      const da = a.measure_date ? new Date(a.measure_date).getTime() : Infinity;
-      const db = b.measure_date ? new Date(b.measure_date).getTime() : Infinity;
+      const da = a[field] ? new Date(a[field] as string).getTime() : Infinity;
+      const db = b[field] ? new Date(b[field] as string).getTime() : Infinity;
       return da - db;
     });
   };
@@ -143,12 +145,12 @@ export function OrdersListView({
           )}
           {viewMode === "list" ? (
             <div className="space-y-2">
-              {filterSearch(currentClients).map(renderRow)}
+              {sortByDate(filterSearch(currentClients)).map(renderRow)}
               {currentClients.length === 0 && <div className="py-12 text-sm text-center" style={{ color: t.textMute }}>Нет активных монтажей</div>}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {filterSearch(currentClients).map(renderCard)}
+              {sortByDate(filterSearch(currentClients)).map(renderCard)}
               {currentClients.length === 0 && (
                 <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
                   <Icon name="Wrench" size={28} className="mb-2 opacity-30" />
@@ -201,7 +203,7 @@ export function OrdersListView({
         </div>
       ) : viewMode === "list" ? (
         <div className="space-y-2">
-          {sortByMeasureDate(filterSearch(currentClients)).map(renderRow)}
+          {sortByDate(filterSearch(currentClients)).map(renderRow)}
           {currentClients.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
               <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
@@ -211,7 +213,7 @@ export function OrdersListView({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-          {sortByMeasureDate(filterSearch(currentClients)).map(renderCard)}
+          {sortByDate(filterSearch(currentClients)).map(renderCard)}
           {currentClients.length === 0 && (
             <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
               <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
