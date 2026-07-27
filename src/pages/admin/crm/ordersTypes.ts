@@ -24,6 +24,10 @@ export const NEXT_LABEL: Record<string, string> = {
   extra_paid:        "Завершить заказ",
 };
 
+// Особый таб "Все" — показывает все заявки без фильтра по статусу.
+// Не входит в ORDERS_TABS (не редактируется, не скрывается, всегда первый).
+export const ALL_TAB_ID = "all";
+
 export const ORDERS_TABS = [
   { id: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: ["new"] as readonly string[],                                         emptyText: "Новых заявок нет" },
   { id: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] as readonly string[],                                        emptyText: "Нет заявок в работе" },

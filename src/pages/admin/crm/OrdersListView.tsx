@@ -1,7 +1,7 @@
 import { Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs, Substatus } from "./OrdersTabs";
@@ -62,8 +62,9 @@ export function OrdersListView({
     })),
   ] satisfies TabDef[];
 
-  const currentTab = allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
-  const currentClients = currentTab ? allClients.filter(c => currentTab.statuses.includes(c.status ?? "")) : [];
+  const allTabDef: TabDef = { id: ALL_TAB_ID, label: "Все", icon: "LayoutGrid", color: "#64748b", statuses: [], emptyText: "Заявок нет" };
+  const currentTab = activeTab === ALL_TAB_ID ? allTabDef : allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
+  const currentClients = activeTab === ALL_TAB_ID ? allClients : allClients.filter(c => currentTab.statuses.includes(c.status ?? ""));
 
   const filterSearch = (list: Client[]) => {
     if (!search) return list;

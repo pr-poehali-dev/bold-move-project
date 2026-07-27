@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Client, crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, CustomOrdersTab } from "./ordersTypes";
+import { ORDERS_TABS, CustomOrdersTab, ALL_TAB_ID } from "./ordersTypes";
 
 const PRESET_COLORS = [
   "#8b5cf6","#a78bfa","#6366f1","#3b82f6","#06b6d4",
@@ -355,9 +355,33 @@ export function OrdersTabs({
     setOpenPopup(tabId);
   };
 
+  const isAllActive = activeTab === ALL_TAB_ID;
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2 items-center overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {/* Таб "Все" — узкая полоска с вертикальным текстом, показывает все заявки без фильтра */}
+        <button
+          onClick={() => onSelect(ALL_TAB_ID)}
+          title="Все заявки"
+          className="flex-shrink-0 flex items-center justify-center rounded-xl transition"
+          style={{
+            width: 28,
+            alignSelf: "stretch",
+            background: isAllActive ? "#64748b15" : t.surface,
+            border: `1px solid ${isAllActive ? "#64748b45" : t.border}`,
+          }}>
+          <span
+            className="text-[10px] font-bold tracking-wider"
+            style={{
+              writingMode: "vertical-rl",
+              transform: "rotate(180deg)",
+              color: isAllActive ? "#94a3b8" : t.textMute,
+            }}>
+            ВСЕ
+          </span>
+        </button>
+
         {allTabs.map(tab => {
           const count    = getCount(tab);
           const revenue  = getRevenue(tab);
