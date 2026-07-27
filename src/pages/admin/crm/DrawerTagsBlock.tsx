@@ -102,7 +102,12 @@ export function DrawerTagsBlock({ id, tags, editingBlock, hiddenBlocks, toggleHi
       onEdit={!isHiddenTags ? () => setEditingBlock(showTagEditor ? null : id) : undefined}>
       <div className="flex flex-wrap gap-1.5 py-2">
         {currentTags.length === 0 && !showTagEditor && (
-          <span className="text-xs" style={{ color: "#a3a3a3" }}>Нет меток — нажмите карандаш</span>
+          <button
+            onClick={() => setEditingBlock(id)}
+            className="flex items-center gap-1 text-xs transition hover:opacity-80"
+            style={{ color: "#06b6d4" }}>
+            <Icon name="Plus" size={12} /> Добавить метку
+          </button>
         )}
         {currentTags.map(tg => {
           const def = DEFAULT_TAGS.find(d => d.label === tg);
