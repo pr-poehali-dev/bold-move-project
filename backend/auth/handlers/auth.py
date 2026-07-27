@@ -306,9 +306,15 @@ def handle(action, method, params, body, token, event, conn, cur):
         if new_role and new_role not in ALLOWED_ROLES:
             return err("Недопустимая роль")
 
-        cur.execute(f"SELECT role, approved FROM {SCHEMA}.users WHERE id=%s", (uid,))
+        cur.execute(f"SELECT role, approved, company_id FROM {SCHEMA}.users WHERE id=%s", (uid,))
         cur_row = cur.fetchone()
-        current_role, _ = cur_row if cur_row else (None, False)
+        current_role, _, current_company_id = cur_row if cur_row else (None, False, None)
+
+        # Сотрудники компании (приглашённые через раздел "Команда") не могут менять себе роль
+        # через этот эндпоинт — роль назначает только владелец компании. Это защита от повторения
+        # бага, когда сотрудник случайно менял себе роль в профиле и терял доступ к CRM.
+        if current_company_id is not None and new_role and new_role != current_role:
+            return err("Роль сотрудника может изменить только владелец компании в разделе «Команда»")
 
         if new_role and new_role != current_role:
             new_approved = new_role not in BUSINESS_ROLES

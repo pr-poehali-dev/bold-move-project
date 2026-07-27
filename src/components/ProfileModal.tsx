@@ -13,6 +13,10 @@ interface Props { onClose: () => void; open?: boolean; }
 
 export default function ProfileModal({ onClose, open = true }: Props) {
   const { user, token, updateUser } = useAuth();
+  // Сотрудник компании (приглашён через раздел "Команда") — у него всегда есть company_id.
+  // Такой пользователь не должен видеть/менять переключатель роли: роль назначает только
+  // владелец компании. Иначе можно случайно сменить себе роль и потерять доступ к CRM.
+  const isStaff = !!user?.company_id;
   const [form, setForm] = useState<ProfileFormData & { role: UserRole }>({
     name:         user?.name         || "",
     phone:        user?.phone        || "",
@@ -28,7 +32,7 @@ export default function ProfileModal({ onClose, open = true }: Props) {
   const [error,       setError]       = useState("");
   const [showRolePicker, setShowRolePicker] = useState(false);
 
-  const roleChanged = form.role !== user?.role;
+  const roleChanged = !isStaff && form.role !== user?.role;
 
   const save = async () => {
     setError("");
@@ -40,10 +44,12 @@ export default function ProfileModal({ onClose, open = true }: Props) {
     }
     setSaving(true); setSaved(false);
     try {
+      // Сотрудникам role не отправляем вообще — им нельзя её менять (см. isStaff выше)
+      const payload = isStaff ? { ...form, role: undefined } : form;
       const res = await fetch(`${AUTH_URL}?action=update-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Authorization": `Bearer ${token}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const d = await res.json();
       if (d.error) throw new Error(d.error);
@@ -79,13 +85,15 @@ export default function ProfileModal({ onClose, open = true }: Props) {
 
         <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
 
-          <ProfileRoleSection
-            role={form.role}
-            onRoleChange={v => setForm(f => ({ ...f, role: v }))}
-            showRolePicker={showRolePicker}
-            setShowRolePicker={setShowRolePicker}
-            roleChanged={roleChanged}
-          />
+          {!isStaff && (
+            <ProfileRoleSection
+              role={form.role}
+              onRoleChange={v => setForm(f => ({ ...f, role: v }))}
+              showRolePicker={showRolePicker}
+              setShowRolePicker={setShowRolePicker}
+              roleChanged={roleChanged}
+            />
+          )}
 
           <ProfileInfoSections form={form} setForm={setForm} email={user?.email || ""} />
 
