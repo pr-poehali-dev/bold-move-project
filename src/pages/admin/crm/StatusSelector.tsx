@@ -114,7 +114,7 @@ function DesktopFunnel({ status, onSave }: { status: string; onSave: (s: string)
               className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
               style={status === s
                 ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
-                : { borderColor: t.border2, background: t.surface, color: t.textMute }}>
+                : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
               {STATUS_LABELS[s]}
             </button>
           ))}
