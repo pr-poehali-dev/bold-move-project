@@ -3,6 +3,9 @@ import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
+import { CostsSortableRow } from "./DrawerCostsSortableRow";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { useTheme } from "./themeContext";
 import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
 import { PaymentStatusBadge, CustomPaymentBadge } from "./PaymentConfirmModal";
@@ -267,6 +270,27 @@ export function DrawerCostsBlock({
     saveRules([...autoRules, newRule], autoMode);
   };
 
+  // Перетаскивание строк затрат для ручной сортировки (только в режиме редактирования).
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = costRules.findIndex(r => r.key === active.id);
+    const newIndex = costRules.findIndex(r => r.key === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(costRules, oldIndex, newIndex);
+    // Пересчитываем sort_order по новому порядку. Остальные правила (доходы) не трогаем.
+    const orderMap = new Map(reordered.map((r, i) => [r.key, i]));
+    const next = autoRules.map(r =>
+      orderMap.has(r.key) ? { ...r, sort_order: orderMap.get(r.key)! } : r
+    );
+    saveRules(next, autoMode);
+  };
+
+  // В режиме редактирования показываем все строки (включая скрытые — их можно вернуть слайдером),
+  // вне редактирования — только видимые.
+  const rowsToRender = costsEdit ? costRules : visibleCostRules;
+
   const applyAutoWithSum = async (sum: number) => {
     if (!sum) return;
     const patch: Partial<Client> = {};
@@ -349,32 +373,39 @@ export function DrawerCostsBlock({
           />
         )}
 
-        {visibleCostRules.map(rule => {
-          const key = rule.key;
-          if (isBuiltin(key)) {
-            const icons: Record<string, string> = { material_cost: "Package", measure_cost: "Ruler", install_cost: "Wrench" };
-            const save = (v: string) => {
-              saveWithLog({ [key]: +v || null } as Partial<Client>, `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`, icons[key], "#ef4444");
-              setAutoFilled(false);
-            };
-            return (
-              <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
-                editableLabel={rule.label} onLabelChange={l => renameRule(key, l)}
-                onDelete={() => toggleRuleVisible(key)}>
-                <InlineField label={rule.label} value={data[key]} onSave={save} type="number" placeholder="—" />
-              </RowWithToggle>
-            );
-          }
-          const val = customValues[key] != null ? String(customValues[key]) : "";
-          return (
-            <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
-              editableLabel={rule.label} onLabelChange={l => renameRule(key, l)}
-              onDelete={() => removeRule(key)}>
-              <InlineField label={rule.label} value={val} type="number" placeholder="—"
-                onSave={v => { saveCustomValue(key, v); logAction("Minus", "#ef4444", `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
-            </RowWithToggle>
-          );
-        })}
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={rowsToRender.map(r => r.key)} strategy={verticalListSortingStrategy}>
+            {rowsToRender.map(rule => {
+              const key = rule.key;
+              const isVisible = rule.visible !== false;
+              if (isBuiltin(key)) {
+                const icons: Record<string, string> = { material_cost: "Package", measure_cost: "Ruler", install_cost: "Wrench" };
+                const save = (v: string) => {
+                  saveWithLog({ [key]: +v || null } as Partial<Client>, `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`, icons[key], "#ef4444");
+                  setAutoFilled(false);
+                };
+                return (
+                  <CostsSortableRow key={key} rowKey={key} visible={isVisible} editMode={costsEdit}
+                    editableLabel={rule.label} onToggle={() => toggleRuleVisible(key)}
+                    onLabelChange={l => renameRule(key, l)}
+                    onDelete={() => toggleRuleVisible(key)}>
+                    <InlineField label={rule.label} value={data[key]} onSave={save} type="number" placeholder="—" />
+                  </CostsSortableRow>
+                );
+              }
+              const val = customValues[key] != null ? String(customValues[key]) : "";
+              return (
+                <CostsSortableRow key={key} rowKey={key} visible={isVisible} editMode={costsEdit}
+                  editableLabel={rule.label} onToggle={() => toggleRuleVisible(key)}
+                  onLabelChange={l => renameRule(key, l)}
+                  onDelete={() => removeRule(key)}>
+                  <InlineField label={rule.label} value={val} type="number" placeholder="—"
+                    onSave={v => { saveCustomValue(key, v); logAction("Minus", "#ef4444", `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+                </CostsSortableRow>
+              );
+            })}
+          </SortableContext>
+        </DndContext>
 
         {discountHistory.length > 0 && (
           <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>

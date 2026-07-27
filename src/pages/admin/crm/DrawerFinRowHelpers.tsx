@@ -50,7 +50,7 @@ export function AddFinRowInline({ block, onAdd, forceOpen, onClose }: {
   );
 }
 
-export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange, onDelete, extra }: {
+export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, editableLabel, onLabelChange, onDelete, extra, dragHandle }: {
   rowKey: string;
   visible: boolean;
   onToggle: (key: string) => void;
@@ -60,18 +60,24 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
   onLabelChange?: (label: string) => void;
   onDelete?: () => void;
   extra?: React.ReactNode;
+  dragHandle?: React.ReactNode;
 }) {
   const [labelVal, setLabelVal] = useState(editableLabel || "");
 
   React.useEffect(() => { setLabelVal(editableLabel || ""); }, [editableLabel]);
 
-  if (!visible) return null;
+  // В режиме редактирования показываем строку даже если она скрыта (приглушённо) —
+  // чтобы можно было быстро вернуть её слайдером. Вне редактирования скрытые строки не рендерим.
+  if (!visible && !editMode) return null;
 
   const showLabelEdit = editMode && editableLabel !== undefined && onLabelChange;
   const handleDelete = onDelete ?? (() => onToggle(rowKey));
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" style={{ opacity: !visible && editMode ? 0.45 : 1 }}>
+      {editMode && dragHandle && (
+        <div className="flex-shrink-0">{dragHandle}</div>
+      )}
       {showLabelEdit ? (
         <div className="flex items-center flex-1 min-w-0 py-2" style={{ borderBottom: "1px solid #2a2a2a" }}>
           <input
@@ -92,14 +98,14 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
       )}
       {editMode && (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Слайдер видимости — в режиме редактирования */}
+          {/* Слайдер видимости — отражает реальное состояние visible */}
           <button
             onClick={() => onToggle(rowKey)}
-            title="Показывать на всех карточках"
+            title={visible ? "Скрыть со всех карточек" : "Показывать на всех карточках"}
             className="flex-shrink-0 rounded-full transition-all duration-150"
             style={{
               width: 26, height: 14,
-              background: "#10b981",
+              background: visible ? "#10b981" : "#404040",
               position: "relative", display: "inline-flex", alignItems: "center",
             }}>
             <span style={{
@@ -107,7 +113,7 @@ export function RowWithToggle({ rowKey, visible, onToggle, children, editMode, e
               background: "#fff",
               borderRadius: "50%",
               position: "absolute",
-              left: 14,
+              left: visible ? 14 : 2,
               transition: "left 0.15s",
             }} />
           </button>
