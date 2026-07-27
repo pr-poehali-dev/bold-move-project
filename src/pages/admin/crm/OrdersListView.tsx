@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -57,6 +57,10 @@ export function OrdersListView({
   const t = useTheme();
   const [doneSubFilter, setDoneSubFilter] = useState<typeof DONE_GROUPS[number]["key"]>("done");
 
+  // Активный подстатус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене вкладки.
+  const [activeSubStatus, setActiveSubStatus] = useState<number | null>(null);
+  useEffect(() => { setActiveSubStatus(null); }, [activeTab]);
+
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
       id: tab.id, label: tabLabels[tab.id] || tab.label, icon: tab.icon,
@@ -72,7 +76,33 @@ export function OrdersListView({
 
   const allTabDef: TabDef = { id: ALL_TAB_ID, label: "Все", icon: "LayoutGrid", color: "#64748b", statuses: [], emptyText: "Заявок нет" };
   const currentTab = activeTab === ALL_TAB_ID ? allTabDef : allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
-  const currentClients = activeTab === ALL_TAB_ID ? allClients : allClients.filter(c => currentTab.statuses.includes(c.status ?? ""));
+  const clientsByStatus = activeTab === ALL_TAB_ID ? allClients : allClients.filter(c => currentTab.statuses.includes(c.status ?? ""));
+
+  // Подстатусы текущей вкладки (настраиваются через шестерёнку в OrdersTabs)
+  const tabSubstatuses = substatuses.filter(s => s.parent_status === activeTab);
+  const currentClients = activeSubStatus != null
+    ? clientsByStatus.filter(c => c.sub_status === String(activeSubStatus))
+    : clientsByStatus;
+
+  const renderSubstatusBadges = () => tabSubstatuses.length > 0 && (
+    <div className="flex gap-1.5 flex-wrap mb-4">
+      {tabSubstatuses.map(s => {
+        const cnt = clientsByStatus.filter(c => c.sub_status === String(s.id)).length;
+        const isSel = activeSubStatus === s.id;
+        return (
+          <button key={s.id} onClick={() => setActiveSubStatus(isSel ? null : s.id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
+            style={{
+              background: isSel ? s.color + "22" : s.color + "10",
+              borderColor: isSel ? s.color : s.color + "30",
+              color: s.color,
+            }}>
+            {s.label} <span className="font-bold">{cnt}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   const filterSearch = (list: Client[]) => {
     if (!search) return list;
@@ -130,19 +160,7 @@ export function OrdersListView({
         </div>
       ) : activeTab === "installs" ? (
         <div>
-          {substatuses.filter(s => s.parent_status === "installs").length > 0 && (
-            <div className="flex gap-1.5 flex-wrap mb-4">
-              {substatuses.filter(s => s.parent_status === "installs").map(s => {
-                const cnt = allClients.filter(c => c.sub_status === String(s.id)).length;
-                return (
-                  <div key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium"
-                    style={{ background: s.color + "10", borderColor: s.color + "30", color: s.color }}>
-                    {s.label} <span className="font-bold">{cnt}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {renderSubstatusBadges()}
           {viewMode === "list" ? (
             <div className="space-y-2">
               {sortByDate(filterSearch(currentClients)).map(renderRow)}
@@ -162,6 +180,7 @@ export function OrdersListView({
         </div>
       ) : activeTab === "done" ? (
         <div>
+          {renderSubstatusBadges()}
           {/* Переключатель Выполнено / Отказ — показывает только одну группу за раз */}
           <div className="flex gap-2 mb-4">
             {DONE_GROUPS.map(group => {
@@ -202,24 +221,30 @@ export function OrdersListView({
           })()}
         </div>
       ) : viewMode === "list" ? (
-        <div className="space-y-2">
-          {sortByDate(filterSearch(currentClients)).map(renderRow)}
-          {currentClients.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
-              <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
-              <span className="text-sm">{currentTab?.emptyText || "Нет данных"}</span>
-            </div>
-          )}
+        <div>
+          {renderSubstatusBadges()}
+          <div className="space-y-2">
+            {sortByDate(filterSearch(currentClients)).map(renderRow)}
+            {currentClients.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
+                <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
+                <span className="text-sm">{currentTab?.emptyText || "Нет данных"}</span>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-          {sortByDate(filterSearch(currentClients)).map(renderCard)}
-          {currentClients.length === 0 && (
-            <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
-              <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
-              <span className="text-sm">{currentTab?.emptyText || "Нет данных"}</span>
-            </div>
-          )}
+        <div>
+          {renderSubstatusBadges()}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+            {sortByDate(filterSearch(currentClients)).map(renderCard)}
+            {currentClients.length === 0 && (
+              <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
+                <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
+                <span className="text-sm">{currentTab?.emptyText || "Нет данных"}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>
