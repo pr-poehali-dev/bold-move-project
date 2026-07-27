@@ -8,15 +8,11 @@ import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientEx
 import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
 
-const SOURCE_LABELS: Record<string, string> = {
-  chat: "Чат", plan: "Построитель", manual: "Не указано",
-};
-
+// Источник — маркетинговый канал (Авито/ВК/Сайт), выбирается вручную, влияет на статистику.
 function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const t = useTheme();
   const { sources } = useOrderSources();
   const current = sources.find(s => s.name === value);
-  const techLabel = SOURCE_LABELS[value];
   return (
     <div className="flex items-center justify-between gap-2 py-1.5">
       <span className="text-xs" style={{ color: "#d4d4d4" }}>Источник</span>
@@ -28,12 +24,34 @@ function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => vo
           className="text-xs font-medium rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer"
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: "#fff" }}
         >
-          {!value && <option value="">Не указано</option>}
-          {techLabel && <option value={value}>{techLabel}</option>}
+          <option value="">Не указано</option>
           {sources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-          {value && !current && !techLabel && <option value={value}>{value}</option>}
+          {value && !current && <option value={value}>{value}</option>}
         </select>
       </div>
+    </div>
+  );
+}
+
+// Создано через — технический канал создания заявки. Проставляется автоматически, не редактируется.
+const CREATED_VIA_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  chat:   { label: "Чат",        icon: "MessageCircle", color: "#8b5cf6" },
+  plan:   { label: "Построитель", icon: "PenTool",       color: "#10b981" },
+  manual: { label: "CRM",         icon: "LayoutGrid",    color: "#3b82f6" },
+};
+
+function CreatedViaRow({ value }: { value: string | null | undefined }) {
+  const info = value ? CREATED_VIA_LABELS[value] : undefined;
+  if (!info) return null;
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5">
+      <span className="text-xs" style={{ color: "#d4d4d4" }}>Создано через</span>
+      <span className="flex items-center gap-1.5 text-xs font-medium rounded-md px-1.5 py-0.5"
+        style={{ background: info.color + "18", color: info.color, border: `1px solid ${info.color}30` }}
+        title="Технический канал создания заявки — не редактируется">
+        <Icon name={info.icon} size={11} />
+        {info.label}
+      </span>
     </div>
   );
 }
@@ -213,6 +231,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         value={data.source || ""}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
+      <CreatedViaRow value={data.created_via} />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );

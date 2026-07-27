@@ -151,6 +151,7 @@ export interface Client {
   area: number | null;
   budget: number | null;
   source: string | null;
+  created_via?: string | null;
   created_at: string;
   contract_sum: number | null;
   prepayment: number | null;

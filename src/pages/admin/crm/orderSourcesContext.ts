@@ -4,10 +4,8 @@ import type { OrderSource } from "./crmApi";
 export const OrderSourcesContext = createContext<OrderSource[]>([]);
 export const useOrderSourcesCtx = () => useContext(OrderSourcesContext);
 
-export const SOURCE_TECH_LABELS: Record<string, string> = {
-  chat: "Чат", plan: "Построитель", manual: "Не указано",
-};
-
+// Источник — только маркетинговый канал (Авито/ВК/Сайт). Технический канал
+// создания заявки (Чат/Построитель/CRM) хранится отдельно в поле created_via.
 export function sourceDisplay(
   value: string | null | undefined,
   sources: OrderSource[],
@@ -15,7 +13,5 @@ export function sourceDisplay(
   if (!value) return null;
   const found = sources.find(s => s.name === value);
   if (found) return { label: found.name, color: found.color };
-  const tech = SOURCE_TECH_LABELS[value];
-  if (tech) return { label: tech, color: "#64748b" };
   return { label: value, color: "#64748b" };
 }

@@ -293,7 +293,7 @@ def handler(event: dict, context) -> dict:
 
                 sql = f"""
                     SELECT lc.id, lc.session_id, lc.client_name, lc.phone, lc.status, lc.sub_status, lc.client_status,
-                           lc.measure_date, lc.install_date, lc.notes, lc.address, lc.area, lc.budget, lc.source, lc.created_at,
+                           lc.measure_date, lc.install_date, lc.notes, lc.address, lc.area, lc.budget, lc.source, lc.created_via, lc.created_at,
                            lc.contract_sum, lc.prepayment, lc.extra_payment, lc.extra_agreement_sum,
                            lc.discount_pct, lc.discount_amount,
                            lc.prepayment_confirmed, lc.prepayment_confirmed_at, lc.prepayment_fact,
@@ -348,9 +348,9 @@ def handler(event: dict, context) -> dict:
                 cur.execute(
                     f"""INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, client_status, measure_date, install_date,
-                         notes, address, area, budget, source,
+                         notes, address, area, budget, source, created_via,
                          contract_sum, prepayment, responsible_phone, map_link, tags, company_id)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
@@ -364,7 +364,8 @@ def handler(event: dict, context) -> dict:
                         body.get("address", ""),
                         body.get("area"),
                         body.get("budget"),
-                        body.get("source", "manual"),
+                        body.get("source"),
+                        "manual",
                         body.get("contract_sum"),
                         body.get("prepayment"),
                         body.get("responsible_phone", ""),
@@ -1211,7 +1212,7 @@ def handler(event: dict, context) -> dict:
                     session_id = f"plan-{new_id}"
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.live_chats
-                            (session_id, client_name, phone, address, status, source, company_id, project_id)
+                            (session_id, client_name, phone, address, status, created_via, company_id, project_id)
                         VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
                     """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
                     chat_id = cur.fetchone()[0]
@@ -1535,7 +1536,7 @@ def handler(event: dict, context) -> dict:
                 session_id = f"plan-{proj_id}"
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, address, status, source, company_id, project_id)
+                        (session_id, client_name, phone, address, status, created_via, company_id, project_id)
                     VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
                 """, (session_id, client_name or proj_name, phone, address, insert_cmp, proj_id))
                 chat_id = cur.fetchone()[0]

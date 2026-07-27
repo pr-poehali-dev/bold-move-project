@@ -132,7 +132,7 @@ def handler(event, context):
         if row is None:
             # Совсем новая сессия
             cur.execute(
-                f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id) VALUES (%s, %s, 0)",
+                f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id, created_via) VALUES (%s, %s, 0, 'chat')",
                 (session_id, client_name)
             )
             conn.commit()
@@ -375,7 +375,7 @@ def handler(event, context):
         conn = db(); cur = conn.cursor()
         cur.execute(f"SELECT id FROM {SCHEMA}.live_chats WHERE session_id=%s", (session_id,))
         if not cur.fetchone():
-            cur.execute(f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id) VALUES (%s,%s,0)", (session_id, client_name))
+            cur.execute(f"INSERT INTO {SCHEMA}.live_chats (session_id, client_name, telegram_message_id, created_via) VALUES (%s,%s,0,'chat')", (session_id, client_name))
             conn.commit()
         cur.execute(f"INSERT INTO {SCHEMA}.live_messages (session_id, role, text) VALUES (%s,'client',%s)", (session_id, text))
         cur.execute(f"UPDATE {SCHEMA}.live_chats SET last_message_at=NOW() WHERE session_id=%s", (session_id,))
