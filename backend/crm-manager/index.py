@@ -1086,6 +1086,37 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── status-labels ── персонализация названий/цветов реальных этапов заявки
+        # (contract, prepaid, install_scheduled и т.п.), общая для всех сотрудников компании
+        if resource == "status-labels":
+            if method == "GET":
+                if company_id is not None:
+                    cur.execute(f"""SELECT status, label, color
+                        FROM {SCHEMA}.order_status_labels
+                        WHERE company_id=%s""", (company_id,))
+                else:
+                    cur.execute(f"""SELECT status, label, color
+                        FROM {SCHEMA}.order_status_labels""")
+                cols = [d[0] for d in cur.description]
+                return ok([dict(zip(cols, r)) for r in cur.fetchall()])
+
+            if method == "PUT":
+                status = body.get("status", "").strip()
+                if not status:
+                    return err("status required")
+                label = body.get("label")
+                color = body.get("color")
+                cur.execute(f"""INSERT INTO {SCHEMA}.order_status_labels
+                    (company_id, status, label, color)
+                    VALUES (%s,%s,%s,%s)
+                    ON CONFLICT (company_id, status)
+                    DO UPDATE SET
+                        label=COALESCE(EXCLUDED.label, {SCHEMA}.order_status_labels.label),
+                        color=COALESCE(EXCLUDED.color, {SCHEMA}.order_status_labels.color)""",
+                    (company_id, status, label, color))
+                conn.commit()
+                return ok({"updated": True})
+
         # ── discount-history ──────────────────────────────────────────────────
         if resource == "discount-history":
             cid = qs.get("client_id")

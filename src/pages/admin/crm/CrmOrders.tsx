@@ -6,7 +6,7 @@ import ClientDrawer from "./ClientDrawer";
 import CrmActionModal from "./CrmActionModal";
 import { AddClientModal } from "./AddClientModal";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, loadStatusLabels, loadStatusColors, saveStatusLabels, saveStatusColors } from "./ordersTypes";
+import { ORDERS_TABS } from "./ordersTypes";
 import func2url from "@/../backend/func2url.json";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
@@ -121,13 +121,29 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   };
 
   // ── Персонализация названий/цветов реальных этапов (status) внутри вкладки ─
-  const [statusLabels, setStatusLabels] = useState<Record<string, string>>(loadStatusLabels);
-  const [statusColors, setStatusColors] = useState<Record<string, string>>(loadStatusColors);
+  // Хранится в БД (order_status_labels) — общая для всех сотрудников компании.
+  const [statusLabels, setStatusLabels] = useState<Record<string, string>>({});
+  const [statusColors, setStatusColors] = useState<Record<string, string>>({});
+  useEffect(() => {
+    crmFetch("status-labels").then(data => {
+      if (!Array.isArray(data)) return;
+      const labels: Record<string, string> = {};
+      const colors: Record<string, string> = {};
+      for (const row of data as { status: string; label: string | null; color: string | null }[]) {
+        if (row.label) labels[row.status] = row.label;
+        if (row.color) colors[row.status] = row.color;
+      }
+      setStatusLabels(labels);
+      setStatusColors(colors);
+    });
+  }, []);
   const handleSaveStatusLabel = (status: string, val: string) => {
-    setStatusLabels(prev => { const next = { ...prev, [status]: val }; saveStatusLabels(next); return next; });
+    setStatusLabels(prev => ({ ...prev, [status]: val }));
+    crmFetch("status-labels", { method: "PUT", body: JSON.stringify({ status, label: val }) });
   };
   const handleSaveStatusColor = (status: string, color: string) => {
-    setStatusColors(prev => { const next = { ...prev, [status]: color }; saveStatusColors(next); return next; });
+    setStatusColors(prev => ({ ...prev, [status]: color }));
+    crmFetch("status-labels", { method: "PUT", body: JSON.stringify({ status, color }) });
   };
 
   // ── Shared client actions ─────────────────────────────────────────────────

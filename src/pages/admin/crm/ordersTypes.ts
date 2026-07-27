@@ -95,21 +95,7 @@ export const INSTALL_STEPS = [
 ];
 
 // ── Персонализация названий/цветов ЭТАПОВ (статусов) внутри вкладки ──────────
-// Отдельно от персонализации самих вкладок (LS_TAB_LABELS/LS_TAB_COLORS выше).
 // Ключ записи — сам status (напр. "install_scheduled"), значение — новое label/color.
 // Используется бирками-подстатусами на вкладках "Замеры" и "Монтажи" + шестерёнкой их настройки.
-export const LS_STATUS_LABELS = "orders_status_labels";
-export const LS_STATUS_COLORS = "orders_status_colors";
-
-export function loadStatusLabels(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(LS_STATUS_LABELS) || "{}"); } catch { return {}; }
-}
-export function saveStatusLabels(v: Record<string, string>) {
-  localStorage.setItem(LS_STATUS_LABELS, JSON.stringify(v));
-}
-export function loadStatusColors(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(LS_STATUS_COLORS) || "{}"); } catch { return {}; }
-}
-export function saveStatusColors(v: Record<string, string>) {
-  localStorage.setItem(LS_STATUS_COLORS, JSON.stringify(v));
-}
+// Хранится в БД (таблица order_status_labels, ресурс "status-labels" в crm-manager) —
+// общая для всех сотрудников компании, см. CrmOrders.tsx.
