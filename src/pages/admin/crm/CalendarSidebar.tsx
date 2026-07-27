@@ -23,6 +23,9 @@ export function EventBadge({ e, onClick }: { e: CalEvent; onClick: (e: CalEvent)
       className="rounded-md px-1.5 py-0.5 cursor-pointer hover:brightness-110 transition mb-0.5"
       style={{ background: color + "22", borderLeft: `2.5px solid ${color}` }}>
       <div className="flex items-center gap-1 min-w-0">
+        {e.client_id && (
+          <span className="text-[10px] font-bold truncate flex-shrink-0" style={{ color }}>№{e.client_id}</span>
+        )}
         <Icon name={icon} size={9} style={{ color, flexShrink: 0 }} />
         <span className="text-[10px] font-semibold truncate" style={{ color }}>{time}</span>
         <span className="text-[10px] font-medium truncate" style={{ color: color + "cc" }}>{e.title}</span>

@@ -90,7 +90,10 @@ export function CalendarWeekView({
                       }}
                       className="rounded-md px-1.5 py-1 text-[10px] font-medium cursor-pointer hover:brightness-110 transition mb-0.5"
                       style={{ background: resolveEventColor(e.event_type) + "25", color: resolveEventColor(e.event_type), borderLeft: `2.5px solid ${resolveEventColor(e.event_type)}` }}>
-                      <div className="font-semibold truncate">{e.title}</div>
+                      <div className="font-semibold truncate">
+                        {e.client_id && <span className="font-bold">№{e.client_id} </span>}
+                        {e.title}
+                      </div>
                       {(e.address || e.client_name) && <div className="truncate opacity-70">{e.address || e.client_name}</div>}
                     </div>
                   ))}
