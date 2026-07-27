@@ -11,6 +11,7 @@ CORS = {
 
 # Структура правил по умолчанию (если в default_auto_rules ничего нет)
 FALLBACK_RULES = [
+    {"key": "material_cost",  "label": "Материалы",     "row_type": "cost",   "sort_order": 0, "enabled": False, "visible": True},
     {"key": "measure_cost",   "label": "Замер",         "row_type": "cost",   "sort_order": 1, "enabled": False, "visible": True},
     {"key": "install_cost",   "label": "Монтаж",        "row_type": "cost",   "sort_order": 2, "enabled": False, "visible": True},
     {"key": "manager_cost",   "label": "Менеджер",      "row_type": "cost",   "sort_order": 3, "enabled": False, "visible": True},
