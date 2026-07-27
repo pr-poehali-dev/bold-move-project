@@ -22,6 +22,7 @@ import type { Substatus } from "./OrdersTabs";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { OrderSourcesContext } from "./orderSourcesContext";
 import { SourceStats } from "./SourceStats";
+import { TrashModal } from "./TrashModal";
 
 interface Props {
   clients: Client[];
@@ -53,6 +54,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [selected, setSelected]   = useState<Client | null>(null);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [trashOpen, setTrashOpen] = useState(false);
   const { sources } = useOrderSources();
 
   const clients = sourceFilter
@@ -274,6 +276,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
             onPick={name => setSourceFilter(name === sourceFilter ? "" : name)}
           />
 
+          {/* Корзина удалённых заявок */}
+          <button onClick={() => setTrashOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs font-semibold transition hover:opacity-90 flex-shrink-0"
+            style={{ background: t.surface, color: t.textMute, border: `1px solid ${t.border}` }}
+            title="Корзина">
+            <Icon name="Trash2" size={13} />
+          </button>
+
           {/* Search */}
           <div className="relative flex-1 sm:w-64 sm:flex-none min-w-[140px]">
             <Icon name="Search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: t.textMute }} />
@@ -368,6 +378,14 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           loading={actionLoading}
           onConfirm={handleActionConfirm}
           onCancel={() => { if (!actionLoading) setActionModal(null); }}
+        />
+      )}
+
+      {/* Корзина удалённых заявок */}
+      {trashOpen && (
+        <TrashModal
+          onClose={() => setTrashOpen(false)}
+          onRestored={onReload}
         />
       )}
     </div>

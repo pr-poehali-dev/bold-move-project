@@ -305,12 +305,12 @@ def handler(event: dict, context) -> dict:
                            COALESCE(u.is_demo, FALSE) AS is_demo
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
-                    WHERE lc.status != 'deleted'
+                    WHERE (lc.status != 'deleted' OR lc.status = %s)
                 """
                 # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.
                 # Исключение: если запрос идёт от самого демо-пользователя (company_id задан) —
                 # он должен видеть своих клиентов, поэтому фильтр не применяем.
-                params = []
+                params = [status_filter]
                 if company_id is None:
                     sql += " AND COALESCE(u.is_demo, FALSE) = FALSE"
                 if company_id is not None:
@@ -412,6 +412,28 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"id": new_id})
 
+            if method == "PUT" and qs.get("action") == "restore":
+                cid = qs.get("id")
+                if not cid:
+                    return err("id required")
+                if company_id is not None:
+                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    owner_row = cur.fetchone()
+                    if not owner_row or owner_row[0] != company_id:
+                        return err("Клиент не найден", 404)
+                cur.execute(
+                    f"""UPDATE {SCHEMA}.live_chats
+                        SET status = COALESCE(status_before_removal, 'new'), status_before_removal = NULL, removed_at = NULL
+                        WHERE id=%s AND status='deleted'
+                        RETURNING status""",
+                    (int(cid),)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return err("Заявка не найдена или уже восстановлена", 404)
+                conn.commit()
+                return ok({"restored": True, "status": row[0]})
+
             if method == "PUT":
                 cid = qs.get("id")
                 if not cid:
@@ -505,7 +527,12 @@ def handler(event: dict, context) -> dict:
                         return err("Клиент не найден", 404)
                 cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET client_id=NULL WHERE client_id=%s", (int(cid),))
                 cur.execute(f"UPDATE {SCHEMA}.calendar_events SET client_id=NULL WHERE client_id=%s", (int(cid),))
-                cur.execute(f"UPDATE {SCHEMA}.live_chats SET status='deleted' WHERE id=%s", (int(cid),))
+                cur.execute(
+                    f"""UPDATE {SCHEMA}.live_chats
+                        SET status_before_removal = status, removed_at = NOW(), status='deleted'
+                        WHERE id=%s""",
+                    (int(cid),)
+                )
                 conn.commit()
                 return ok({"deleted": True})
 

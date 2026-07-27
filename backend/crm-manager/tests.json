@@ -92,6 +92,14 @@
       "path": "/?r=bug_reports",
       "body": {"description": "Тестовый баг-репорт", "severity": "normal", "report_type": "bug"},
       "expectedStatus": 200
+    },
+    {
+      "name": "PUT restore missing id without auth",
+      "method": "PUT",
+      "path": "/?r=clients&action=restore",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
     }
   ]
 }
