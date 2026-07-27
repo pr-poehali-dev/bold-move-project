@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Client } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
-import { BlockId, CustomFinRow } from "./drawerTypes";
+import { BlockId } from "./drawerTypes";
 import { AddFinRowInline, RowWithToggle } from "./DrawerFinRowHelpers";
 import { useTheme } from "./themeContext";
 import { AutoRulesModal, type CostRowDef } from "./DrawerAutoRulesModal";
 import { PaymentStatusBadge, CustomPaymentBadge } from "./PaymentConfirmModal";
 import { useAutoRules, RuleEntry } from "@/hooks/useAutoRules";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 import { loadFinLabels, saveFinLabel, FinBlockProps } from "./DrawerFinLabels";
 import { DrawerIncomeAutoSection } from "./DrawerIncomeAutoSection";
 import { DrawerCostsAutoSection } from "./DrawerCostsAutoSection";
@@ -205,73 +206,83 @@ export function DrawerIncomeBlock({
   );
 }
 
+// Статьи затрат, у которых есть собственная колонка в live_chats — их значения
+// хранятся напрямую в заказе (через saveWithLog), а не в общей таблице кастомных сумм.
+const BUILTIN_COST_KEYS = ["material_cost", "measure_cost", "install_cost"] as const;
+
 export function DrawerCostsBlock({
-  data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
+  data, editingBlock, hiddenBlocks,
   toggleHidden, setEditingBlock, saveWithLog, logAction,
-  toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
 }: FinBlockProps) {
   const t = useTheme();
   const id: BlockId = "costs";
   const isHidden = hiddenBlocks.has(id);
   const costsEdit = editingBlock === id;
-  const { rules: autoRules, auto_mode: autoMode, loading: autoLoading } = useAutoRules();
+  const { rules: autoRules, auto_mode: autoMode, loading: autoLoading, save: saveRules } = useAutoRules();
   const { history: discountHistory, totalDiscountAmount } = useDiscountHistory(data.id);
-  const [labels, setLabels] = useState<Record<string, string>>(loadFinLabels);
+  const { values: customValues, loading: customLoading, saveValue: saveCustomValue } = useCustomFinValues(data.id);
   const [showRules, setShowRules] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
 
-  const getLabel = (key: string, def: string) => labels[key] || def;
-  const renameLabel = (key: string, label: string) => {
-    setLabels(prev => ({ ...prev, [key]: label }));
-    saveFinLabel(key, label);
-  };
+  // Статьи затрат — общий шаблон компании (правила авто-расчёта), отсортированный по sort_order.
+  // Показываются только включённые через ползунок "в карточке" (visible !== false).
+  const costRules = autoRules
+    .filter(r => r.row_type === "cost")
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  const BUILTIN_COST_DEFS: Record<string, string> = {
-    material_cost: "Материалы",
-    measure_cost:  "Замер",
-    install_cost:  "Монтаж",
-  };
+  const visibleCostRules = costRules.filter(r => r.visible !== false);
 
-  const costRows: CostRowDef[] = [
-    ...(["material_cost", "measure_cost", "install_cost"] as const)
-      .filter(key => rowVisibility[key] !== false)
-      .map(key => ({ key, label: getLabel(key, BUILTIN_COST_DEFS[key]) })),
-    ...customFinRows
-      .filter(r => r.block === "costs" && rowVisibility[r.key] !== false)
-      .map(r => ({ key: r.key, label: r.label })),
-  ];
+  const costRows: CostRowDef[] = visibleCostRules.map(r => ({ key: r.key, label: r.label }));
 
   const contractSum = Number(data.contract_sum) || 0;
-  const rulesMap: Record<string, RuleEntry> = Object.fromEntries(
-    autoRules.filter(r => r.row_type === "cost").map(r => [r.key, r])
-  );
-
-  const isCostVisible = (key: string) => {
-    const e = rulesMap[key];
-    return !e || e.visible !== false;
-  };
 
   const hasRules = costRows.some(row => {
-    const e = rulesMap[row.key];
+    const e = costRules.find(r => r.key === row.key);
     return e && e.enabled && e.pct != null && e.pct > 0;
   });
 
-  const applyAutoWithSum = (sum: number) => {
+  const isBuiltin = (key: string): key is typeof BUILTIN_COST_KEYS[number] =>
+    (BUILTIN_COST_KEYS as readonly string[]).includes(key);
+
+  // Переименовать статью или переключить видимость — обновляем общий шаблон компании
+  const renameRule = (key: string, label: string) => {
+    const next = autoRules.map(r => r.key === key ? { ...r, label } : r);
+    saveRules(next, autoMode);
+  };
+  const toggleRuleVisible = (key: string) => {
+    const next = autoRules.map(r => r.key === key ? { ...r, visible: r.visible === false } : r);
+    saveRules(next, autoMode);
+  };
+  // Полное удаление — только для нестандартных статей (у встроенных нет смысла удалять правило, только скрыть)
+  const removeRule = (key: string) => {
+    const next = autoRules.filter(r => r.key !== key);
+    saveRules(next, autoMode);
+  };
+  const addRow = (label: string) => {
+    const key = `custom_cost_${Date.now()}`;
+    const newRule: RuleEntry = {
+      key, label, pct: null, enabled: true, visible: true,
+      row_type: "cost", sort_order: costRules.length + 1, is_default: false,
+    };
+    saveRules([...autoRules, newRule], autoMode);
+  };
+
+  const applyAutoWithSum = async (sum: number) => {
     if (!sum) return;
     const patch: Partial<Client> = {};
     let hasCustom = false;
 
-    costRows.forEach(row => {
-      const e = rulesMap[row.key];
-      if (!e || !e.enabled || !e.pct) return;
+    for (const row of costRows) {
+      const e = costRules.find(r => r.key === row.key);
+      if (!e || !e.enabled || !e.pct) continue;
       const val = Math.round(sum * e.pct / 100);
-      if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
+      if (isBuiltin(row.key)) {
         (patch as Record<string, unknown>)[row.key] = val;
       } else {
-        localStorage.setItem(`fin_row_${data.id}_${row.key}`, String(val));
+        await saveCustomValue(row.key, String(val));
         hasCustom = true;
       }
-    });
+    }
 
     if (Object.keys(patch).length > 0) {
       saveWithLog(patch, "Авто-расчёт затрат по правилу", "Zap", "#ef4444");
@@ -287,13 +298,13 @@ export function DrawerCostsBlock({
   const costsAppliedRef = useRef(false);
   useEffect(() => {
     if (data.id) { prevContractSumRef.current = -1; costsAppliedRef.current = false; }
-  }, [data.id]);  
+  }, [data.id]);
   useEffect(() => {
     // Блокируем авторасчёт затрат если применена скидка.
     // Используем data.discount_pct — оно обновляется в том же PUT что и contract_sum,
     // поэтому нет race condition в отличие от discountHistory (который загружается отдельным запросом)
     const hasDiscount = (Number(data.discount_pct) || 0) > 0 || discountHistory.length > 0;
-    if (autoLoading || !contractSum || !hasRules || !autoMode || hasDiscount) {
+    if (autoLoading || customLoading || !contractSum || !hasRules || !autoMode || hasDiscount) {
       if (!autoLoading) prevContractSumRef.current = contractSum;
       return;
     }
@@ -304,20 +315,18 @@ export function DrawerCostsBlock({
     if (isFirstRender) {
       costsAppliedRef.current = true;
       const rowsWithRules = costRows.filter(row => {
-        const e = rulesMap[row.key];
+        const e = costRules.find(r => r.key === row.key);
         return e && e.enabled && e.pct != null && e.pct > 0;
       });
       const targetRowsEmpty = rowsWithRules.every(row => {
-        if (row.key === "material_cost" || row.key === "measure_cost" || row.key === "install_cost") {
-          return !data[row.key as keyof Client];
-        }
-        return !localStorage.getItem(`fin_row_${data.id}_${row.key}`);
+        if (isBuiltin(row.key)) return !data[row.key];
+        return customValues[row.key] == null;
       });
       if (rowsWithRules.length > 0 && targetRowsEmpty) applyAutoWithSum(contractSum);
     } else if (sumChanged) {
       applyAutoWithSum(contractSum);
     }
-  }, [data.id, contractSum, autoMode, autoRules, autoLoading, discountHistory.length, data.discount_pct]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data.id, contractSum, autoMode, autoRules, autoLoading, customLoading, discountHistory.length, data.discount_pct]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -340,30 +349,29 @@ export function DrawerCostsBlock({
           />
         )}
 
-        {(["material_cost", "measure_cost", "install_cost"] as const).map(key => {
-          const defs: Record<string, { def: string; save: (v: string) => void }> = {
-            material_cost: { def: "Материалы", save: v => saveWithLog({ material_cost: +v || null } as Partial<Client>, `Материалы: ${(+v).toLocaleString("ru-RU")} ₽`,    "Package", "#ef4444") },
-            measure_cost:  { def: "Замер",     save: v => { saveWithLog({ measure_cost:  +v || null } as Partial<Client>, `Замер: ${(+v).toLocaleString("ru-RU")} ₽`,  "Ruler",   "#ef4444"); setAutoFilled(false); } },
-            install_cost:  { def: "Монтаж",    save: v => { saveWithLog({ install_cost:  +v || null } as Partial<Client>, `Монтаж: ${(+v).toLocaleString("ru-RU")} ₽`, "Wrench",  "#ef4444"); setAutoFilled(false); } },
-          };
-          return rowVisibility[key] === false || !isCostVisible(key) ? null : (
-            <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
-              editableLabel={getLabel(key, defs[key].def)} onLabelChange={l => renameLabel(key, l)}
-              onDelete={() => toggleRowVisibility(key)}>
-              <InlineField label={getLabel(key, defs[key].def)} value={data[key]} onSave={defs[key].save} type="number" placeholder="—" />
-            </RowWithToggle>
-          );
-        })}
-
-        {customFinRows.filter(r => r.block === "costs" && rowVisibility[r.key] !== false && isCostVisible(r.key)).map(r => {
-          const lsKey = `fin_row_${data.id}_${r.key}`;
-          const val = localStorage.getItem(lsKey) || "";
+        {visibleCostRules.map(rule => {
+          const key = rule.key;
+          if (isBuiltin(key)) {
+            const icons: Record<string, string> = { material_cost: "Package", measure_cost: "Ruler", install_cost: "Wrench" };
+            const save = (v: string) => {
+              saveWithLog({ [key]: +v || null } as Partial<Client>, `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`, icons[key], "#ef4444");
+              setAutoFilled(false);
+            };
+            return (
+              <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
+                editableLabel={rule.label} onLabelChange={l => renameRule(key, l)}
+                onDelete={() => toggleRuleVisible(key)}>
+                <InlineField label={rule.label} value={data[key]} onSave={save} type="number" placeholder="—" />
+              </RowWithToggle>
+            );
+          }
+          const val = customValues[key] != null ? String(customValues[key]) : "";
           return (
-            <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={costsEdit}
-              editableLabel={r.label} onLabelChange={label => updateCustomFinRow(r.key, label)}
-              onDelete={() => { deleteCustomFinRow(r.key); }}>
-              <InlineField label={r.label} value={val} type="number" placeholder="—"
-                onSave={v => { localStorage.setItem(lsKey, v); logAction("Minus", "#ef4444", `${r.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
+            <RowWithToggle key={key} rowKey={key} visible onToggle={() => {}} editMode={costsEdit}
+              editableLabel={rule.label} onLabelChange={l => renameRule(key, l)}
+              onDelete={() => removeRule(key)}>
+              <InlineField label={rule.label} value={val} type="number" placeholder="—"
+                onSave={v => { saveCustomValue(key, v); logAction("Minus", "#ef4444", `${rule.label}: ${(+v).toLocaleString("ru-RU")} ₽`); }} />
             </RowWithToggle>
           );
         })}
@@ -385,7 +393,7 @@ export function DrawerCostsBlock({
           </div>
         )}
 
-        <AddFinRowInline block="costs" onAdd={addCustomFinRow}
+        <AddFinRowInline block="costs" onAdd={label => addRow(label)}
           forceOpen={costsEdit}
           onClose={() => setEditingBlock(null)} />
       </Section>

@@ -65,6 +65,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "GET custom-fin-values missing client_id",
+      "method": "GET",
+      "path": "/?r=custom-fin-values",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "client_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET plan-crm-sync missing project_id",
       "method": "GET",
       "path": "/?r=plan-crm-sync&project_id=0",

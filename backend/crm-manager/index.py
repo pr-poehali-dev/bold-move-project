@@ -1134,6 +1134,42 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deactivated": True})
 
+        # ── CUSTOM FIN VALUES (суммы кастомных статей затрат/доходов по заказу) ─
+        if resource == "custom-fin-values":
+            cid = qs.get("client_id")
+            if not cid:
+                return err("client_id required")
+            cid = int(cid)
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT row_key, value
+                    FROM {SCHEMA}.client_custom_fin_values
+                    WHERE client_id = %s
+                """, (cid,))
+                return ok({r[0]: float(r[1]) if r[1] is not None else None for r in cur.fetchall()})
+
+            if method == "POST":
+                row_key = body.get("row_key", "")
+                value = body.get("value")
+                if not row_key:
+                    return err("row_key required")
+                if value is None or value == "":
+                    cur.execute(f"""
+                        DELETE FROM {SCHEMA}.client_custom_fin_values
+                        WHERE client_id = %s AND row_key = %s
+                    """, (cid, row_key))
+                else:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.client_custom_fin_values (client_id, row_key, value)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (client_id, row_key) DO UPDATE SET
+                            value = EXCLUDED.value,
+                            updated_at = NOW()
+                    """, (cid, row_key, value))
+                conn.commit()
+                return ok({"saved": True})
+
         # ── PLAN ROOMS BY CHAT (для сметы) ────────────────────────────────────
         if resource == "plan-rooms-by-chat":
             cmp = company_id if company_id is not None else master_uid
