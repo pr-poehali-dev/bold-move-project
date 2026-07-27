@@ -669,8 +669,8 @@ def handler(event: dict, context) -> dict:
             total_done    = status_dist.get('done', 0)
             total_cancel  = status_dist.get('cancelled', 0)
             total_all     = sum(status_dist.values())
-            went_measure  = sum(status_dist.get(s, 0) for s in ["measure","measured","contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
-            went_contract = sum(status_dist.get(s, 0) for s in ["contract","prepaid","install_scheduled","install_done","extra_paid","done","cancelled"])
+            went_measure  = sum(status_dist.get(s, 0) for s in ["measure","measured","contract","prepaid","install_scheduled","install_done","extra_paid","done"])
+            went_contract = sum(status_dist.get(s, 0) for s in ["contract","prepaid","install_scheduled","install_done","extra_paid","done"])
 
             # Предстоящие события — только актуальные статусы
             cid_filter = f" AND company_id = {int(company_id)}" if company_id is not None else ""
