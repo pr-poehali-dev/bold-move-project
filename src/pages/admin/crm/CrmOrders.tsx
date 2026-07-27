@@ -335,7 +335,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           allClientOrders={getClientOrders(selected, allClients)}
           onClose={() => { setSelected(null); onDrawerClose?.(); }}
           onUpdated={() => { onReload(); }}
-          onDeleted={() => { setSelected(null); onClientRemoved(selected.id); }}
+          onDeleted={(deletedId) => { setSelected(null); onClientRemoved(deletedId); }}
           canEdit={canEdit}
           canOrdersEdit={canOrdersEdit}
           canFinance={canFinance}

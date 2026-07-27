@@ -14,7 +14,7 @@ interface Props {
   allClientOrders: Client[];
   onClose: () => void;
   onUpdated: () => void;
-  onDeleted: () => void;
+  onDeleted: (deletedId: number) => void;
   isLocalCard?: boolean;
   defaultTab?: "client" | "orders";
   defaultOrderId?: number;
@@ -72,14 +72,16 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     onUpdated();
   };
 
+  const ord = drawerTab === "orders" ? orderData : data;
+
   const handleDelete = async () => {
+    const targetId = ord.id;
     if (!isLocalCard) {
-      await crmFetch("clients", { method: "DELETE" }, { id: String(data.id) });
+      await crmFetch("clients", { method: "DELETE" }, { id: String(targetId) });
     }
-    onDeleted();
+    onDeleted(targetId);
   };
 
-  const ord = drawerTab === "orders" ? orderData : data;
   const lsKey = `order_title_${ord.id}`;
   const customTitle = localStorage.getItem(lsKey);
   const orderTitle = customTitle || `Заявка №${ord.id}`;
@@ -462,8 +464,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
               <Icon name="Trash2" size={22} className="text-red-400" />
             </div>
-            <h3 className="text-base font-bold text-center mb-2 text-white">Удалить клиента?</h3>
-            <p className="text-sm text-center mb-5" style={{ color: t.textMute }}>«{data.client_name || "Клиент"}» будет удалён</p>
+            <h3 className="text-base font-bold text-center mb-2 text-white">Удалить заявку?</h3>
+            <p className="text-sm text-center mb-5" style={{ color: t.textMute }}>Заявка №{ord.id} «{ord.client_name || "Клиент"}» будет удалена</p>
             <div className="flex gap-2">
               <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-xl font-semibold transition">Удалить</button>
               <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 text-sm rounded-xl transition"

@@ -259,12 +259,12 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
             if (selected.id < 0) return;
             onReload();
           }}
-          onDeleted={() => {
+          onDeleted={(deletedId) => {
             setSelected(null);
-            if (selected.id < 0) {
-              setLocalCards(prev => { const next = prev.filter(c => c.id !== selected.id); saveLocalCards(next); return next; });
+            if (deletedId < 0) {
+              setLocalCards(prev => { const next = prev.filter(c => c.id !== deletedId); saveLocalCards(next); return next; });
             } else {
-              onClientRemoved(selected.id);
+              onClientRemoved(deletedId);
             }
           }}
           isLocalCard={selected.id < 0}
