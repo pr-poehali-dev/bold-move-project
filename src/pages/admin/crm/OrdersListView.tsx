@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Client } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
@@ -45,6 +45,11 @@ interface Props {
   onAddTab: () => void;
   substatuses: Substatus[];
   onSubstatusesChange: (list: Substatus[]) => void;
+  // персонализация названий/цветов реальных этапов (status) внутри вкладки
+  statusLabels: Record<string, string>;
+  statusColors: Record<string, string>;
+  onSaveStatusLabel: (status: string, val: string) => void;
+  onSaveStatusColor: (status: string, color: string) => void;
 }
 
 export function OrdersListView({
@@ -53,13 +58,14 @@ export function OrdersListView({
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
   substatuses, onSubstatusesChange,
+  statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
 }: Props) {
   const t = useTheme();
   const [doneSubFilter, setDoneSubFilter] = useState<typeof DONE_GROUPS[number]["key"]>("done");
 
-  // Активный подстатус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене вкладки.
-  const [activeSubStatus, setActiveSubStatus] = useState<number | null>(null);
-  useEffect(() => { setActiveSubStatus(null); }, [activeTab]);
+  // Активный статус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене вкладки.
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
+  useEffect(() => { setActiveStatusFilter(null); }, [activeTab]);
 
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
@@ -78,26 +84,30 @@ export function OrdersListView({
   const currentTab = activeTab === ALL_TAB_ID ? allTabDef : allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
   const clientsByStatus = activeTab === ALL_TAB_ID ? allClients : allClients.filter(c => currentTab.statuses.includes(c.status ?? ""));
 
-  // Подстатусы текущей вкладки (настраиваются через шестерёнку в OrdersTabs)
-  const tabSubstatuses = substatuses.filter(s => s.parent_status === activeTab);
-  const currentClients = activeSubStatus != null
-    ? clientsByStatus.filter(c => c.sub_status === String(activeSubStatus))
+  // Реальные этапы (статусы) текущей вкладки — бирки показываются только когда
+  // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).
+  // Вкладка "done" уже имеет свой переключатель Выполнено/Отказ — бирки там не дублируем.
+  const tabStatuses = activeTab !== "done" && currentTab.statuses.length > 1 ? currentTab.statuses : [];
+  const currentClients = activeStatusFilter != null
+    ? clientsByStatus.filter(c => c.status === activeStatusFilter)
     : clientsByStatus;
 
-  const renderSubstatusBadges = () => tabSubstatuses.length > 0 && (
+  const renderSubstatusBadges = () => tabStatuses.length > 0 && (
     <div className="flex gap-1.5 flex-wrap mb-4">
-      {tabSubstatuses.map(s => {
-        const cnt = clientsByStatus.filter(c => c.sub_status === String(s.id)).length;
-        const isSel = activeSubStatus === s.id;
+      {tabStatuses.map(s => {
+        const label = statusLabels[s] || STATUS_LABELS[s] || s;
+        const color = statusColors[s] || STATUS_COLORS[s] || "#8b5cf6";
+        const cnt = clientsByStatus.filter(c => c.status === s).length;
+        const isSel = activeStatusFilter === s;
         return (
-          <button key={s.id} onClick={() => setActiveSubStatus(isSel ? null : s.id)}
+          <button key={s} onClick={() => setActiveStatusFilter(isSel ? null : s)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
             style={{
-              background: isSel ? s.color + "22" : s.color + "10",
-              borderColor: isSel ? s.color : s.color + "30",
-              color: s.color,
+              background: isSel ? color + "22" : color + "10",
+              borderColor: isSel ? color : color + "30",
+              color,
             }}>
-            {s.label} <span className="font-bold">{cnt}</span>
+            {label} <span className="font-bold">{cnt}</span>
           </button>
         );
       })}
@@ -152,6 +162,10 @@ export function OrdersListView({
         onAddTab={onAddTab}
         substatuses={substatuses}
         onSubstatusesChange={onSubstatusesChange}
+        statusLabels={statusLabels}
+        statusColors={statusColors}
+        onSaveStatusLabel={onSaveStatusLabel}
+        onSaveStatusColor={onSaveStatusColor}
       />
 
       {loading ? (
@@ -180,7 +194,6 @@ export function OrdersListView({
         </div>
       ) : activeTab === "done" ? (
         <div>
-          {renderSubstatusBadges()}
           {/* Переключатель Выполнено / Отказ — показывает только одну группу за раз */}
           <div className="flex gap-2 mb-4">
             {DONE_GROUPS.map(group => {

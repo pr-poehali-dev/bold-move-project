@@ -6,7 +6,7 @@ import ClientDrawer from "./ClientDrawer";
 import CrmActionModal from "./CrmActionModal";
 import { AddClientModal } from "./AddClientModal";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS } from "./ordersTypes";
+import { ORDERS_TABS, loadStatusLabels, loadStatusColors, saveStatusLabels, saveStatusColors } from "./ordersTypes";
 import func2url from "@/../backend/func2url.json";
 
 const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
@@ -118,6 +118,16 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const handleAddTab = () => {
     const col = addSyncedCol("Новый этап", "#8b5cf6", "Layers");
     setCustomTabs(prev => [...prev, col]);
+  };
+
+  // ── Персонализация названий/цветов реальных этапов (status) внутри вкладки ─
+  const [statusLabels, setStatusLabels] = useState<Record<string, string>>(loadStatusLabels);
+  const [statusColors, setStatusColors] = useState<Record<string, string>>(loadStatusColors);
+  const handleSaveStatusLabel = (status: string, val: string) => {
+    setStatusLabels(prev => { const next = { ...prev, [status]: val }; saveStatusLabels(next); return next; });
+  };
+  const handleSaveStatusColor = (status: string, color: string) => {
+    setStatusColors(prev => { const next = { ...prev, [status]: color }; saveStatusColors(next); return next; });
   };
 
   // ── Shared client actions ─────────────────────────────────────────────────
@@ -334,6 +344,10 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onAddTab={handleAddTab}
           substatuses={substatuses}
           onSubstatusesChange={onSubstatusesChange}
+          statusLabels={statusLabels}
+          statusColors={statusColors}
+          onSaveStatusLabel={handleSaveStatusLabel}
+          onSaveStatusColor={handleSaveStatusColor}
         />
       )}
 

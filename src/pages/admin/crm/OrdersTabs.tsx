@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Client, crmFetch } from "./crmApi";
+import { Client, crmFetch, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, CustomOrdersTab, ALL_TAB_ID } from "./ordersTypes";
@@ -41,9 +41,16 @@ interface Props {
   onAddTab: () => void;
   substatuses: Substatus[];
   onSubstatusesChange: (list: Substatus[]) => void;
+  statusLabels: Record<string, string>;
+  statusColors: Record<string, string>;
+  onSaveStatusLabel: (status: string, val: string) => void;
+  onSaveStatusColor: (status: string, color: string) => void;
 }
 
-function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor, onDelete, onClose, popupPos, substatuses, onSubstatusesChange }: {
+function TabSettingsPopup({
+  tab, tabLabels, tabColors, onSaveLabel, onSaveColor, onDelete, onClose, popupPos,
+  statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
+}: {
   tab: TabDef;
   tabLabels: Record<string, string>;
   tabColors: Record<string, string>;
@@ -52,8 +59,10 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
   onDelete: () => void;
   onClose: () => void;
   popupPos?: { top: number; left: number };
-  substatuses: Substatus[];
-  onSubstatusesChange: (list: Substatus[]) => void;
+  statusLabels: Record<string, string>;
+  statusColors: Record<string, string>;
+  onSaveStatusLabel: (status: string, val: string) => void;
+  onSaveStatusColor: (status: string, color: string) => void;
 }) {
   const t = useTheme();
   const [labelVal, setLabelVal] = useState(tabLabels[tab.id] || tab.label);
@@ -61,16 +70,12 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
   const currentColor = tabColors[tab.id] || tab.color;
   const ref = useRef<HTMLDivElement>(null);
 
-  // Подстатусы этого таба (parent_status = tab.id)
-  const mySubstatuses = substatuses.filter(s => s.parent_status === tab.id);
+  // Реальные этапы (статусы) этого таба — редактируются, только если их больше одного
+  // (leads/working содержат по одному статусу — делить там нечего)
+  const myStatuses = tab.statuses.length > 1 ? tab.statuses : [];
 
-  // Состояние нового подстатуса
-  const [newLabel, setNewLabel] = useState("");
-  const [newColor, setNewColor] = useState("#a78bfa");
-  const [adding, setAdding] = useState(false);
-
-  // Редактирование существующего
-  const [editingSubId, setEditingSubId] = useState<number | null>(null);
+  // Редактирование названия/цвета этапа
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editColor, setEditColor] = useState("");
 
@@ -99,40 +104,17 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
       }
     : { position: "absolute" as const, left: 0, top: "100%", marginTop: 4, zIndex: 50 };
 
-  const addSubstatus = async () => {
-    const label = newLabel.trim();
-    if (!label) return;
-    const data = await crmFetch("substatuses", {
-      method: "POST",
-      body: JSON.stringify({ parent_status: tab.id, label, color: newColor }),
-    }) as { id: number; position: number };
-    const newSub: Substatus = { id: data.id, parent_status: tab.id, label, color: newColor, position: data.position };
-    onSubstatusesChange([...substatuses, newSub]);
-    setNewLabel("");
-    setNewColor("#a78bfa");
-    setAdding(false);
+  const startEditStatus = (s: string) => {
+    setEditingStatus(s);
+    setEditLabel(statusLabels[s] || STATUS_LABELS[s] || s);
+    setEditColor(statusColors[s] || STATUS_COLORS[s] || "#8b5cf6");
   };
 
-  const deleteSubstatus = async (id: number) => {
-    await crmFetch("substatuses", { method: "DELETE" }, { id: String(id) });
-    onSubstatusesChange(substatuses.filter(s => s.id !== id));
-  };
-
-  const startEdit = (s: Substatus) => {
-    setEditingSubId(s.id);
-    setEditLabel(s.label);
-    setEditColor(s.color);
-  };
-
-  const saveEdit = async (id: number) => {
+  const saveEditStatus = (s: string) => {
     const label = editLabel.trim();
-    if (!label) return;
-    await crmFetch("substatuses", {
-      method: "PUT",
-      body: JSON.stringify({ label, color: editColor }),
-    }, { id: String(id) });
-    onSubstatusesChange(substatuses.map(s => s.id === id ? { ...s, label, color: editColor } : s));
-    setEditingSubId(null);
+    if (label) onSaveStatusLabel(s, label);
+    onSaveStatusColor(s, editColor);
+    setEditingStatus(null);
   };
 
   return (
@@ -178,100 +160,59 @@ function TabSettingsPopup({ tab, tabLabels, tabColors, onSaveLabel, onSaveColor,
         </div>
       </div>
 
-      {/* Подстатусы */}
-      <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMute }}>Подстатусы</div>
-          <button onClick={() => setAdding(a => !a)}
-            className="text-[10px] font-semibold flex items-center gap-0.5 transition"
-            style={{ color: t.accentLight }}>
-            <Icon name="Plus" size={10} /> Добавить
-          </button>
-        </div>
+      {/* Этапы — реальные подстатусы заявки внутри этого таба (только название/цвет) */}
+      {myStatuses.length > 0 && (
+        <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${t.border2}` }}>
+          <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: t.textMute }}>Этапы</div>
 
-        {/* Список */}
-        <div className="flex flex-col gap-1">
-          {mySubstatuses.map(s => (
-            <div key={s.id}>
-              {editingSubId === s.id ? (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: editColor }} />
-                  <input
-                    value={editLabel}
-                    onChange={e => setEditLabel(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditingSubId(null); }}
-                    autoFocus
-                    className="flex-1 text-xs rounded px-1.5 py-0.5 focus:outline-none"
-                    style={{ background: t.surface2, border: `1px solid ${t.accent}60`, color: t.text }}
-                  />
-                  <div className="flex gap-0.5">
-                    {PRESET_COLORS.map(c => (
-                      <button key={c} onClick={() => setEditColor(c)}
-                        className="w-3.5 h-3.5 rounded-full transition hover:scale-110 flex-shrink-0"
-                        style={{ background: c, outline: editColor === c ? `2px solid ${c}` : "none", outlineOffset: 1 }} />
-                    ))}
-                  </div>
-                  <button onClick={() => saveEdit(s.id)}
-                    className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                    style={{ background: "#7c3aed", color: "#fff" }}>ОК</button>
-                  <button onClick={() => setEditingSubId(null)}>
-                    <Icon name="X" size={10} style={{ color: t.textMute }} />
-                  </button>
+          <div className="flex flex-col gap-1">
+            {myStatuses.map(s => {
+              const label = statusLabels[s] || STATUS_LABELS[s] || s;
+              const color = statusColors[s] || STATUS_COLORS[s] || "#8b5cf6";
+              return (
+                <div key={s}>
+                  {editingStatus === s ? (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: editColor }} />
+                      <input
+                        value={editLabel}
+                        onChange={e => setEditLabel(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") saveEditStatus(s); if (e.key === "Escape") setEditingStatus(null); }}
+                        autoFocus
+                        className="flex-1 text-xs rounded px-1.5 py-0.5 focus:outline-none"
+                        style={{ background: t.surface2, border: `1px solid ${t.accent}60`, color: t.text }}
+                      />
+                      <div className="flex gap-0.5">
+                        {PRESET_COLORS.map(c => (
+                          <button key={c} onClick={() => setEditColor(c)}
+                            className="w-3.5 h-3.5 rounded-full transition hover:scale-110 flex-shrink-0"
+                            style={{ background: c, outline: editColor === c ? `2px solid ${c}` : "none", outlineOffset: 1 }} />
+                        ))}
+                      </div>
+                      <button onClick={() => saveEditStatus(s)}
+                        className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                        style={{ background: "#7c3aed", color: "#fff" }}>ОК</button>
+                      <button onClick={() => setEditingStatus(null)}>
+                        <Icon name="X" size={10} style={{ color: t.textMute }} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 group/sub px-1 py-0.5 rounded hover:bg-white/5">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                      <span className="flex-1 text-xs truncate" style={{ color: t.text }}>{label}</span>
+                      <button onClick={() => startEditStatus(s)}
+                        className="opacity-0 group-hover/sub:opacity-100 transition p-0.5 rounded"
+                        style={{ color: t.textMute }}>
+                        <Icon name="Pencil" size={10} />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-1.5 group/sub px-1 py-0.5 rounded hover:bg-white/5">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                  <span className="flex-1 text-xs truncate" style={{ color: t.text }}>{s.label}</span>
-                  <button onClick={() => startEdit(s)}
-                    className="opacity-0 group-hover/sub:opacity-100 transition p-0.5 rounded"
-                    style={{ color: t.textMute }}>
-                    <Icon name="Pencil" size={10} />
-                  </button>
-                  <button onClick={() => deleteSubstatus(s.id)}
-                    className="opacity-0 group-hover/sub:opacity-100 transition p-0.5 rounded"
-                    style={{ color: "#f87171" }}>
-                    <Icon name="Trash2" size={10} />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {mySubstatuses.length === 0 && !adding && (
-            <div className="text-[10px] py-1" style={{ color: t.textMute }}>Нет подстатусов</div>
-          )}
-        </div>
-
-        {/* Форма добавления */}
-        {adding && (
-          <div className="mt-2 flex flex-col gap-1.5">
-            <input
-              value={newLabel}
-              onChange={e => setNewLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") addSubstatus(); if (e.key === "Escape") setAdding(false); }}
-              autoFocus
-              placeholder="Название подстатуса"
-              className="text-xs rounded-lg px-2 py-1.5 focus:outline-none w-full"
-              style={{ background: t.surface2, border: `1px solid #7c3aed60`, color: t.text }}
-            />
-            <div className="flex items-center gap-1 flex-wrap">
-              {PRESET_COLORS.map(c => (
-                <button key={c} onClick={() => setNewColor(c)}
-                  className="w-4 h-4 rounded-full transition hover:scale-110 flex-shrink-0"
-                  style={{ background: c, outline: newColor === c ? `2px solid ${c}` : "none", outlineOffset: 1 }} />
-              ))}
-            </div>
-            <div className="flex gap-1.5">
-              <button onClick={addSubstatus}
-                className="flex-1 py-1 rounded-lg text-xs font-semibold"
-                style={{ background: t.accent, color: "#fff" }}>Добавить</button>
-              <button onClick={() => setAdding(false)}
-                className="px-2 py-1 rounded-lg text-xs"
-                style={{ background: t.surface2, color: t.textMute }}>Отмена</button>
-            </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Удалить */}
       <button
@@ -305,7 +246,7 @@ export function OrdersTabs({
   allClients, activeTab, onSelect,
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
-  substatuses, onSubstatusesChange,
+  statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
 }: Props) {
   const t = useTheme();
   const [openPopup, setOpenPopup] = useState<string | null>(null);
@@ -440,8 +381,10 @@ export function OrdersTabs({
                   popupPos={popupPos}
                   onDelete={() => { onDeleteTab(tab.id); setOpenPopup(null); if (activeTab === tab.id) onSelect(allTabs[0]?.id || "leads"); }}
                   onClose={() => setOpenPopup(null)}
-                  substatuses={substatuses}
-                  onSubstatusesChange={onSubstatusesChange}
+                  statusLabels={statusLabels}
+                  statusColors={statusColors}
+                  onSaveStatusLabel={onSaveStatusLabel}
+                  onSaveStatusColor={onSaveStatusColor}
                 />
               )}
             </div>
