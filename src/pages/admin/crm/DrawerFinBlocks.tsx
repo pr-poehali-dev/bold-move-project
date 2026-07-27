@@ -129,6 +129,28 @@ export function DrawerIncomeBlock({
     }
   }, [data.id, contractSum, autoMode, autoRules, autoLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Разовая помощь в заполнении: если есть сумма договора и предоплата, а доплата ещё пустая —
+  // один раз подставляем "Доплата = Сумма договора − Предоплата" (скидка уже учтена в сумме
+  // договора). После заполнения поле больше не трогаем — все ручные правки остаются навсегда.
+  const extraAutoFilledRef = useRef(false);
+  useEffect(() => { extraAutoFilledRef.current = false; }, [data.id]);
+  useEffect(() => {
+    if (extraAutoFilledRef.current) return;
+    const prepayment = Number(data.prepayment) || 0;
+    const extraPayment = Number(data.extra_payment) || 0;
+    if (contractSum > 0 && prepayment > 0 && extraPayment === 0) {
+      const rest = contractSum - prepayment;
+      if (rest > 0) {
+        extraAutoFilledRef.current = true;
+        saveWithLog(
+          { extra_payment: rest } as Partial<Client>,
+          `Доплата рассчитана: ${rest.toLocaleString("ru-RU")} ₽`,
+          "Wallet", "#10b981",
+        );
+      }
+    }
+  }, [data.id, data.contract_sum, data.prepayment, data.extra_payment]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       {showRules && <AutoRulesModal onClose={() => setShowRules(false)} costRows={incomeRows} defaultTab="income" />}
