@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -15,6 +16,12 @@ interface TabDef {
   statuses: readonly string[];
   emptyText: string;
 }
+
+// Подгруппы внутри таба "Финальный" — переключатель показывает только одну группу за раз
+const DONE_GROUPS = [
+  { key: "done" as const,      label: "Выполнено", statuses: ["done"],      color: "#10b981", icon: "CheckCircle2" },
+  { key: "cancelled" as const, label: "Отказ",      statuses: ["cancelled"],color: "#ef4444", icon: "XCircle" },
+];
 
 interface Props {
   allClients: Client[];
@@ -48,6 +55,7 @@ export function OrdersListView({
   substatuses, onSubstatusesChange,
 }: Props) {
   const t = useTheme();
+  const [doneSubFilter, setDoneSubFilter] = useState<typeof DONE_GROUPS[number]["key"]>("done");
 
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
@@ -141,36 +149,45 @@ export function OrdersListView({
           )}
         </div>
       ) : activeTab === "done" ? (
-        <div className="space-y-5">
-          {[
-            { label: "Завершённые", statuses: ["done"],      color: "#10b981", icon: "CheckCircle2" },
-            { label: "Отказники",   statuses: ["cancelled"], color: "#ef4444", icon: "XCircle" },
-          ].map(group => {
+        <div>
+          {/* Переключатель Выполнено / Отказ — показывает только одну группу за раз */}
+          <div className="flex gap-2 mb-4">
+            {DONE_GROUPS.map(group => {
+              const isSel = doneSubFilter === group.key;
+              const cnt = currentClients.filter(c => group.statuses.includes(c.status ?? "")).length;
+              return (
+                <button key={group.key} onClick={() => setDoneSubFilter(group.key)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                  style={{
+                    background: isSel ? group.color + "18" : t.surface,
+                    border: `1px solid ${isSel ? group.color + "45" : t.border}`,
+                    color: isSel ? group.color : t.textMute,
+                  }}>
+                  <Icon name={group.icon} size={13} />
+                  {group.label}
+                  <span className="px-1.5 py-0.5 rounded-md" style={{ background: group.color + "20", color: group.color }}>{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const group = DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0];
             const items = filterSearch(currentClients.filter(c => group.statuses.includes(c.status ?? "")));
-            return (
-              <div key={group.label}>
-                <div className="flex items-center gap-2 mb-3">
-                  <Icon name={group.icon} size={14} style={{ color: group.color }} />
-                  <span className="text-sm font-bold" style={{ color: t.textSub }}>{group.label}</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
-                    style={{ background: group.color + "18", color: group.color }}>{items.length}</span>
-                </div>
-                {viewMode === "list" ? (
-                  <div className="space-y-2">
-                    {items.length === 0
-                      ? <div className="py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
-                      : items.map(renderRow)}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-                    {items.length === 0
-                      ? <div className="col-span-3 py-4 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
-                      : items.map(renderCard)}
-                  </div>
-                )}
+            return viewMode === "list" ? (
+              <div className="space-y-2">
+                {items.length === 0
+                  ? <div className="py-12 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
+                  : items.map(renderRow)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                {items.length === 0
+                  ? <div className="col-span-3 py-12 text-sm text-center" style={{ color: t.textMute }}>Нет записей</div>
+                  : items.map(renderCard)}
               </div>
             );
-          })}
+          })()}
         </div>
       ) : viewMode === "list" ? (
         <div className="space-y-2">

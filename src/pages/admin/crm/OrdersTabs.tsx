@@ -332,11 +332,15 @@ export function OrdersTabs({
 
   const allTabs = [...defaultTabs, ...customTabsMapped];
 
+  // Таб "Финальный" (done) объединяет и выполненные, и отказники для списка,
+  // но счётчик/сумма на самой кнопке должны отражать только реально выполненные заказы.
+  const statusesForStats = (tab: TabDef) => tab.id === "done" ? ["done"] : tab.statuses;
+
   const getRevenue = (tab: TabDef) =>
-    allClients.filter(c => tab.statuses.includes(c.status)).reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
+    allClients.filter(c => statusesForStats(tab).includes(c.status)).reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
 
   const getCount = (tab: TabDef) =>
-    allClients.filter(c => tab.statuses.includes(c.status)).length;
+    allClients.filter(c => statusesForStats(tab).includes(c.status)).length;
 
   const gearRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
@@ -364,10 +368,9 @@ export function OrdersTabs({
         <button
           onClick={() => onSelect(ALL_TAB_ID)}
           title="Все заявки"
-          className="flex-shrink-0 flex items-center justify-center rounded-xl transition"
+          className="flex-shrink-0 flex items-center justify-center rounded-xl transition px-1.5 py-2.5"
           style={{
             width: 28,
-            alignSelf: "stretch",
             background: isAllActive ? "#64748b15" : t.surface,
             border: `1px solid ${isAllActive ? "#64748b45" : t.border}`,
           }}>
