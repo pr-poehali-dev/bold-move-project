@@ -85,6 +85,16 @@ export function OrdersListView({
     );
   };
 
+  // На вкладке "Замеры" — сортируем по дате замера (ближайшие первыми, без даты — в конце)
+  const sortByMeasureDate = (list: Client[]) => {
+    if (activeTab !== "measures") return list;
+    return [...list].sort((a, b) => {
+      const da = a.measure_date ? new Date(a.measure_date).getTime() : Infinity;
+      const db = b.measure_date ? new Date(b.measure_date).getTime() : Infinity;
+      return da - db;
+    });
+  };
+
   const renderCard = (c: Client) => (
     <OrdersClientCard key={c.id} c={c} onClick={() => onSelect(c)} onNextStep={onNextStep}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
@@ -191,7 +201,7 @@ export function OrdersListView({
         </div>
       ) : viewMode === "list" ? (
         <div className="space-y-2">
-          {filterSearch(currentClients).map(renderRow)}
+          {sortByMeasureDate(filterSearch(currentClients)).map(renderRow)}
           {currentClients.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
               <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
@@ -201,7 +211,7 @@ export function OrdersListView({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-          {filterSearch(currentClients).map(renderCard)}
+          {sortByMeasureDate(filterSearch(currentClients)).map(renderCard)}
           {currentClients.length === 0 && (
             <div className="col-span-3 flex flex-col items-center justify-center py-12" style={{ color: t.textMute }}>
               <Icon name={currentTab?.icon || "Inbox"} size={28} className="mb-2 opacity-30" />
