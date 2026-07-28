@@ -3,6 +3,13 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { Avatar, Checkbox } from "./ClientsTablePrimitives";
 import { loadCustomTags } from "./clientFieldsStore";
+import type { TouchBadge } from "./CrmClients";
+
+const INTEREST_META: Record<string, { label: string; color: string }> = {
+  high:   { label: "Высокий интерес", color: "#22c55e" },
+  medium: { label: "Средний интерес", color: "#eab308" },
+  low:    { label: "Низкий интерес",  color: "#ef4444" },
+};
 
 const ALL_TAG_COLORS: Record<string, string> = (() => {
   const map: Record<string, string> = {};
@@ -16,7 +23,7 @@ export { AddClientModal } from "./AddClientModal";
 export function ClientsTable({
   loading, filteredClients, clients, checkedIds, allChecked, someChecked,
   activeFilters, onToggleAll, onToggleOne, onSelect, onClearFilters,
-  statuses = [], getStatusByName,
+  statuses = [], getStatusByName, getTouchBadge,
 }: {
   loading: boolean;
   filteredClients: Client[];
@@ -31,6 +38,7 @@ export function ClientsTable({
   onClearFilters: () => void;
   statuses?: ClientStatus[];
   getStatusByName?: (name: string | null) => ClientStatus | null;
+  getTouchBadge?: (phone: string | null | undefined) => TouchBadge | null;
 }) {
   const t = useTheme();
   const isDark = t.theme === "dark";
@@ -79,6 +87,7 @@ export function ClientsTable({
             {/* ── Десктоп: строка таблицы ── */}
             {(() => {
               const clientSt = getStatusByName ? getStatusByName(c.client_status) : null;
+              const touchBadge = getTouchBadge ? getTouchBadge(c.phone) : null;
               return (
                 <div className="hidden md:grid grid-cols-[40px_1fr_130px_150px_120px_120px_110px_32px] px-4 py-3 items-center"
                   onMouseEnter={e => { if (!isChecked) (e.currentTarget as HTMLDivElement).style.background = rowHover; }}
@@ -88,17 +97,34 @@ export function ClientsTable({
                     <Checkbox checked={isChecked} onChange={() => onToggleOne(c.id)} />
                   </div>
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={c.client_name} color={clientSt?.color} />
+                    <div className="relative flex-shrink-0">
+                      <Avatar name={c.client_name} color={clientSt?.color} />
+                      {touchBadge?.unread && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+                          style={{ background: "#ef4444", borderColor: t.surface }} title="Есть непрочитанное касание" />
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
-                      {c.tags && c.tags.length > 0 && (
-                        <div className="flex gap-1 mt-0.5">
-                          {c.tags.slice(0, 2).map(tag => {
-                            const color = ALL_TAG_COLORS[tag] || "#888";
-                            return <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: color + "20", color }}>{tag}</span>;
-                          })}
-                        </div>
-                      )}
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        {touchBadge?.interest && INTEREST_META[touchBadge.interest] && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ background: INTEREST_META[touchBadge.interest].color + "20", color: INTEREST_META[touchBadge.interest].color }}
+                            title={touchBadge.next_action || undefined}>
+                            {INTEREST_META[touchBadge.interest].label}
+                          </span>
+                        )}
+                        {touchBadge?.stage && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ background: "#7c3aed20", color: "#a78bfa" }}>
+                            {touchBadge.stage}
+                          </span>
+                        )}
+                        {c.tags && c.tags.length > 0 && c.tags.slice(0, 2).map(tag => {
+                          const color = ALL_TAG_COLORS[tag] || "#888";
+                          return <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: color + "20", color }}>{tag}</span>;
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div className="text-sm truncate font-medium" style={{ color: t.textSub }}>{c.phone || "—"}</div>
@@ -131,12 +157,19 @@ export function ClientsTable({
             {/* ── Мобиле: карточка ── */}
             {(() => {
               const clientSt = getStatusByName ? getStatusByName(c.client_status) : null;
+              const touchBadge = getTouchBadge ? getTouchBadge(c.phone) : null;
               return (
                 <div className="md:hidden flex items-center gap-3 px-3 py-3">
                   <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <Checkbox checked={isChecked} onChange={() => onToggleOne(c.id)} />
                   </div>
-                  <Avatar name={c.client_name} color={clientSt?.color} />
+                  <div className="relative flex-shrink-0">
+                    <Avatar name={c.client_name} color={clientSt?.color} />
+                    {touchBadge?.unread && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+                        style={{ background: "#ef4444", borderColor: t.surface }} />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</span>
@@ -158,9 +191,21 @@ export function ClientsTable({
                       {c.contract_sum ? <span className="text-xs font-bold text-emerald-400">{Number(c.contract_sum).toLocaleString("ru-RU")} ₽</span> : null}
                     </div>
                     {c.address && <div className="text-xs truncate mt-0.5" style={{ color: t.textMute }}>{c.address}</div>}
-                    {c.tags && c.tags.length > 0 && (
+                    {(touchBadge?.interest || touchBadge?.stage || (c.tags && c.tags.length > 0)) && (
                       <div className="flex gap-1 mt-1 flex-wrap">
-                        {c.tags.slice(0, 3).map(tag => {
+                        {touchBadge?.interest && INTEREST_META[touchBadge.interest] && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ background: INTEREST_META[touchBadge.interest].color + "20", color: INTEREST_META[touchBadge.interest].color }}>
+                            {INTEREST_META[touchBadge.interest].label}
+                          </span>
+                        )}
+                        {touchBadge?.stage && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ background: "#7c3aed20", color: "#a78bfa" }}>
+                            {touchBadge.stage}
+                          </span>
+                        )}
+                        {c.tags && c.tags.slice(0, 3).map(tag => {
                           const color = ALL_TAG_COLORS[tag] || "#888";
                           return <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: color + "20", color }}>{tag}</span>;
                         })}

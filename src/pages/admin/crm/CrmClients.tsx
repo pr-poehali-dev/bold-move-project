@@ -11,6 +11,8 @@ import { useClientStatuses } from "@/hooks/useClientStatuses";
 
 const EMPTY_FORM = { client_name: "", phone: "", status: "new", address: "", notes: "", measure_date: "" };
 
+export interface TouchBadge { interest: string | null; stage: string | null; next_action: string | null; unread: boolean }
+
 export default function CrmClients({ canEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true }: {
   canEdit?: boolean; canFinance?: boolean; canFiles?: boolean;
   canFieldContacts?: boolean; canFieldAddress?: boolean; canFieldDates?: boolean;
@@ -25,6 +27,19 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
   const [newClient, setNewClient] = useState(EMPTY_FORM);
 
   const { statuses, create: createStatus, update: updateStatus, remove: removeStatus, getByName } = useClientStatuses();
+
+  // ── Бейджи «Касаний» (интерес/стадия/непрочитано) — один запрос на всю компанию ──
+  const [touchBadges, setTouchBadges] = useState<Record<string, TouchBadge>>({});
+  useEffect(() => {
+    crmFetch("touch-badges").then(d => {
+      const b = (d as { badges?: Record<string, TouchBadge> })?.badges;
+      if (b && typeof b === "object") setTouchBadges(b);
+    }).catch(() => { /* тихо */ });
+  }, []);
+  const getTouchBadge = (phone: string | null | undefined): TouchBadge | null => {
+    const digits = (phone || "").replace(/\D/g, "").slice(-10);
+    return digits ? (touchBadges[digits] ?? null) : null;
+  };
 
   // Фильтры
   const [filters, setFilters] = useState<FiltersState>({
@@ -194,13 +209,11 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
         activeFilters={activeFilters}
         onToggleAll={toggleAll}
         onToggleOne={toggleOne}
-        onSelect={c => {
-          setClientOrders(getClientOrders(c, clients));
-          setSelected(c);
-        }}
+        onSelect={c => setSelected(c)}
         onClearFilters={clearFilters}
         statuses={statuses}
         getStatusByName={getByName}
+        getTouchBadge={getTouchBadge}
       />
 
       {/* BulkBar */}

@@ -2090,6 +2090,36 @@ def handler(event: dict, context) -> dict:
                 },
             })
 
+        # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
+        # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
+        if resource == "touch-badges" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"""
+                SELECT tc.phone, tc.interest, tc.stage, tc.next_action,
+                       (SELECT te.direction FROM {SCHEMA}.touch_events te
+                        WHERE te.client_id = tc.id
+                        ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction
+                FROM {SCHEMA}.touch_clients tc
+                WHERE tc.company_id = %s AND tc.phone IS NOT NULL
+            """, (owner_id,))
+            badges = {}
+            for phone, interest, stage, next_action, last_direction in cur.fetchall():
+                digits = re.sub(r"\D", "", phone or "")[-10:]
+                if not digits:
+                    continue
+                badges[digits] = {
+                    "interest": interest,
+                    "stage": stage,
+                    "next_action": next_action,
+                    "unread": last_direction == "in",
+                }
+            return ok({"badges": badges})
+
         return err("unknown resource", 404)
 
     except Exception as e:
