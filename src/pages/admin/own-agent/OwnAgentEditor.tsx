@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import { updateBrand } from "./brandApi";
+import { crmFetch } from "../crm/crmApi";
 import BrandPreview from "./BrandPreview";
 import { CopyLink } from "./OwnAgentFields";
 import {
@@ -63,9 +64,24 @@ export default function OwnAgentEditor({ isDark }: Props) {
   const [maxToken] = useState(user?.brand?.max_bot_token      ?? "");
   const [maxChat]  = useState(user?.brand?.max_notify_chat_id ?? "");
 
-  // Чекбоксы «куда слать заявки» (UI-заглушки, локальное состояние, без сохранения)
+  // Чекбоксы «куда слать заявки» — сохраняются в config интеграций (таблица integrations)
   const [notifyTg,  setNotifyTg]  = useState(!!(user?.tg_bot_token));
   const [notifyMax, setNotifyMax] = useState(!!(user?.brand?.max_bot_token));
+
+  // Загрузка сохранённых флагов уведомлений из config
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const d = await crmFetch("integrations") as { config?: Record<string, unknown> };
+        if (alive && d?.config && typeof d.config === "object") {
+          if ("notify_tg" in d.config)  setNotifyTg(!!d.config.notify_tg);
+          if ("notify_max" in d.config) setNotifyMax(!!d.config.notify_max);
+        }
+      } catch { /* тихо */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   // AI-дозаполнение полей
   const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
@@ -138,6 +154,15 @@ export default function OwnAgentEditor({ isDark }: Props) {
         max_bot_token:      maxToken  || null,
         max_notify_chat_id: maxChat   || null,
       } as Brand);
+      // Флаги «куда слать заявки» → config интеграций (мержим, чтобы не затереть ключи сервисов)
+      try {
+        const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
+        const prev = (cur?.config && typeof cur.config === "object") ? cur.config : {};
+        await crmFetch("integrations", {
+          method: "POST",
+          body: JSON.stringify({ config: { ...prev, notify_tg: notifyTg, notify_max: notifyMax } }),
+        });
+      } catch { /* тихо */ }
       const profileChanged = (companyName !== (user?.company_name ?? "")) || (website !== (user?.website ?? ""));
       if (profileChanged) {
         const { default: func2url } = await import("@/../backend/func2url.json");

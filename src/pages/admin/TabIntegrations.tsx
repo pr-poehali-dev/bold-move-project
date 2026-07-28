@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { updateBrand } from "./own-agent/brandApi";
+import { crmFetch } from "./crm/crmApi";
 
 interface Props {
   isDark: boolean;
@@ -124,6 +125,24 @@ export default function TabIntegrations({ isDark }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
 
+  // Загрузка сохранённого config новых сервисов из БД (таблица integrations)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const d = await crmFetch("integrations") as { config?: Record<string, string> };
+        if (alive && d?.config && typeof d.config === "object") {
+          const { _providers, ...vals } = d.config;
+          setValues(v => ({ ...vals, ...v }));
+          if (_providers) {
+            try { setActiveProvider(p => ({ ...JSON.parse(_providers), ...p })); } catch { /* игнор */ }
+          }
+        }
+      } catch { /* тихо */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const testTelegram = async () => {
     if (!tgToken || !tgChat) return;
     setTgTesting(true); setTgTestResult(null);
@@ -163,6 +182,18 @@ export default function TabIntegrations({ isDark }: Props) {
   const save = async () => {
     setSaved(false); setSaving(true);
     try {
+      // Новые сервисы (ключи + выбранные провайдеры) → таблица integrations.
+      // Мержим с текущим config, чтобы не затереть флаги notify_* из «Своего агента».
+      let prevCfg: Record<string, unknown> = {};
+      try {
+        const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
+        if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
+      } catch { /* тихо */ }
+      await crmFetch("integrations", {
+        method: "POST",
+        body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
+      });
+      // Telegram / MAX → бренд (как раньше)
       await updateBrand(token, {
         ...user?.brand,
         tg_bot_token:       tgToken   || null,

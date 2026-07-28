@@ -1834,6 +1834,37 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── INTEGRATIONS: настройки внешних сервисов компании (config JSONB) ──────
+        if resource == "integrations":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            # владелец интеграций = компания (для менеджера) либо сам пользователь
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            # GET — прочитать config компании
+            if method == "GET":
+                cur.execute(
+                    f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s",
+                    (owner_id,))
+                row = cur.fetchone()
+                return ok({"config": row[0] if row else {}})
+
+            # POST — сохранить config (upsert)
+            if method == "POST":
+                cfg = body.get("config", {})
+                if not isinstance(cfg, dict):
+                    return err("config must be an object")
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (company_id)
+                    DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+                conn.commit()
+                return ok({"saved": True})
+
         return err("unknown resource", 404)
 
     except Exception as e:

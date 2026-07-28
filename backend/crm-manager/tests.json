@@ -114,6 +114,14 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "Требуется авторизация"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET integrations without auth is rejected",
+      "method": "GET",
+      "path": "/?r=integrations",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
     }
   ]
 }
