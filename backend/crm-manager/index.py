@@ -46,8 +46,15 @@ def decrypt_secret(stored):
 
 
 # ── Avito Messenger API ──────────────────────────────────────────────────────
+# Redirect URI для OAuth-входа владельца Avito-аккаунта (авторизует доступ
+# к чтению/отправке сообщений — client_credentials этого НЕ даёт).
+AVITO_REDIRECT_URI = "https://ai-potolki.ru/auth/avito/callback"
+
+
 def avito_get_token(client_id, client_secret):
-    """OAuth2 client_credentials -> access_token. Возвращает (token, error)."""
+    """OAuth2 client_credentials -> access_token. Даёт доступ только к базовым
+    методам (профиль и т.п.), БЕЗ прав на чтение/отправку сообщений Messenger —
+    для этого нужен avito_oauth_exchange_code (authorization_code flow)."""
     if not client_id or not client_secret:
         return None, "нет client_id/client_secret"
     data = urllib_urlencode({
@@ -66,6 +73,95 @@ def avito_get_token(client_id, client_secret):
         return tok, None
     except Exception as e:
         return None, f"Avito auth: {str(e)[:200]}"
+
+
+def avito_oauth_auth_url(client_id, state):
+    """Формирует ссылку для входа владельца Avito-аккаунта (authorization_code flow).
+    Только так Avito выдаёт токен с правами messenger:read/messenger:write."""
+    from urllib.parse import urlencode
+    params = {
+        "response_type": "code",
+        "client_id": client_id,
+        "scope": "messenger:read,messenger:write",
+        "state": state,
+        "redirect_uri": AVITO_REDIRECT_URI,
+    }
+    return f"https://avito.ru/oauth?{urlencode(params)}"
+
+
+def avito_oauth_exchange_code(code, client_id, client_secret):
+    """Обменивает authorization code на access_token + refresh_token.
+    Возвращает (dict{access_token, refresh_token, expires_in}, error)."""
+    data = urllib_urlencode({
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": AVITO_REDIRECT_URI,
+    }).encode()
+    req = _ureq.Request("https://api.avito.ru/token", data=data,
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read().decode())
+        if not resp.get("access_token"):
+            return None, "Avito не вернул токен"
+        return resp, None
+    except Exception as e:
+        return None, f"Avito oauth: {str(e)[:200]}"
+
+
+def avito_oauth_refresh(refresh_token, client_id, client_secret):
+    """Обновляет истёкший access_token по refresh_token."""
+    data = urllib_urlencode({
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }).encode()
+    req = _ureq.Request("https://api.avito.ru/token", data=data,
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read().decode())
+        if not resp.get("access_token"):
+            return None, "Avito не вернул токен при обновлении"
+        return resp, None
+    except Exception as e:
+        return None, f"Avito refresh: {str(e)[:200]}"
+
+
+def avito_get_messenger_token(cur, conn, owner_id, cfg):
+    """Возвращает рабочий OAuth-токен с правами messenger:read/write для компании.
+    Сам обновляет токен по refresh_token, если истёк, и сохраняет в БД.
+    Возвращает (token, error)."""
+    import time
+    access = decrypt_secret(cfg.get("_avito_oauth_access_token"))
+    refresh = decrypt_secret(cfg.get("_avito_oauth_refresh_token"))
+    expires_at = cfg.get("_avito_oauth_expires_at") or 0
+    if not access or not refresh:
+        return None, "Avito не подключён — нажмите «Подключить Avito» в Интеграциях"
+
+    if time.time() < expires_at - 60:
+        return access, None
+
+    client_id_a = cfg.get("avito_client_id")
+    client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
+    resp, rerr = avito_oauth_refresh(refresh, client_id_a, client_secret_a)
+    if rerr:
+        return None, rerr
+
+    cfg["_avito_oauth_access_token"] = encrypt_secret(resp["access_token"])
+    if resp.get("refresh_token"):
+        cfg["_avito_oauth_refresh_token"] = encrypt_secret(resp["refresh_token"])
+    cfg["_avito_oauth_expires_at"] = time.time() + resp.get("expires_in", 86400)
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+    """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+    conn.commit()
+    return resp["access_token"], None
 
 
 def avito_api_get(token, path):
@@ -2062,6 +2158,10 @@ def handler(event: dict, context) -> dict:
                 for k in SECRET_KEYS:
                     if cfg.get(k):
                         cfg[k] = SECRET_MASK  # значение задано, но наружу не отдаём
+                # Служебные OAuth-токены Avito — наружу не отдаём вообще, только флаг подключения
+                cfg.pop("_avito_oauth_access_token", None)
+                cfg.pop("_avito_oauth_refresh_token", None)
+                cfg["avito_connected"] = bool(cfg.get("_avito_oauth_connected"))
                 return ok({"config": cfg})
 
             # POST — сохранить config (upsert). Секреты шифруем; маску игнорируем
@@ -2161,6 +2261,89 @@ def handler(event: dict, context) -> dict:
                        "name": me.get("name") or me.get("email"),
                        "webhook_registered": webhook_ok, "webhook_error": webhook_err})
 
+        # ── AVITO-AUTH-URL: ссылка для входа владельца Avito-аккаунта ──────────────
+        # Без этого шага Avito НЕ даёт прав messenger:read/write — сообщения не
+        # приходят на вебхук, даже если сама подписка формально зарегистрирована.
+        if resource == "avito-auth-url" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            client_id_a = cfg.get("avito_client_id")
+            if not client_id_a:
+                return err("Сначала сохраните Client ID", 400)
+
+            state = f"{owner_id}:{uuid.uuid4().hex}"
+            return ok({"auth_url": avito_oauth_auth_url(client_id_a, state),
+                       "redirect_uri": AVITO_REDIRECT_URI, "state": state})
+
+        # ── AVITO-CALLBACK: приём code после входа владельца Avito-аккаунта ────────
+        if resource == "avito-callback" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            code = body.get("code")
+            if not code:
+                return err("code обязателен", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            client_id_a = cfg.get("avito_client_id")
+            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
+            if not client_id_a or not client_secret_a:
+                return err("Сначала сохраните Client ID и Client Secret", 400)
+
+            resp, oerr = avito_oauth_exchange_code(code, client_id_a, client_secret_a)
+            if oerr:
+                return err(oerr, 400)
+
+            import time
+            cfg["_avito_oauth_access_token"] = encrypt_secret(resp["access_token"])
+            cfg["_avito_oauth_refresh_token"] = encrypt_secret(resp.get("refresh_token", ""))
+            cfg["_avito_oauth_expires_at"] = time.time() + resp.get("expires_in", 86400)
+            cfg["_avito_oauth_connected"] = True
+
+            # Перерегистрируем вебхук уже ЭТИМ токеном (с правами messenger:read/write) —
+            # именно это заставляет Avito реально доставлять сообщения на наш URL.
+            wh_key = cfg.get("_channel_webhook_key")
+            if not wh_key:
+                wh_key = uuid.uuid4().hex
+                cfg["_channel_webhook_key"] = wh_key
+            webhook_url = (f"{SELF_FUNCTION_URL}?r=avito-webhook"
+                           f"&company_id={owner_id}&key={wh_key}")
+            webhook_ok = False
+            webhook_err = None
+            try:
+                wdata = json.dumps({"url": webhook_url}).encode()
+                wreq = _ureq.Request("https://api.avito.ru/messenger/v3/webhook", data=wdata,
+                                     headers={"Authorization": f"Bearer {resp['access_token']}",
+                                              "Content-Type": "application/json"}, method="POST")
+                with _ureq.urlopen(wreq, timeout=15) as r:
+                    r.read()
+                webhook_ok = True
+                cfg["_avito_webhook_registered"] = True
+            except Exception as e:
+                webhook_err = str(e)[:200]
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+
+            return ok({"ok": True, "connected": True,
+                       "webhook_registered": webhook_ok, "webhook_error": webhook_err})
+
         # ── AVITO-WEBHOOK-STATUS: диагностика — что реально видит Avito (список подписок) ──
         if resource == "avito-webhook-status" and method == "GET":
             if not authenticated:
@@ -2172,12 +2355,8 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
             row = cur.fetchone()
             cfg = row[0] if row else {}
-            client_id_a = cfg.get("avito_client_id")
-            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
-            if not client_id_a or not client_secret_a:
-                return err("Avito не настроен", 400)
 
-            token, terr = avito_get_token(client_id_a, client_secret_a)
+            token, terr = avito_get_messenger_token(cur, conn, owner_id, cfg)
             if terr:
                 return err(terr, 400)
             try:
@@ -2187,7 +2366,8 @@ def handler(event: dict, context) -> dict:
 
             expected_url = (f"{SELF_FUNCTION_URL}?r=avito-webhook"
                             f"&company_id={owner_id}&key={cfg.get('_channel_webhook_key')}")
-            return ok({"subscriptions": subs, "expected_url": expected_url})
+            return ok({"subscriptions": subs, "expected_url": expected_url,
+                       "connected": bool(cfg.get("_avito_oauth_connected"))})
 
         # ── FIN-SETTINGS: настройки блока Доходы/Затраты — общие на компанию ───────
         # (видимость строк, кастомные строки). Раньше жили в localStorage браузера —
@@ -2745,11 +2925,10 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
                 arow = cur.fetchone()
                 acfg = arow[0] if arow else {}
-                token, terr = avito_get_token(acfg.get("avito_client_id"),
-                                              decrypt_secret(acfg.get("avito_client_secret")))
+                token, terr = avito_get_messenger_token(cur, conn, owner_id, acfg)
                 avito_user_id = acfg.get("_avito_user_id")
                 if terr or not avito_user_id:
-                    return err(terr or "Avito не настроен — нажмите «Проверить» в Интеграциях", 400)
+                    return err(terr or "Avito не настроен — нажмите «Подключить Avito» в Интеграциях", 400)
                 _, serr = avito_send_message(token, avito_user_id, external_chat_id, text)
                 initial_status = "error" if serr else "sent"
 

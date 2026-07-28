@@ -18,12 +18,16 @@ interface Props {
   setRevealed: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   sectionCheck: Record<string, "ok" | "err">;
   checkSection: (section: SectionDef, provider: ProviderOption) => void;
+  avitoConnected?: boolean;
+  avitoConnecting?: boolean;
+  connectAvito?: () => void;
 }
 
 export default function ProviderSection({
   section, isDark, txt, txtSub, cardBg, cardBrd, inputBg, inputBrd,
   activeProvider, setActiveProvider, values, setValues,
   revealed, setRevealed, sectionCheck, checkSection,
+  avitoConnected, avitoConnecting, connectAvito,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
   const multiProvider = section.providers.length > 1;
@@ -125,8 +129,31 @@ export default function ProviderSection({
         })}
       </div>}
 
-      {/* Проверить — только для секций с полями (не для личных аккаунтов) */}
-      {section.kind !== "account" && <div className="flex items-center gap-2 mt-3">
+      {/* Avito: сначала ключи, потом ОБЯЗАТЕЛЬНЫЙ вход владельца аккаунта — без него
+          Avito не выдаёт прав на чтение/отправку сообщений, даже если ключи верные. */}
+      {section.id === "avito" && <div className="flex flex-col gap-2 mt-3">
+        <button
+          onClick={connectAvito}
+          disabled={avitoConnecting}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition w-fit disabled:opacity-60"
+          style={{ background: "#7c3aed", color: "#fff" }}>
+          <Icon name={avitoConnecting ? "Loader2" : "LogIn"} size={13} className={avitoConnecting ? "animate-spin" : ""} />
+          {avitoConnected ? "Переподключить Avito" : "Подключить Avito"}
+        </button>
+        {avitoConnected ? (
+          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
+            <Icon name="CheckCircle2" size={12} /> Аккаунт подключён, сообщения принимаются
+          </span>
+        ) : (
+          <span className="text-[10px]" style={{ color: txtSub }}>
+            Сначала заполните Client ID и Client Secret выше, затем войдите в свой аккаунт Avito —
+            без этого шага сообщения от клиентов не будут приходить.
+          </span>
+        )}
+      </div>}
+
+      {/* Проверить — только для остальных секций с полями (не Avito, не личные аккаунты) */}
+      {section.kind !== "account" && section.id !== "avito" && <div className="flex items-center gap-2 mt-3">
         <button
           onClick={() => checkSection(section, current)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
@@ -135,12 +162,12 @@ export default function ProviderSection({
         </button>
         {sectionCheck[section.id] === "ok" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-            <Icon name="CheckCircle2" size={12} /> {section.id === "avito" ? "Связь работает" : "Поля заполнены"}
+            <Icon name="CheckCircle2" size={12} /> Поля заполнены
           </span>
         )}
         {sectionCheck[section.id] === "err" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-            <Icon name="AlertTriangle" size={12} /> {section.id === "avito" ? "Проверьте ключи Avito" : "Заполните обязательные поля"}
+            <Icon name="AlertTriangle" size={12} /> Заполните обязательные поля
           </span>
         )}
       </div>}

@@ -29,6 +29,34 @@ export default function TabIntegrations({ isDark }: Props) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [sectionCheck, setSectionCheck] = useState<Record<string, "ok" | "err">>({});
+  // Отдельно от sectionCheck: подключён ли реально владелец Avito-аккаунта
+  // (через OAuth-вход) — только это даёт права на получение/отправку сообщений.
+  const [avitoConnected, setAvitoConnected] = useState(false);
+  const [avitoConnecting, setAvitoConnecting] = useState(false);
+
+  // Подключить Avito: сначала сохраняем Client ID/Secret, затем ведём владельца
+  // на страницу входа Avito — только так выдаются права messenger:read/write.
+  const connectAvito = async () => {
+    setAvitoConnecting(true);
+    try {
+      let prevCfg: Record<string, unknown> = {};
+      try {
+        const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
+        if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
+      } catch { /* тихо */ }
+      await crmFetch("integrations", {
+        method: "POST",
+        body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
+      });
+      const res = await crmFetch("avito-auth-url") as { auth_url?: string; error?: string };
+      if (!res?.auth_url) { setSectionCheck(s => ({ ...s, avito: "err" })); return; }
+      window.location.href = res.auth_url;
+    } catch {
+      setSectionCheck(s => ({ ...s, avito: "err" }));
+    } finally {
+      setAvitoConnecting(false);
+    }
+  };
 
   // Проверка секции. Для Avito — реальная (сохраняем ключи и дёргаем Avito API),
   // для остальных — формальная (заполнены ли обязательные поля).
@@ -84,8 +112,9 @@ export default function TabIntegrations({ isDark }: Props) {
       try {
         const d = await crmFetch("integrations") as { config?: Record<string, string> };
         if (alive && d?.config && typeof d.config === "object") {
-          const { _providers, ...vals } = d.config;
+          const { _providers, avito_connected, ...vals } = d.config;
           setValues(v => ({ ...vals, ...v }));
+          if (avito_connected) setAvitoConnected(true);
           if (_providers) {
             try { setActiveProvider(p => ({ ...JSON.parse(_providers), ...p })); } catch { /* игнор */ }
           }
@@ -243,6 +272,7 @@ export default function TabIntegrations({ isDark }: Props) {
                   values={values} setValues={setValues}
                   revealed={revealed} setRevealed={setRevealed}
                   sectionCheck={sectionCheck} checkSection={checkSection}
+                  avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
                 />
               ))}
             </div>

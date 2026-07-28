@@ -55,6 +55,7 @@ const LBPage        = lazy(() => import("./pages/LBPage"));
 const BugReportPage = lazy(() => import("./pages/BugReportPage"));
 const GoogleCallback = lazy(() => import("./pages/auth/GoogleCallback"));
 const YandexCallback = lazy(() => import("./pages/auth/YandexCallback"));
+const AvitoCallback = lazy(() => import("./pages/auth/AvitoCallback"));
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="/LB"        element={<LBPage />} />
                 <Route path="/auth/google/callback" element={<GoogleCallback />} />
                 <Route path="/auth/yandex/callback" element={<YandexCallback />} />
+                <Route path="/auth/avito/callback" element={<AvitoCallback />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
