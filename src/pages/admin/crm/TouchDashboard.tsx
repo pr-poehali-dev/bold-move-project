@@ -15,6 +15,8 @@ interface TouchDashboardData {
   conversion_pct: number;
   analyzed_total: number;
   attention: AttentionItem[];
+  avg_operator_score: number | null;
+  scored_calls_count: number;
 }
 
 const CHANNEL_META: Record<string, { icon: string; label: string; color: string }> = {
@@ -68,7 +70,10 @@ export default function TouchDashboard({ clients, onSelectClient }: Props) {
     );
   }
 
-  const d = data ?? { days, total_touches: 0, by_channel: [], conversion_pct: 0, analyzed_total: 0, attention: [] };
+  const d = data ?? {
+    days, total_touches: 0, by_channel: [], conversion_pct: 0, analyzed_total: 0, attention: [],
+    avg_operator_score: null, scored_calls_count: 0,
+  };
   const maxChannelCount = Math.max(1, ...d.by_channel.map(x => x.count));
 
   const Card = ({ children }: { children: React.ReactNode }) => (
@@ -106,6 +111,17 @@ export default function TouchDashboard({ clients, onSelectClient }: Props) {
         <Card>
           <div className="text-xs mb-1" style={{ color: t.textMute }}>Требуют внимания</div>
           <div className="text-2xl font-bold" style={{ color: "#eab308" }}>{d.attention.length}</div>
+        </Card>
+        <Card>
+          <div className="text-xs mb-1" style={{ color: t.textMute }}>Средняя оценка звонков</div>
+          {d.avg_operator_score !== null ? (
+            <>
+              <div className="text-2xl font-bold" style={{ color: "#3b82f6" }}>{d.avg_operator_score} / 10</div>
+              <div className="text-[10px] mt-0.5" style={{ color: t.textMute }}>по {d.scored_calls_count} звонк{d.scored_calls_count === 1 ? "у" : "ам"}</div>
+            </>
+          ) : (
+            <div className="text-xs mt-1" style={{ color: t.textMute }}>Нет оценённых звонков</div>
+          )}
         </Card>
       </div>
 

@@ -2090,6 +2090,139 @@ def handler(event: dict, context) -> dict:
                 },
             })
 
+        # ── ANALYZE-CALL: ИИ-оценка отдельного звонка (перенос ТЗ 8.1) ─────────────
+        if resource == "analyze-call" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            touch_id = body.get("touch_id") if isinstance(body, dict) else None
+            if not touch_id:
+                return err("touch_id required")
+
+            # Проверяем принадлежность звонка компании и достаём текст
+            cur.execute(f"""
+                SELECT te.id, te.text, te.duration_sec, te.channel
+                FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE te.id=%s AND tc.company_id=%s
+            """, (touch_id, owner_id))
+            row = cur.fetchone()
+            if not row:
+                return err("звонок не найден", 404)
+            _, event_text, duration_sec, channel = row
+            if channel != "call":
+                return err("это касание не звонок", 400)
+
+            # Транскрипт: либо детальный (touch_call_transcripts.full_text), либо текст касания
+            cur.execute(f"""
+                SELECT id, full_text FROM {SCHEMA}.touch_call_transcripts
+                WHERE touch_id=%s
+            """, (touch_id,))
+            tr = cur.fetchone()
+            transcript_text = (tr[1] if tr and tr[1] else event_text) or ""
+            if not transcript_text.strip():
+                return err("нет текста звонка для анализа", 400)
+
+            polza_key = os.environ.get("POLZA_API_KEY", "")
+            if not polza_key:
+                return err("AI недоступен — нет ключа", 500)
+
+            sys_prompt = "Отвечай только валидным JSON без markdown и пояснений."
+            user_prompt = (
+                "Ты эксперт по анализу звонков отдела продаж. На вход — транскрипт звонка "
+                "между оператором и клиентом. Оцени звонок и верни ТОЛЬКО валидный JSON:\n"
+                '{\n'
+                '  "call_type": "incoming|outgoing|repeat",\n'
+                '  "call_type_label": "Входящий|Исходящий|Повторный",\n'
+                '  "qualification": "qualified|unqualified|spam",\n'
+                '  "qualification_label": "Целевой|Нецелевой|Спам",\n'
+                '  "client_interest": "high|medium|low",\n'
+                '  "client_interest_label": "Высокий|Средний|Низкий",\n'
+                '  "outcome": "success|failure|pending",\n'
+                '  "outcome_label": "Успех|Отказ|В работе",\n'
+                '  "fail_reason": "причина отказа, если есть, иначе null",\n'
+                '  "success_factor": "что сработало, если успех, иначе null",\n'
+                '  "operator_score": число от 1 до 10 — качество работы оператора,\n'
+                '  "operator_followed_script": true|false,\n'
+                '  "operator_handled_objections": true|false,\n'
+                '  "operator_comment": "1-2 предложения обратной связи оператору",\n'
+                '  "summary": "краткое содержание звонка (2-3 предложения)",\n'
+                '  "key_phrases_client": ["фраза клиента 1", "..."],\n'
+                '  "key_phrases_operator": ["фраза оператора 1", "..."]\n'
+                '}\n'
+                "Правила: опирайся только на факты из транскрипта, не выдумывай.\n\n"
+                f"Длительность звонка: {duration_sec or 0} сек.\n"
+                f"Транскрипт:\n{transcript_text[:6000]}"
+            )
+            payload = json.dumps({
+                "model": "openai/gpt-4o-mini",
+                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "max_tokens": 700, "temperature": 0.1,
+            }).encode()
+            req = _ureq.Request(
+                "https://api.polza.ai/api/v1/chat/completions", data=payload,
+                headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
+            try:
+                with _ureq.urlopen(req, timeout=45) as r:
+                    ai_resp = json.loads(r.read().decode())
+                content = ai_resp["choices"][0]["message"]["content"]
+                m = re.search(r'\{[\s\S]*\}', content)
+                if not m:
+                    return err("AI вернул неожиданный формат", 502)
+                parsed = json.loads(m.group(0))
+            except Exception as e:
+                return err(f"AI ошибка: {str(e)[:200]}", 502)
+
+            fields = {
+                "call_type": parsed.get("call_type"),
+                "call_type_label": parsed.get("call_type_label"),
+                "qualification": parsed.get("qualification"),
+                "qualification_label": parsed.get("qualification_label"),
+                "client_interest": parsed.get("client_interest"),
+                "client_interest_label": parsed.get("client_interest_label"),
+                "outcome": parsed.get("outcome"),
+                "outcome_label": parsed.get("outcome_label"),
+                "fail_reason": parsed.get("fail_reason"),
+                "success_factor": parsed.get("success_factor"),
+                "operator_score": parsed.get("operator_score"),
+                "operator_followed_script": parsed.get("operator_followed_script"),
+                "operator_handled_objections": parsed.get("operator_handled_objections"),
+                "operator_comment": parsed.get("operator_comment"),
+                "summary": parsed.get("summary"),
+                "key_phrases_client": json.dumps(parsed.get("key_phrases_client") or [], ensure_ascii=False),
+                "key_phrases_operator": json.dumps(parsed.get("key_phrases_operator") or [], ensure_ascii=False),
+            }
+            try:
+                score = int(fields["operator_score"])
+                fields["operator_score"] = max(1, min(10, score))
+            except (TypeError, ValueError):
+                fields["operator_score"] = None
+
+            if tr:
+                set_sql = ", ".join(f"{k}=%s" for k in fields)
+                cur.execute(
+                    f"UPDATE {SCHEMA}.touch_call_transcripts SET {set_sql}, analyzed_at=NOW() WHERE touch_id=%s",
+                    (*fields.values(), touch_id))
+            else:
+                cols = ", ".join(["touch_id", *fields.keys(), "analyzed_at"])
+                placeholders = ", ".join(["%s"] * (len(fields) + 1) + ["NOW()"])
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.touch_call_transcripts ({cols}) VALUES ({placeholders})",
+                    (touch_id, *fields.values()))
+            conn.commit()
+
+            return ok({
+                "touch_id": touch_id,
+                "analysis": {
+                    **{k: v for k, v in fields.items() if k not in ("key_phrases_client", "key_phrases_operator")},
+                    "key_phrases_client": parsed.get("key_phrases_client") or [],
+                    "key_phrases_operator": parsed.get("key_phrases_operator") or [],
+                },
+            })
+
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
         if resource == "touch-badges" and method == "GET":
@@ -2177,6 +2310,19 @@ def handler(event: dict, context) -> dict:
                 "stage": r[4], "next_action": r[5], "unread": r[6] == "in",
             } for r in cur.fetchall()]
 
+            # Средняя оценка звонков за период (только реально проанализированные ИИ)
+            cur.execute(f"""
+                SELECT AVG(t.operator_score)::float, COUNT(*)
+                FROM {SCHEMA}.touch_call_transcripts t
+                JOIN {SCHEMA}.touch_events te ON te.id = t.touch_id
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id = %s AND t.operator_score IS NOT NULL
+                  AND te.created_at >= NOW() - (%s || ' days')::interval
+            """, (owner_id, str(days)))
+            score_row = cur.fetchone()
+            avg_operator_score = round(score_row[0], 1) if score_row and score_row[0] is not None else None
+            scored_calls_count = score_row[1] if score_row else 0
+
             return ok({
                 "days": days,
                 "total_touches": total_touches,
@@ -2184,6 +2330,8 @@ def handler(event: dict, context) -> dict:
                 "conversion_pct": conversion_pct,
                 "analyzed_total": analyzed_total,
                 "attention": attention,
+                "avg_operator_score": avg_operator_score,
+                "scored_calls_count": scored_calls_count,
             })
 
         return err("unknown resource", 404)
