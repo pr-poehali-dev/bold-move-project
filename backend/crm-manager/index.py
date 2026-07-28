@@ -1880,6 +1880,52 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"saved": True})
 
+        # ── FIN-SETTINGS: настройки блока Доходы/Затраты — общие на компанию ───────
+        # (видимость строк, кастомные строки). Раньше жили в localStorage браузера —
+        # теперь одна настройка на всех сотрудников компании.
+        if resource == "fin-settings":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            if method == "GET":
+                cur.execute(
+                    f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s",
+                    (owner_id,))
+                row = cur.fetchone()
+                cfg = row[0] if row else {}
+                return ok({
+                    "row_visibility": cfg.get("_fin_row_visibility") or {},
+                    "custom_fin_rows": cfg.get("_fin_custom_rows") or [],
+                })
+
+            if method == "POST":
+                row_vis = body.get("row_visibility")
+                custom_rows = body.get("custom_fin_rows")
+                cur.execute(
+                    f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s",
+                    (owner_id,))
+                row = cur.fetchone()
+                cfg = dict(row[0]) if row and row[0] else {}
+                if row_vis is not None:
+                    if not isinstance(row_vis, dict):
+                        return err("row_visibility must be an object")
+                    cfg["_fin_row_visibility"] = row_vis
+                if custom_rows is not None:
+                    if not isinstance(custom_rows, list):
+                        return err("custom_fin_rows must be an array")
+                    cfg["_fin_custom_rows"] = custom_rows
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (company_id)
+                    DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+                conn.commit()
+                return ok({"saved": True})
+
         # ── TOUCHES: лента касаний клиента (модуль «Касания») ─────────────────────
         if resource == "touches":
             if not authenticated:

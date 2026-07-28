@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
 import func2url from "@/../backend/func2url.json";
-import { Client, STATUS_LABELS } from "./crmApi";
+import { Client, STATUS_LABELS, crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
 import { StatusSelector } from "./StatusSelector";
@@ -53,6 +53,37 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
   const [customFinRows, setCustomFinRows] = useState<CustomFinRow[]>(loadCustomFinRows);
 
+  // Настройки Доходов/Затрат — общие на компанию (БД), localStorage — быстрый локальный кэш.
+  // При первом заходе после обновления: если в БД пусто, а локально что-то настроено —
+  // переносим локальное в БД один раз, чтобы ничего не потерять.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const d = await crmFetch("fin-settings") as { row_visibility?: Record<string, boolean>; custom_fin_rows?: CustomFinRow[] };
+        if (!alive) return;
+        const dbVis  = d?.row_visibility;
+        const dbRows = d?.custom_fin_rows;
+        const dbEmpty = (!dbVis || Object.keys(dbVis).length === 0) && (!dbRows || dbRows.length === 0);
+        if (dbEmpty) {
+          // Ничего в БД — переносим то, что уже есть локально (первый заход после обновления)
+          const localVis  = loadRowVisibility();
+          const localRows = loadCustomFinRows();
+          setRowVisibility(localVis);
+          setCustomFinRows(localRows);
+          crmFetch("fin-settings", { method: "POST", body: JSON.stringify({ row_visibility: localVis, custom_fin_rows: localRows }) }).catch(() => {});
+        } else {
+          const mergedVis = { ...loadRowVisibility(), ...(dbVis || {}) };
+          setRowVisibility(mergedVis);
+          setCustomFinRows(dbRows || []);
+          saveRowVisibility(mergedVis);
+          saveCustomFinRows(dbRows || []);
+        }
+      } catch { /* нет сети — работаем на localStorage, ничего не ломаем */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   // Единый источник истории скидок — шарится между P&L и блоком скидки
   const discountHistoryHook = useDiscountHistory(data.id);
 
@@ -65,10 +96,20 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       .catch(() => {});
   }, [data.id]);
 
+  // Синхронизация видимости строк в БД (общая настройка компании) + localStorage-кэш
+  const syncRowVisibility = (next: Record<string, boolean>) => {
+    saveRowVisibility(next);
+    crmFetch("fin-settings", { method: "POST", body: JSON.stringify({ row_visibility: next }) }).catch(() => {});
+  };
+  const syncCustomFinRows = (next: CustomFinRow[]) => {
+    saveCustomFinRows(next);
+    crmFetch("fin-settings", { method: "POST", body: JSON.stringify({ custom_fin_rows: next }) }).catch(() => {});
+  };
+
   const toggleRowVisibility = (key: string) => {
     setRowVisibility(prev => {
       const next = { ...prev, [key]: !prev[key] };
-      saveRowVisibility(next);
+      syncRowVisibility(next);
       return next;
     });
   };
@@ -78,10 +119,10 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
     const newRow: CustomFinRow = { key, label, block };
     const updated = [...customFinRows, newRow];
     setCustomFinRows(updated);
-    saveCustomFinRows(updated);
+    syncCustomFinRows(updated);
     setRowVisibility(prev => {
       const next = { ...prev, [key]: true };
-      saveRowVisibility(next);
+      syncRowVisibility(next);
       return next;
     });
   };
@@ -89,13 +130,13 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   const deleteCustomFinRow = (key: string) => {
     const updated = customFinRows.filter(r => r.key !== key);
     setCustomFinRows(updated);
-    saveCustomFinRows(updated);
+    syncCustomFinRows(updated);
   };
 
   const updateCustomFinRow = (key: string, label: string) => {
     const updated = customFinRows.map(r => r.key === key ? { ...r, label } : r);
     setCustomFinRows(updated);
-    saveCustomFinRows(updated);
+    syncCustomFinRows(updated);
   };
   const [customRowVals, setCustomRowVals] = useState<Record<string, Record<number, string>>>(() => {
     try { return JSON.parse(localStorage.getItem(`custom_block_vals_${data.id}`) || "{}"); } catch { return {}; }
