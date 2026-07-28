@@ -35,6 +35,19 @@ def ok(data):
 def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
+def normalize_phone(raw):
+    """Нормализует номер к виду +7XXXXXXXXXX. Возвращает '' если номер невалиден."""
+    if not raw:
+        return ""
+    digits = "".join(ch for ch in str(raw) if ch.isdigit())
+    if len(digits) == 11 and digits[0] in ("7", "8"):
+        return "+7" + digits[1:]
+    if len(digits) == 10:
+        return "+7" + digits
+    if digits:
+        return "+" + digits
+    return ""
+
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
     "notes", "address", "area", "budget", "source",
@@ -1875,20 +1888,46 @@ def handler(event: dict, context) -> dict:
 
             if method == "GET":
                 client_id = qs.get("client_id")
-                if not client_id:
-                    return err("client_id required")
-                # Проверяем, что клиент принадлежит этой компании
-                cur.execute(
-                    f"SELECT id, phone, name, state_summary, next_action, interest, stage "
-                    f"FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
-                    (client_id, owner_id))
-                cli = cur.fetchone()
-                if not cli:
-                    return err("not found", 404)
+                phone_q = qs.get("phone")
+                name_q = qs.get("name")
+                cols = ("id, phone, name, state_summary, next_action, "
+                        "interest, stage, analysis_updated_at")
+
+                if client_id:
+                    # Режим по id touch_clients (обратная совместимость)
+                    cur.execute(
+                        f"SELECT {cols} FROM {SCHEMA}.touch_clients "
+                        f"WHERE id=%s AND company_id=%s",
+                        (client_id, owner_id))
+                    cli = cur.fetchone()
+                    if not cli:
+                        return err("not found", 404)
+                elif phone_q:
+                    # Режим по номеру телефона: найти или создать touch_clients
+                    norm = normalize_phone(phone_q)
+                    if not norm:
+                        return err("phone invalid")
+                    cur.execute(
+                        f"SELECT {cols} FROM {SCHEMA}.touch_clients "
+                        f"WHERE phone=%s AND company_id=%s",
+                        (norm, owner_id))
+                    cli = cur.fetchone()
+                    if not cli:
+                        cur.execute(
+                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) "
+                            f"VALUES (%s, %s, %s) RETURNING {cols}",
+                            (owner_id, norm, name_q or None))
+                        cli = cur.fetchone()
+                        conn.commit()
+                else:
+                    return err("client_id or phone required")
+
+                client_id = cli[0]
                 client = {
                     "id": cli[0], "phone": cli[1], "name": cli[2],
                     "state_summary": cli[3], "next_action": cli[4],
                     "interest": cli[5], "stage": cli[6],
+                    "analysis_updated_at": cli[7],
                 }
                 # Лента касаний по времени
                 cur.execute(f"""
