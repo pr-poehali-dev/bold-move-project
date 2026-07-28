@@ -62,6 +62,8 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [draft, setDraft] = useState("");
   const [sendChannel, setSendChannel] = useState("telegram");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -81,6 +83,34 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
+
+  const handleSend = async () => {
+    const text = draft.trim();
+    if (!text || !client || sending) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const d = await crmFetch("send-message", {
+        method: "POST",
+        body: JSON.stringify({ client_id: client.id, channel: sendChannel, text }),
+      }) as { touch_id?: number; created_at?: string; error?: string };
+      if (d?.error) {
+        setSendError(d.error);
+      } else {
+        setDraft("");
+        // Оптимистично добавляем в ленту, не дожидаясь фонового опроса воркера
+        setTouches(prev => [...prev, {
+          id: d.touch_id ?? Date.now(),
+          channel: sendChannel, direction: "out", external_id: null,
+          text, audio_url: null, duration_sec: null, attachments: null,
+          status: "pending", created_at: d.created_at ?? new Date().toISOString(),
+        }]);
+      }
+    } catch {
+      setSendError("Не удалось связаться с сервером");
+    }
+    setSending(false);
+  };
 
   if (!phone) {
     return (
@@ -200,8 +230,20 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
                       )}
                     </div>
                   ) : (
-                    <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
-                      {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
+                    <div>
+                      <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
+                        {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
+                      </div>
+                      {out && tt.status === "pending" && (
+                        <div className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: t.textMute }}>
+                          <Icon name="Clock" size={10} /> отправляется…
+                        </div>
+                      )}
+                      {out && tt.status === "error" && (
+                        <div className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: "#ef4444" }}>
+                          <Icon name="AlertTriangle" size={10} /> не удалось отправить
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -222,18 +264,23 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
           <option value="avito">Avito</option>
         </select>
         <textarea value={draft} onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+          }}
           rows={1} placeholder="Написать сообщение…"
           className="flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none"
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, maxHeight: 120 }} />
-        <button disabled title="Отправка подключится после настройки канала"
-          className="flex-shrink-0 rounded-lg px-3 py-2 opacity-40 cursor-not-allowed"
+        <button onClick={handleSend} disabled={!draft.trim() || sending}
+          className="flex-shrink-0 rounded-lg px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: t.accent, color: "#fff" }}>
-          <Icon name="Send" size={16} />
+          <Icon name={sending ? "Loader" : "Send"} size={16} className={sending ? "animate-spin" : ""} />
         </button>
       </div>
-      <div className="px-3 sm:px-6 pb-2 text-[10px]" style={{ color: t.textMute }}>
-        Отправка включится, когда подключите канал (Telegram/MAX/Avito) во вкладке «Интеграции».
-      </div>
+      {sendError && (
+        <div className="px-3 sm:px-6 pb-2 text-[11px] flex items-center gap-1" style={{ color: "#ef4444" }}>
+          <Icon name="AlertTriangle" size={11} /> {sendError}
+        </div>
+      )}
     </div>
   );
 }

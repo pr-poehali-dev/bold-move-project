@@ -2342,6 +2342,7 @@ def handler(event: dict, context) -> dict:
                 return err("phone или external_chat_id обязателен")
 
             # Находим/создаём клиента: приоритет — телефон, иначе внешний id канала
+            # (channel_ids — JSONB {"telegram": "12345", "max": "..."}, ищем по конкретному каналу)
             client_row = None
             if phone:
                 norm = normalize_phone(phone)
@@ -2357,22 +2358,30 @@ def handler(event: dict, context) -> dict:
                         client_row = cur.fetchone()
                         conn.commit()
             if not client_row and external_chat_id:
-                # crm_contact_id используем как временное хранилище внешнего id канала,
-                # пока нет отдельного поля — ищем по нему в рамках компании и канала.
-                marker = f"{channel}:{external_chat_id}"
                 cur.execute(
-                    f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND crm_contact_id IS NULL "
-                    f"AND phone=%s",
-                    (owner_id, marker))
+                    f"SELECT id FROM {SCHEMA}.touch_clients "
+                    f"WHERE company_id=%s AND channel_ids->>%s = %s",
+                    (owner_id, channel, str(external_chat_id)))
                 client_row = cur.fetchone()
                 if not client_row:
                     cur.execute(
-                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
-                        (owner_id, marker, name))
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) "
+                        f"VALUES (%s, %s, %s::jsonb) RETURNING id",
+                        (owner_id, name, json.dumps({channel: str(external_chat_id)})))
                     client_row = cur.fetchone()
                     conn.commit()
 
             client_id = client_row[0]
+
+            # Запоминаем/обновляем external_chat_id клиента для этого канала —
+            # нужно, чтобы send-message знал, куда именно слать ответ.
+            if external_chat_id:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients
+                    SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
+                    WHERE id=%s
+                """, (json.dumps({channel: str(external_chat_id)}), client_id))
+                conn.commit()
 
             # Сохраняем касание (UNIQUE(channel, external_id) защищает от повторной вставки того же вебхука)
             try:
@@ -2394,6 +2403,132 @@ def handler(event: dict, context) -> dict:
                     print(f"[channel-webhook] analysis skipped: {analysis_err}")
 
             return ok({"client_id": client_id, "saved": True, "analysis": analysis})
+
+        # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
+        # Кладёт сообщение в ленту со статусом 'pending' — воркер на VPS заберёт его
+        # через pending-messages (опрос) и подтвердит через mark-sent.
+        if resource == "send-message" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            client_id = body.get("client_id")
+            phone_q   = body.get("phone")
+            channel   = body.get("channel")
+            text      = (body.get("text") or "").strip()
+            if not channel or not text:
+                return err("channel и text обязательны")
+            if channel not in ("telegram", "max", "avito", "whatsapp"):
+                return err("unknown channel")
+
+            if client_id:
+                cur.execute(
+                    f"SELECT id, channel_ids FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                    (client_id, owner_id))
+            elif phone_q:
+                norm = normalize_phone(phone_q)
+                if not norm:
+                    return err("phone invalid")
+                cur.execute(
+                    f"SELECT id, channel_ids FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
+                    (norm, owner_id))
+            else:
+                return err("client_id или phone обязателен")
+            cli = cur.fetchone()
+            if not cli:
+                return err("client not found", 404)
+            client_id, channel_ids = cli[0], (cli[1] or {})
+
+            external_chat_id = channel_ids.get(channel)
+            if not external_chat_id:
+                return err(f"нет привязки к каналу «{channel}» — клиент ещё не писал через него", 400)
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, text, status)
+                VALUES (%s, %s, 'out', %s, 'pending')
+                RETURNING id, created_at
+            """, (client_id, channel, text))
+            new_row = cur.fetchone()
+            conn.commit()
+
+            return ok({
+                "touch_id": new_row[0],
+                "created_at": new_row[1],
+                "status": "pending",
+            })
+
+        # ── PENDING-MESSAGES: воркер на VPS опрашивает — есть что отправить? ───────
+        # Тот же секретный ключ, что и channel-webhook (без сессии сотрудника).
+        if resource == "pending-messages" and method == "GET":
+            company_id_q = qs.get("company_id")
+            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
+            channel_q    = qs.get("channel")
+            if not company_id_q or not webhook_key or not channel_q:
+                return err("company_id, channel и X-Webhook-Key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            cur.execute(f"""
+                SELECT te.id, te.client_id, te.text, tc.channel_ids
+                FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id=%s AND te.channel=%s AND te.direction='out' AND te.status='pending'
+                ORDER BY te.created_at ASC
+                LIMIT 20
+            """, (owner_id, channel_q))
+            items = []
+            for touch_id, cid, text, channel_ids in cur.fetchall():
+                external_chat_id = (channel_ids or {}).get(channel_q)
+                if not external_chat_id:
+                    continue
+                items.append({
+                    "touch_id": touch_id,
+                    "client_id": cid,
+                    "external_chat_id": external_chat_id,
+                    "text": text,
+                })
+            return ok({"messages": items})
+
+        # ── MARK-SENT: воркер подтверждает — сообщение реально ушло (или ошибка) ───
+        if resource == "mark-sent" and method == "POST":
+            company_id_q = qs.get("company_id")
+            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и X-Webhook-Key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            touch_id = body.get("touch_id")
+            success  = body.get("success", True)
+            if not touch_id:
+                return err("touch_id required")
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events te
+                SET status=%s
+                FROM {SCHEMA}.touch_clients tc
+                WHERE te.id=%s AND te.client_id=tc.id AND tc.company_id=%s
+            """, ("sent" if success else "error", touch_id, owner_id))
+            conn.commit()
+            return ok({"updated": True})
 
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
