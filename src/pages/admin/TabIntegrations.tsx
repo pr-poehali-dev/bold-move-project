@@ -24,15 +24,85 @@ interface ProviderOption {
 
 interface SectionDef {
   id: string;
+  group: string;   // ключ группы
   title: string;
   desc: string;
   icon: string;
   providers: ProviderOption[];
 }
 
+// Смысловые группы вкладки «Интеграции»
+const GROUPS: { id: string; title: string; desc: string }[] = [
+  { id: "channels", title: "Каналы общения с клиентом",
+    desc: "Двусторонняя переписка: клиент пишет — сообщение попадает в ленту «Касания», отвечаете из CRM." },
+  { id: "ai", title: "ИИ и обработка",
+    desc: "Распознавание звонков и модель, которая анализирует историю клиента." },
+  { id: "telephony", title: "Телефония (АТС)",
+    desc: "Входящие звонки для транскрибации и анализа." },
+];
+
 const SECTIONS: SectionDef[] = [
+  // ── Каналы общения с клиентом ──
   {
-    id: "transcription",
+    id: "tg_bot", group: "channels",
+    title: "Telegram-бот",
+    desc: "Двусторонняя переписка с клиентом через вашего Telegram-бота.",
+    icon: "Send",
+    providers: [
+      { id: "tg_bot", label: "Telegram", fields: [
+        { key: "tg_channel_token", label: "Токен бота (для переписки)", placeholder: "123456:AA...", type: "password" },
+      ]},
+    ],
+  },
+  {
+    id: "max_bot", group: "channels",
+    title: "MAX-бот",
+    desc: "Двусторонняя переписка с клиентом через MAX-бота.",
+    icon: "MessageCircle",
+    providers: [
+      { id: "max_bot", label: "MAX", fields: [
+        { key: "max_channel_token", label: "Токен бота MAX (для переписки)", placeholder: "...", type: "password" },
+      ]},
+    ],
+  },
+  {
+    id: "avito", group: "channels",
+    title: "Avito",
+    desc: "Приём и отправка сообщений через Avito Messenger API.",
+    icon: "MessagesSquare",
+    providers: [
+      { id: "avito", label: "Avito", fields: [
+        { key: "avito_client_id", label: "Client ID", placeholder: "..." },
+        { key: "avito_client_secret", label: "Client Secret", placeholder: "...", type: "password" },
+      ]},
+    ],
+  },
+  {
+    id: "webchat", group: "channels",
+    title: "Веб-чат на сайте",
+    desc: "Виджет чата на вашем сайте — клиент пишет прямо там, без мессенджеров.",
+    icon: "MessageSquareText",
+    providers: [
+      { id: "webchat", label: "Веб-чат", fields: [
+        { key: "webchat_site_url", label: "Адрес сайта", placeholder: "https://..." },
+      ]},
+    ],
+  },
+  {
+    id: "whatsapp", group: "channels",
+    title: "WhatsApp",
+    desc: "Приём и отправка через официальный WhatsApp Cloud API.",
+    icon: "Phone",
+    providers: [
+      { id: "whatsapp", label: "WhatsApp", fields: [
+        { key: "whatsapp_phone_id", label: "Phone Number ID", placeholder: "..." },
+        { key: "whatsapp_token", label: "Access Token", placeholder: "...", type: "password" },
+      ]},
+    ],
+  },
+  // ── ИИ и обработка ──
+  {
+    id: "transcription", group: "ai",
     title: "Транскрибация звонков",
     desc: "Сервис, который превращает записи звонков в текст.",
     icon: "AudioLines",
@@ -47,7 +117,7 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    id: "llm",
+    id: "llm", group: "ai",
     title: "Думающая LLM",
     desc: "Модель, которая анализирует историю клиента и даёт рекомендации.",
     icon: "BrainCircuit",
@@ -69,20 +139,9 @@ const SECTIONS: SectionDef[] = [
       ]},
     ],
   },
+  // ── Телефония ──
   {
-    id: "avito",
-    title: "Avito",
-    desc: "Приём и отправка сообщений через Avito Messenger API.",
-    icon: "MessagesSquare",
-    providers: [
-      { id: "avito", label: "Avito", fields: [
-        { key: "avito_client_id", label: "Client ID", placeholder: "..." },
-        { key: "avito_client_secret", label: "Client Secret", placeholder: "...", type: "password" },
-      ]},
-    ],
-  },
-  {
-    id: "telephony",
+    id: "telephony", group: "telephony",
     title: "Телефония (АТС)",
     desc: "Входящие звонки приходят на этот вебхук.",
     icon: "PhoneCall",
@@ -243,7 +302,14 @@ export default function TabIntegrations({ isDark }: Props) {
       </div>
 
       <div className="flex flex-col gap-4">
-        {/* ── Каналы (мессенджеры) — реальные интеграции ── */}
+        {/* ═══ ГРУППА: Уведомления о заявках ═══ */}
+        <div className="flex items-center gap-2 mt-1">
+          <Icon name="BellRing" size={15} style={{ color: "#a78bfa" }} />
+          <div>
+            <div className="text-sm font-black" style={{ color: txt }}>Уведомления о заявках</div>
+            <div className="text-[11px]" style={{ color: txtSub }}>Куда система присылает новые заявки (в один чат).</div>
+          </div>
+        </div>
 
         {/* Интеграция с Telegram */}
         <div className="rounded-2xl p-4"
@@ -357,11 +423,24 @@ export default function TabIntegrations({ isDark }: Props) {
           </div>
         </div>
 
-        {/* ── Прочие сервисы (макет, сохранение подключим позже) ── */}
-        {SECTIONS.map(section => {
-          const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
-          const multiProvider = section.providers.length > 1;
+        {/* ═══ ГРУППЫ: Каналы общения · ИИ · Телефония ═══ */}
+        {GROUPS.map(group => {
+          const groupSections = SECTIONS.filter(s => s.group === group.id);
+          if (groupSections.length === 0) return null;
           return (
+            <div key={group.id} className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 mt-3">
+                <Icon name="Layers" size={15} style={{ color: "#a78bfa" }} />
+                <div>
+                  <div className="text-sm font-black" style={{ color: txt }}>{group.title}</div>
+                  <div className="text-[11px]" style={{ color: txtSub }}>{group.desc}</div>
+                </div>
+              </div>
+
+              {groupSections.map(section => {
+                const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
+                const multiProvider = section.providers.length > 1;
+                return (
             <div key={section.id} className="rounded-2xl p-4"
               style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
 
@@ -455,6 +534,9 @@ export default function TabIntegrations({ isDark }: Props) {
                   </span>
                 )}
               </div>
+            </div>
+                );
+              })}
             </div>
           );
         })}
