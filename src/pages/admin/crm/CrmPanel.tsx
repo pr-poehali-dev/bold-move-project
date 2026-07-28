@@ -145,7 +145,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     <>
     <SubstatusContext.Provider value={substatuses}>
     <ThemeContext.Provider value={ctx}>
-      <div className="flex flex-col h-full transition-colors duration-300"
+      <div className="crm-scroll flex flex-col h-full transition-colors duration-300"
         style={{
           background: t.bg,
           // CSS переменные акцента — используются во всех дочерних компонентах
