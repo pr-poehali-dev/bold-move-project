@@ -2621,7 +2621,8 @@ def handler(event: dict, context) -> dict:
                 f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND channel_ids->>'avito' = %s",
                 (owner_id, str(av_chat_id)))
             client_row = cur.fetchone()
-            if not client_row:
+            is_new_client = not client_row
+            if is_new_client:
                 cur.execute(
                     f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) "
                     f"VALUES (%s, %s, %s::jsonb) RETURNING id",
@@ -2629,6 +2630,27 @@ def handler(event: dict, context) -> dict:
                 client_row = cur.fetchone()
                 conn.commit()
             client_id = client_row[0]
+
+            # Первое сообщение от нового Avito-клиента — сразу создаём заявку в CRM
+            # (та же таблица, что и остальные заявки), с меткой источника «Авито».
+            if is_new_client:
+                cur.execute(
+                    f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+                master_row = cur.fetchone()
+                master_id = master_row[0] if master_row else None
+                final_company_id = owner_id or master_id
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id)
+                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s)
+                    RETURNING id
+                """, (f"avito_{av_chat_id}", "Клиент с Avito", "",
+                      f"Первое сообщение: {text[:200]}", final_company_id))
+                new_order_id = cur.fetchone()[0]
+                cur.execute(
+                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
+                    (new_order_id, client_id))
+                conn.commit()
 
             try:
                 cur.execute(f"""
