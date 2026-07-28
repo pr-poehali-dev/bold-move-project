@@ -13,6 +13,7 @@ interface FieldDef {
   label: string;
   placeholder: string;
   type?: "text" | "password";
+  options?: string[];   // если задано — рендерим выпадающий список
 }
 
 interface ProviderOption {
@@ -53,11 +54,13 @@ const SECTIONS: SectionDef[] = [
     providers: [
       { id: "mistral", label: "Mistral AI", fields: [
         { key: "mistral_key", label: "API-ключ", placeholder: "...", type: "password" },
-        { key: "mistral_model", label: "Модель", placeholder: "mistral-small-latest" },
+        { key: "mistral_model", label: "Модель", placeholder: "Модель",
+          options: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"] },
       ]},
       { id: "openai", label: "OpenAI", fields: [
         { key: "openai_key", label: "API-ключ", placeholder: "sk-...", type: "password" },
-        { key: "openai_model", label: "Модель", placeholder: "gpt-4o-mini" },
+        { key: "openai_model", label: "Модель", placeholder: "Модель",
+          options: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"] },
       ]},
       { id: "other", label: "Другая", fields: [
         { key: "other_base_url", label: "Base URL", placeholder: "https://api.example.com/v1" },
@@ -108,6 +111,15 @@ export default function TabIntegrations({ isDark }: Props) {
   );
   const [values, setValues] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [sectionCheck, setSectionCheck] = useState<Record<string, "ok" | "err">>({});
+
+  // Формальная проверка секции: заполнены ли обязательные поля (select-поля необязательны).
+  // Реальная проверка каждого API будет подключена на этапе модуля «Касания».
+  const checkSection = (section: SectionDef, provider: ProviderOption) => {
+    const required = provider.fields.filter(f => !f.options);
+    const ok = required.length > 0 && required.every(f => (values[f.key] ?? "").trim());
+    setSectionCheck(s => ({ ...s, [section.id]: ok ? "ok" : "err" }));
+  };
 
   // ── Telegram интеграция (перенос из «Своего агента», 1:1) ──
   const [tgToken,  setTgToken]  = useState(user?.tg_bot_token      ?? "");
@@ -238,8 +250,8 @@ export default function TabIntegrations({ isDark }: Props) {
           style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(96,165,250,0.15)" }}>
-              <Icon name="Send" size={14} style={{ color: "#60a5fa" }} />
+              style={{ background: "rgba(124,58,237,0.15)" }}>
+              <Icon name="Send" size={14} style={{ color: "#a78bfa" }} />
             </div>
             <div>
               <div className="text-sm font-black" style={{ color: text }}>Интеграция с Telegram</div>
@@ -252,7 +264,7 @@ export default function TabIntegrations({ isDark }: Props) {
                 value={tgToken}
                 onChange={e => setTgToken(e.target.value)}
                 placeholder="Токен бота (получить у @BotFather)"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -261,7 +273,7 @@ export default function TabIntegrations({ isDark }: Props) {
                 value={tgChat}
                 onChange={e => setTgChat(e.target.value)}
                 placeholder="ID чата или группы (узнать у @userinfobot)"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -270,9 +282,9 @@ export default function TabIntegrations({ isDark }: Props) {
                 onClick={testTelegram}
                 disabled={!tgToken || !tgChat || tgTesting}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}>
+                style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
                 {tgTesting
-                  ? <><div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
+                  ? <><div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
                   : <><Icon name="Zap" size={11} /> Проверить</>}
               </button>
               {tgTestResult === "ok" && (
@@ -294,8 +306,8 @@ export default function TabIntegrations({ isDark }: Props) {
           style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(99,179,237,0.15)" }}>
-              <span style={{ fontSize: 15, lineHeight: 1 }}>М</span>
+              style={{ background: "rgba(124,58,237,0.15)" }}>
+              <span style={{ fontSize: 15, lineHeight: 1, color: "#a78bfa", fontWeight: 900 }}>М</span>
             </div>
             <div>
               <div className="text-sm font-black" style={{ color: text }}>Интеграция с MAX</div>
@@ -308,7 +320,7 @@ export default function TabIntegrations({ isDark }: Props) {
                 value={maxToken}
                 onChange={e => setMaxToken(e.target.value)}
                 placeholder="Токен бота (получить у @MasterBot в MAX)"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -317,7 +329,7 @@ export default function TabIntegrations({ isDark }: Props) {
                 value={maxChat}
                 onChange={e => setMaxChat(e.target.value)}
                 placeholder="ID чата (числовой ID получателя)"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -326,9 +338,9 @@ export default function TabIntegrations({ isDark }: Props) {
                 onClick={testMax}
                 disabled={!maxToken || !maxChat || maxTesting}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                style={{ background: "rgba(99,179,237,0.12)", color: "#63b3ed", border: "1px solid rgba(99,179,237,0.25)" }}>
+                style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
                 {maxTesting
-                  ? <><div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#63b3ed", borderTopColor: "transparent" }} /> Проверка...</>
+                  ? <><div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
                   : <><Icon name="Zap" size={11} /> Проверить</>}
               </button>
               {maxTestResult === "ok" && (
@@ -390,27 +402,58 @@ export default function TabIntegrations({ isDark }: Props) {
                   const show = revealed[f.key];
                   return (
                     <div key={f.key}>
-                      <div className="relative">
-                        <input
-                          type={isSecret && !show ? "password" : "text"}
+                      {f.options ? (
+                        <select
                           value={values[f.key] ?? ""}
                           onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-                          placeholder={f.label}
-                          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
-                          style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt, paddingRight: isSecret ? 40 : undefined }}
-                        />
-                        {isSecret && (
-                          <button type="button"
-                            onClick={() => setRevealed(r => ({ ...r, [f.key]: !r[f.key] }))}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition"
-                            style={{ color: txtSub }}>
-                            <Icon name={show ? "EyeOff" : "Eye"} size={15} />
-                          </button>
-                        )}
-                      </div>
+                          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition font-semibold"
+                          style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: values[f.key] ? txt : "#fff" }}>
+                          <option value="">{f.label} (по умолчанию)</option>
+                          {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type={isSecret && !show ? "password" : "text"}
+                            value={values[f.key] ?? ""}
+                            onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
+                            placeholder={f.label}
+                            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
+                            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt, paddingRight: isSecret ? 40 : undefined }}
+                          />
+                          {isSecret && (
+                            <button type="button"
+                              onClick={() => setRevealed(r => ({ ...r, [f.key]: !r[f.key] }))}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition"
+                              style={{ color: txtSub }}>
+                              <Icon name={show ? "EyeOff" : "Eye"} size={15} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Проверить — формальная проверка (заполнены ли поля) */}
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => checkSection(section, current)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+                  style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
+                  <Icon name="Zap" size={11} /> Проверить
+                </button>
+                {sectionCheck[section.id] === "ok" && (
+                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
+                    <Icon name="CheckCircle2" size={12} /> Поля заполнены
+                  </span>
+                )}
+                {sectionCheck[section.id] === "err" && (
+                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
+                    <Icon name="AlertTriangle" size={12} /> Заполните обязательные поля
+                  </span>
+                )}
               </div>
             </div>
           );
