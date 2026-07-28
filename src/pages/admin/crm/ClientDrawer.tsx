@@ -184,6 +184,19 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
             {copied && <span className="hidden sm:inline text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
 
+            {/* Позвонить клиенту */}
+            {ord.phone && (
+              <a
+                href={`tel:${ord.phone}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90"
+                style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
+                title={`Позвонить: ${ord.phone}`}
+              >
+                <Icon name="PhoneCall" size={13} />
+                <span className="hidden sm:inline">Позвонить</span>
+              </a>
+            )}
+
             {/* Перейти в бот — только на десктопе */}
             {onOpenAgent && (
               <button

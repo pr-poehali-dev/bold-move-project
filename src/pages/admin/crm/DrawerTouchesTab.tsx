@@ -84,8 +84,13 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
 
   if (!phone) {
     return (
-      <div className="px-3 sm:px-6 py-8 text-center text-sm" style={{ color: t.textMute }}>
-        У клиента не указан номер телефона — история касаний привязывается к номеру.
+      <div className="px-3 sm:px-6 py-10 text-center text-sm flex flex-col items-center gap-2" style={{ color: t.textMute }}>
+        <Icon name="PhoneOff" size={24} style={{ color: t.textMute }} />
+        <div>У клиента не указан номер телефона.</div>
+        <div className="text-xs max-w-xs">
+          Лента касаний и звонок привязаны к номеру телефона. Если клиент пришёл из Avito или
+          другого канала без номера — добавьте телефон на вкладке «Клиент», и здесь появится вся история.
+        </div>
       </div>
     );
   }
@@ -98,6 +103,20 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {/* Шапка: номер телефона + звонок */}
+      <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2"
+        style={{ borderBottom: `1px solid ${t.border}` }}>
+        <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: t.textSub }}>
+          <Icon name="Phone" size={12} style={{ color: t.textMute }} />
+          {phone}
+        </div>
+        <a href={`tel:${phone}`}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97]"
+          style={{ background: "#22c55e22", color: "#22c55e" }}>
+          <Icon name="PhoneCall" size={13} /> Позвонить
+        </a>
+      </div>
+
       {/* Мини-шапка состояния клиента (быстрый контекст) */}
       {client && (client.next_action || client.interest || client.stage) && (
         <div className="flex-shrink-0 px-3 sm:px-6 py-2.5" style={{ borderBottom: `1px solid ${t.border}`, background: t.surface2 }}>
