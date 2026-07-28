@@ -2691,9 +2691,10 @@ def handler(event: dict, context) -> dict:
                 conn.rollback()
                 return ok({"duplicate": True})
 
-            analysis, aerr = run_client_analysis(cur, conn, client_id, None, None)
-            if aerr:
-                print(f"[avito-webhook] analysis skipped: {aerr}")
+            # ВАЖНО: ИИ-анализ клиента (внешний вызов до 45 сек) сюда специально НЕ включаем —
+            # Avito ждёт быстрый ответ на вебхук (около 2 сек) и молча отключает доставку,
+            # если сервер отвечает медленно. Анализ пересобирается отдельно — при открытии
+            # карточки клиента в CRM (см. resource == "touches" analyze).
             return ok({"client_id": client_id, "saved": True})
 
         # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
