@@ -6,6 +6,7 @@ import EstimateEditor from "./EstimateEditor";
 import DrawerInfoTab from "./DrawerInfoTab";
 import ClientTab from "./ClientTab";
 import DrawerPlanTab from "./DrawerPlanTab";
+import DrawerTouchesTab from "./DrawerTouchesTab";
 import PdfOptionsModal from "./PdfOptionsModal";
 import { useEstimateData } from "./useEstimateData";
 
@@ -38,7 +39,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "plan">(defaultTab as "client" | "orders" | "plan");
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "estimate" | "plan" | "touches" | "analytics">(defaultTab as "client" | "orders" | "plan");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
@@ -232,11 +233,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         <div className="flex px-1 sm:px-6 gap-0 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
           {([
             { id: "client",   label: "Клиент",   icon: "User" },
+            { id: "touches",  label: "Касания",  icon: "MessagesSquare" },
+            { id: "analytics",label: "Аналитика",icon: "Sparkles" },
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
             { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
             ...(data.project_id ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
           ] as const).map((tab: { id: string; label: string; icon: string }) => (
-            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan")}
+            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan" | "touches" | "analytics")}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap"
               style={drawerTab === tab.id
                 ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
@@ -262,6 +265,18 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           {/* КЛИЕНТ */}
           {drawerTab === "client" && (
             <ClientTab data={data} save={save} />
+          )}
+
+          {/* КАСАНИЯ */}
+          {drawerTab === "touches" && (
+            <DrawerTouchesTab phone={data.phone} name={data.client_name} />
+          )}
+
+          {/* АНАЛИТИКА */}
+          {drawerTab === "analytics" && (
+            <div className="px-3 sm:px-6 py-8 text-center text-sm" style={{ color: t.textMute }}>
+              ИИ-аналитика по клиенту появится здесь на следующем шаге.
+            </div>
           )}
 
           {/* ЧЕРТЕЖИ */}
