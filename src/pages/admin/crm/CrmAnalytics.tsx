@@ -23,6 +23,7 @@ function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraC
 import AnalyticsOverview from "./AnalyticsOverview";
 import AnalyticsFinance from "./AnalyticsFinance";
 import AnalyticsDynamics from "./AnalyticsDynamics";
+import TouchDashboard from "./TouchDashboard";
 
 export default function CrmAnalytics() {
   const t = useTheme();
@@ -104,13 +105,13 @@ export default function CrmAnalytics() {
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>Всего заявок: {s.total_all}</p>
         </div>
         <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-          {ANALYTICS_TABS.map(tb => (
+          {ANALYTICS_TABS.map((tb, i) => (
             <button key={tb.id} onClick={() => setTab(tb.id)}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition"
               style={{
                 background: tab === tb.id ? "#7c3aed22" : "transparent",
                 color: tab === tb.id ? "#a78bfa" : t.textMute,
-                borderRight: tb.id !== "dynamics" ? `1px solid ${t.border}` : undefined,
+                borderRight: i !== ANALYTICS_TABS.length - 1 ? `1px solid ${t.border}` : undefined,
               }}>
               <Icon name={tb.icon} size={13} /> {tb.label}
             </button>
@@ -138,6 +139,10 @@ export default function CrmAnalytics() {
 
       {tab === "dynamics" && (
         <AnalyticsDynamics s={s} allMerged={allMerged} />
+      )}
+
+      {tab === "touches" && (
+        <TouchDashboard clients={allClients} onSelectClient={setDrawerClient} />
       )}
 
       {/* Drawer клиента */}

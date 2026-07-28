@@ -18,12 +18,13 @@ export interface Stats {
   monthly_profit:  { month: string; profit: number }[];
 }
 
-export type AnalyticsTab = "overview" | "finance" | "dynamics";
+export type AnalyticsTab = "overview" | "finance" | "dynamics" | "touches";
 
 export const ANALYTICS_TABS: { id: AnalyticsTab; label: string; icon: string }[] = [
   { id: "overview",  label: "Обзор",    icon: "LayoutDashboard" },
   { id: "finance",   label: "Финансы",  icon: "Banknote" },
   { id: "dynamics",  label: "Динамика", icon: "TrendingUp" },
+  { id: "touches",   label: "Касания",  icon: "MessagesSquare" },
 ];
 
 export const EMPTY_STATS: Stats = {

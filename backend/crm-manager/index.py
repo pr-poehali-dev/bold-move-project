@@ -2120,6 +2120,72 @@ def handler(event: dict, context) -> dict:
                 }
             return ok({"badges": badges})
 
+        # ── TOUCH-DASHBOARD: лёгкий дашборд модуля «Касания» ───────────────────────
+        if resource == "touch-dashboard" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            days = qs.get("days", "30")
+            try:
+                days = max(1, min(365, int(days)))
+            except (TypeError, ValueError):
+                days = 30
+
+            # Всего касаний за период + распределение по каналам
+            cur.execute(f"""
+                SELECT te.channel, COUNT(*) AS cnt
+                FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id = %s AND te.created_at >= NOW() - (%s || ' days')::interval
+                GROUP BY te.channel ORDER BY cnt DESC
+            """, (owner_id, str(days)))
+            by_channel = [{"channel": r[0], "count": r[1]} for r in cur.fetchall()]
+            total_touches = sum(x["count"] for x in by_channel)
+
+            # Конверсия по итогам последнего анализа каждого клиента (за всё время)
+            cur.execute(f"""
+                SELECT tc.outcome, COUNT(*) FROM (
+                    SELECT DISTINCT ON (client_id) client_id, outcome
+                    FROM {SCHEMA}.touch_client_analyses
+                    ORDER BY client_id, created_at DESC, id DESC
+                ) tc
+                JOIN {SCHEMA}.touch_clients c ON c.id = tc.client_id
+                WHERE c.company_id = %s
+                GROUP BY tc.outcome
+            """, (owner_id,))
+            outcome_rows = cur.fetchall()
+            outcome_dist = {o or "pending": c for o, c in outcome_rows}
+            analyzed_total = sum(outcome_dist.values())
+            success_count = outcome_dist.get("success", 0)
+            conversion_pct = round(success_count / analyzed_total * 100) if analyzed_total else 0
+
+            # Топ клиентов «требуют внимания»: высокий интерес или последнее касание — входящее (непрочитано)
+            cur.execute(f"""
+                SELECT tc.id, tc.name, tc.phone, tc.interest, tc.stage, tc.next_action,
+                       (SELECT te.direction FROM {SCHEMA}.touch_events te
+                        WHERE te.client_id = tc.id ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction
+                FROM {SCHEMA}.touch_clients tc
+                WHERE tc.company_id = %s AND (tc.interest = 'high' OR tc.next_action IS NOT NULL)
+                ORDER BY tc.analysis_updated_at DESC NULLS LAST
+                LIMIT 8
+            """, (owner_id,))
+            attention = [{
+                "id": r[0], "name": r[1], "phone": r[2], "interest": r[3],
+                "stage": r[4], "next_action": r[5], "unread": r[6] == "in",
+            } for r in cur.fetchall()]
+
+            return ok({
+                "days": days,
+                "total_touches": total_touches,
+                "by_channel": by_channel,
+                "conversion_pct": conversion_pct,
+                "analyzed_total": analyzed_total,
+                "attention": attention,
+            })
+
         return err("unknown resource", 404)
 
     except Exception as e:
