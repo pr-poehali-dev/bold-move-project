@@ -248,8 +248,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           </div>
         </div>
 
-        {/* ── Табы ── */}
-        <div className="flex px-1 sm:px-6 gap-0 pt-2 sm:pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
+        {/* ── Табы: капсулы с фоном ── */}
+        <div className="flex items-center gap-1.5 px-3 sm:px-6 py-2.5 overflow-x-auto flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}`, scrollbarWidth: "none" }}>
           {([
             { id: "client",   label: "Клиент",   icon: "User" },
             { id: "touches",  label: "Касания",  icon: "MessagesSquare" },
@@ -257,21 +257,24 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             { id: "orders",   label: `Заявки (${allClientOrders.length})`, icon: "ClipboardList" },
             { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
             ...(data.project_id ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
-          ] as const).map((tab: { id: string; label: string; icon: string }) => (
-            <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan" | "touches" | "analytics")}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg transition whitespace-nowrap"
-              style={drawerTab === tab.id
-                ? { color: "#7c3aed", borderBottom: "2px solid #7c3aed", marginBottom: -1 }
-                : { color: t.textMute }}>
-              <Icon name={tab.icon} size={13} /> {tab.label}
-            </button>
-          ))}
+          ] as const).map((tab: { id: string; label: string; icon: string }) => {
+            const active = drawerTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setDrawerTab(tab.id as "client" | "orders" | "estimate" | "plan" | "touches" | "analytics")}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-bold rounded-xl transition whitespace-nowrap flex-shrink-0"
+                style={active
+                  ? { color: "#fff", background: "#7c3aed", boxShadow: "0 2px 10px rgba(124,58,237,0.4)" }
+                  : { color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
+                <Icon name={tab.icon} size={14} /> {tab.label}
+              </button>
+            );
+          })}
           {/* Кнопка PDF — всегда справа */}
           <div className="flex-1" />
           <button
             onClick={() => setPdfModalOpen(true)}
-            className="flex items-center justify-center px-2 py-2 transition hover:opacity-70 active:scale-[0.97] flex-shrink-0"
-            style={{ color: t.textMute }}
+            className="flex items-center justify-center p-2 rounded-xl transition hover:opacity-80 active:scale-[0.97] flex-shrink-0"
+            style={{ color: t.textMute, background: t.surface2, border: `1px solid ${t.border}` }}
             title="Настройки PDF"
           >
             <Icon name="Share2" size={14} />
