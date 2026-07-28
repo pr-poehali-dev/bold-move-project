@@ -57,17 +57,15 @@ export default function OwnAgentEditor({ isDark }: Props) {
   const [saved,  setSaved]  = useState(false);
   const [err,    setErr]    = useState("");
 
-  // Telegram интеграция
-  const [tgToken,  setTgToken]  = useState(user?.tg_bot_token      ?? "");
-  const [tgChat,   setTgChat]   = useState(user?.tg_notify_chat_id ?? "");
-  const [tgTesting, setTgTesting] = useState(false);
-  const [tgTestResult, setTgTestResult] = useState<"ok" | "err" | null>(null);
+  // Telegram/MAX токены — подключаются в разделе «Интеграции», здесь только сохраняются вместе с брендом
+  const [tgToken]  = useState(user?.tg_bot_token      ?? "");
+  const [tgChat]   = useState(user?.tg_notify_chat_id ?? "");
+  const [maxToken] = useState(user?.brand?.max_bot_token      ?? "");
+  const [maxChat]  = useState(user?.brand?.max_notify_chat_id ?? "");
 
-  // MAX интеграция
-  const [maxToken,      setMaxToken]      = useState(user?.max_bot_token      ?? "");
-  const [maxChat,       setMaxChat]       = useState(user?.max_notify_chat_id ?? "");
-  const [maxTesting,    setMaxTesting]    = useState(false);
-  const [maxTestResult, setMaxTestResult] = useState<"ok" | "err" | null>(null);
+  // Чекбоксы «куда слать заявки» (UI-заглушки, локальное состояние, без сохранения)
+  const [notifyTg,  setNotifyTg]  = useState(!!(user?.tg_bot_token));
+  const [notifyMax, setNotifyMax] = useState(!!(user?.brand?.max_bot_token));
 
   // AI-дозаполнение полей
   const [aiAttempts, setAiAttempts] = useState<Record<string, number>>({});
@@ -129,42 +127,6 @@ export default function OwnAgentEditor({ isDark }: Props) {
       } catch { /* тихо */ }
     }, 600);
   }, [token, user?.brand, patchBrand]);
-
-  const testMax = async () => {
-    if (!maxToken || !maxChat) return;
-    setMaxTesting(true); setMaxTestResult(null);
-    try {
-      const res = await fetch(`https://botapi.max.ru/messages?access_token=${maxToken}&chat_id=${maxChat}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "✅ Интеграция MAX работает! Уведомления о заявках будут приходить сюда." }),
-      });
-      const d = await res.json();
-      setMaxTestResult((d.message_id || d.id || d.ok) ? "ok" : "err");
-    } catch {
-      setMaxTestResult("err");
-    } finally {
-      setMaxTesting(false);
-    }
-  };
-
-  const testTelegram = async () => {
-    if (!tgToken || !tgChat) return;
-    setTgTesting(true); setTgTestResult(null);
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: tgChat, text: "✅ Интеграция работает! Уведомления о заявках будут приходить сюда.", parse_mode: "HTML" }),
-      });
-      const d = await res.json();
-      setTgTestResult(d.ok ? "ok" : "err");
-    } catch {
-      setTgTestResult("err");
-    } finally {
-      setTgTesting(false);
-    }
-  };
 
   const save = async () => {
     setErr(""); setSaved(false); setSaving(true);
@@ -307,143 +269,41 @@ export default function OwnAgentEditor({ isDark }: Props) {
             isDark={isDark}
           />
 
-          {/* Интеграция с Telegram */}
+          {/* Отправка заявок в мессенджеры — подключение в разделе «Интеграции» */}
           <div className="rounded-2xl p-4 mb-4"
             style={{ background: isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(96,165,250,0.15)" }}>
+                style={{ background: "rgba(124,58,237,0.15)" }}>
+                <Icon name="BellRing" size={14} style={{ color: "#a78bfa" }} />
+              </div>
+              <div>
+                <div className="text-sm font-black" style={{ color: text }}>Уведомления о заявках</div>
+                <div className="text-[11px]" style={{ color: muted }}>Куда присылать новые заявки. Каналы подключаются в разделе «Интеграции»</div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <button type="button" onClick={() => setNotifyTg(v => !v)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition"
+                style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+                <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
+                  style={{ background: notifyTg ? "#60a5fa" : "transparent", border: `1.5px solid ${notifyTg ? "#60a5fa" : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)")}` }}>
+                  {notifyTg && <Icon name="Check" size={13} style={{ color: "#fff" }} />}
+                </div>
                 <Icon name="Send" size={14} style={{ color: "#60a5fa" }} />
-              </div>
-              <div>
-                <div className="text-sm font-black" style={{ color: text }}>Интеграция с Telegram</div>
-                <div className="text-[11px]" style={{ color: muted }}>Новые заявки будут приходить в ваш бот</div>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                  Токен бота <span className="font-normal opacity-60">(получить у @BotFather)</span>
-                </label>
-                <input
-                  value={tgToken}
-                  onChange={e => setTgToken(e.target.value)}
-                  placeholder="7123456789:AAF..."
-                  className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    color: text,
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                  ID чата или группы <span className="font-normal opacity-60">(узнать у @userinfobot)</span>
-                </label>
-                <input
-                  value={tgChat}
-                  onChange={e => setTgChat(e.target.value)}
-                  placeholder="-1001234567890 или @username"
-                  className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    color: text,
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={testTelegram}
-                  disabled={!tgToken || !tgChat || tgTesting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                  style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}>
-                  {tgTesting
-                    ? <><div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
-                    : <><Icon name="Zap" size={11} /> Проверить</>}
-                </button>
-                {tgTestResult === "ok" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-                    <Icon name="CheckCircle2" size={12} /> Сообщение отправлено!
-                  </span>
-                )}
-                {tgTestResult === "err" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-                    <Icon name="AlertTriangle" size={12} /> Ошибка — проверьте токен и ID чата
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+                <span className="text-xs font-semibold flex-1" style={{ color: text }}>Слать заявки в Telegram</span>
+              </button>
 
-          {/* Интеграция с MAX */}
-          <div className="rounded-2xl p-4 mb-4"
-            style={{ background: isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(99,179,237,0.15)" }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>М</span>
-              </div>
-              <div>
-                <div className="text-sm font-black" style={{ color: text }}>Интеграция с MAX</div>
-                <div className="text-[11px]" style={{ color: muted }}>Новые заявки будут приходить в ваш бот MAX</div>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                  Токен бота <span className="font-normal opacity-60">(получить у @MasterBot в MAX)</span>
-                </label>
-                <input
-                  value={maxToken}
-                  onChange={e => setMaxToken(e.target.value)}
-                  placeholder="ваш_токен_бота_MAX"
-                  className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    color: text,
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                  ID чата <span className="font-normal opacity-60">(числовой ID получателя)</span>
-                </label>
-                <input
-                  value={maxChat}
-                  onChange={e => setMaxChat(e.target.value)}
-                  placeholder="123456789"
-                  className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    color: text,
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={testMax}
-                  disabled={!maxToken || !maxChat || maxTesting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                  style={{ background: "rgba(99,179,237,0.12)", color: "#63b3ed", border: "1px solid rgba(99,179,237,0.25)" }}>
-                  {maxTesting
-                    ? <><div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#63b3ed", borderTopColor: "transparent" }} /> Проверка...</>
-                    : <><Icon name="Zap" size={11} /> Проверить</>}
-                </button>
-                {maxTestResult === "ok" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-                    <Icon name="CheckCircle2" size={12} /> Сообщение отправлено!
-                  </span>
-                )}
-                {maxTestResult === "err" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-                    <Icon name="AlertTriangle" size={12} /> Ошибка — проверьте токен и ID чата
-                  </span>
-                )}
-              </div>
+              <button type="button" onClick={() => setNotifyMax(v => !v)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition"
+                style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+                <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
+                  style={{ background: notifyMax ? "#63b3ed" : "transparent", border: `1.5px solid ${notifyMax ? "#63b3ed" : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)")}` }}>
+                  {notifyMax && <Icon name="Check" size={13} style={{ color: "#fff" }} />}
+                </div>
+                <span className="w-3.5 text-center font-black flex-shrink-0" style={{ fontSize: 13, color: "#63b3ed" }}>М</span>
+                <span className="text-xs font-semibold flex-1" style={{ color: text }}>Слать заявки в MAX</span>
+              </button>
             </div>
           </div>
 

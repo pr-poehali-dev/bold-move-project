@@ -8,6 +8,7 @@ import TabDefaultAutoRules from "./admin/TabDefaultAutoRules";
 import TeamPanel from "./admin/team/TeamPanel";
 import OwnAgentTeaser from "./admin/own-agent/OwnAgentTeaser";
 import OwnAgentEditor from "./admin/own-agent/OwnAgentEditor";
+import TabIntegrations from "./admin/TabIntegrations";
 import { AgentTabDropdown, AGENT_TABS, MainTab } from "./AdminPanelDropdowns";
 import type { AgentSubTab } from "./admin/types";
 
@@ -76,6 +77,13 @@ export function AdminPanelContent({
           {user?.has_own_agent
             ? <OwnAgentEditor isDark={isDark} />
             : <OwnAgentTeaser isDark={isDark} />}
+        </div>
+      )}
+
+      {/* ── Интеграции ── */}
+      {mainTab === "integrations" && hasTeam && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TabIntegrations isDark={isDark} />
         </div>
       )}
 
