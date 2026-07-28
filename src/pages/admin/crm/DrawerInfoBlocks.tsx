@@ -40,15 +40,22 @@ const CREATED_VIA_LABELS: Record<string, { label: string; icon: string; color: s
   manual: { label: "CRM",         icon: "LayoutGrid",    color: "#3b82f6" },
 };
 
-function CreatedViaRow({ value }: { value: string | null | undefined }) {
+function CreatedViaRow({ value, createdAt }: { value: string | null | undefined; createdAt?: string | null }) {
   const info = value ? CREATED_VIA_LABELS[value] : undefined;
   if (!info) return null;
+  const dateStr = (() => {
+    if (!createdAt) return null;
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  })();
   return (
     <div className="flex items-center justify-between gap-2 py-1.5">
       <span className="text-xs" style={{ color: "#d4d4d4" }}>Создано через</span>
       <span className="flex items-center gap-1.5 text-xs font-medium rounded-md px-1.5 py-0.5"
         style={{ background: info.color + "18", color: info.color, border: `1px solid ${info.color}30` }}
         title="Технический канал создания заявки — не редактируется">
+        {dateStr && <span style={{ opacity: 0.75 }}>{dateStr}</span>}
         <Icon name={info.icon} size={11} />
         {info.label}
       </span>
@@ -231,7 +238,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         value={data.source || ""}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
-      <CreatedViaRow value={data.created_via} />
+      <CreatedViaRow value={data.created_via} createdAt={data.created_at} />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );
