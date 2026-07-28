@@ -1,0 +1,15 @@
+[Unit]
+Description=CRM Telegram Worker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/crm-worker
+ExecStart=/opt/crm-worker/venv/bin/python3 /opt/crm-worker/worker.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/opt/crm-worker/worker.log
+StandardError=append:/opt/crm-worker/worker.log
+
+[Install]
+WantedBy=multi-user.target
