@@ -248,26 +248,20 @@ export default function TabIntegrations({ isDark }: Props) {
           </div>
           <div className="space-y-2.5">
             <div>
-              <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                Токен бота <span className="font-normal opacity-60">(получить у @BotFather)</span>
-              </label>
               <input
                 value={tgToken}
                 onChange={e => setTgToken(e.target.value)}
-                placeholder="7123456789:AAF..."
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
+                placeholder="Токен бота (получить у @BotFather)"
+                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                ID чата или группы <span className="font-normal opacity-60">(узнать у @userinfobot)</span>
-              </label>
               <input
                 value={tgChat}
                 onChange={e => setTgChat(e.target.value)}
-                placeholder="-1001234567890 или @username"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
+                placeholder="ID чата или группы (узнать у @userinfobot)"
+                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -310,26 +304,20 @@ export default function TabIntegrations({ isDark }: Props) {
           </div>
           <div className="space-y-2.5">
             <div>
-              <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                Токен бота <span className="font-normal opacity-60">(получить у @MasterBot в MAX)</span>
-              </label>
               <input
                 value={maxToken}
                 onChange={e => setMaxToken(e.target.value)}
-                placeholder="ваш_токен_бота_MAX"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
+                placeholder="Токен бота (получить у @MasterBot в MAX)"
+                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold mb-1" style={{ color: muted }}>
-                ID чата <span className="font-normal opacity-60">(числовой ID получателя)</span>
-              </label>
               <input
                 value={maxChat}
                 onChange={e => setMaxChat(e.target.value)}
-                placeholder="123456789"
-                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition"
+                placeholder="ID чата (числовой ID получателя)"
+                className="w-full rounded-xl px-3 py-2 text-xs font-mono outline-none transition placeholder:text-white placeholder:font-semibold"
                 style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
               />
             </div>
@@ -402,14 +390,13 @@ export default function TabIntegrations({ isDark }: Props) {
                   const show = revealed[f.key];
                   return (
                     <div key={f.key}>
-                      <label className="block text-[11px] font-semibold mb-1" style={{ color: txtSub }}>{f.label}</label>
                       <div className="relative">
                         <input
                           type={isSecret && !show ? "password" : "text"}
                           value={values[f.key] ?? ""}
                           onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-                          placeholder={f.placeholder}
-                          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition"
+                          placeholder={f.label}
+                          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
                           style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt, paddingRight: isSecret ? 40 : undefined }}
                         />
                         {isSecret && (
