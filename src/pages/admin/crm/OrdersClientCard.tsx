@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
@@ -84,8 +84,9 @@ function Metric({ label, value, color, icon }: { label: string; value: string; c
   );
 }
 
-export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
+  allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSwipeBuilder?: (client: Client) => void;
@@ -185,6 +186,7 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
   const debt        = contractSum - paid;
   const profit      = income - costs;
   const hasProject  = !!c.project_id;
+  const ordersCount = allClients ? getClientOrders(c, allClients).length : 1;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -234,6 +236,13 @@ export function OrdersClientCard({ c, onClick, onNextStep, onSwipeBuilder, onSwi
                   {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
                 </span>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  {ordersCount > 1 && (
+                    <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                      style={{ background: "#7c3aed22", color: "#a78bfa" }}
+                      title={`Всего заявок у клиента: ${ordersCount}`}>
+                      <Icon name="Layers" size={9} /> {ordersCount}
+                    </span>
+                  )}
                   {c.is_demo && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
                       style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>

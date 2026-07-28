@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
@@ -70,8 +70,9 @@ function InstallProgress({ client }: { client: Client }) {
   );
 }
 
-export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
+  allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSwipeBuilder?: (client: Client) => void;
@@ -211,6 +212,7 @@ export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwip
   const title      = localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`;
   const color      = STATUS_COLORS[c.status];
   const hasProject = !!c.project_id;
+  const ordersCount = allClients ? getClientOrders(c, allClients).length : 1;
 
   return (
     <>
@@ -265,6 +267,13 @@ export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwip
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-sm font-bold truncate" style={{ color: t.text }}>{title}</span>
+                {ordersCount > 1 && (
+                  <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                    style={{ background: "#7c3aed22", color: "#a78bfa" }}
+                    title={`Всего заявок у клиента: ${ordersCount}`}>
+                    <Icon name="Layers" size={9} /> {ordersCount}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {c.client_name && (
@@ -352,7 +361,16 @@ export function OrdersClientRow({ c, onClick, onNextStep, onSwipeBuilder, onSwip
         onClick={onClick}>
 
         <div className="w-44 min-w-0 flex-shrink-0">
-          <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{title}</div>
+          <div className="flex items-center gap-1.5">
+            <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{title}</div>
+            {ordersCount > 1 && (
+              <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                style={{ background: "#7c3aed22", color: "#a78bfa" }}
+                title={`Всего заявок у клиента: ${ordersCount}`}>
+                <Icon name="Layers" size={9} /> {ordersCount}
+              </span>
+            )}
+          </div>
           {(c.client_name || c.phone) && (
             <div className="text-xs truncate" style={{ color: t.textMute }}>
               {[c.client_name, c.phone].filter(Boolean).join(" · ")}

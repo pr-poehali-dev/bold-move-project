@@ -1,4 +1,4 @@
-import { STATUS_LABELS, STATUS_COLORS, Client, DEFAULT_TAGS, ClientStatus } from "./crmApi";
+import { STATUS_LABELS, STATUS_COLORS, Client, DEFAULT_TAGS, ClientStatus, getClientOrders } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { Avatar, Checkbox } from "./ClientsTablePrimitives";
@@ -105,7 +105,19 @@ export function ClientsTable({
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</div>
+                        {(() => {
+                          const ordersCount = getClientOrders(c, clients).length;
+                          return ordersCount > 1 && (
+                            <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                              style={{ background: "#7c3aed20", color: "#a78bfa" }}
+                              title={`Всего заявок: ${ordersCount}`}>
+                              <Icon name="Layers" size={9} /> {ordersCount}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="flex gap-1 mt-0.5 flex-wrap">
                         {touchBadge?.interest && INTEREST_META[touchBadge.interest] && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
@@ -172,7 +184,18 @@ export function ClientsTable({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-semibold truncate" style={{ color: t.text }}>{c.client_name || "—"}</span>
+                        {(() => {
+                          const ordersCount = getClientOrders(c, clients).length;
+                          return ordersCount > 1 && (
+                            <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
+                              style={{ background: "#7c3aed20", color: "#a78bfa" }}>
+                              <Icon name="Layers" size={9} /> {ordersCount}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {clientSt && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"

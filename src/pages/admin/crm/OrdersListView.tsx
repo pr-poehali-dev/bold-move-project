@@ -138,11 +138,11 @@ export function OrdersListView({
   };
 
   const renderCard = (c: Client) => (
-    <OrdersClientCard key={c.id} c={c} onClick={() => onSelect(c)} onNextStep={onNextStep}
+    <OrdersClientCard key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
   const renderRow = (c: Client) => (
-    <OrdersClientRow key={c.id} c={c} onClick={() => onSelect(c)} onNextStep={onNextStep}
+    <OrdersClientRow key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
 
