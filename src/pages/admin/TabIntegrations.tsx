@@ -30,12 +30,35 @@ export default function TabIntegrations({ isDark }: Props) {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [sectionCheck, setSectionCheck] = useState<Record<string, "ok" | "err">>({});
 
-  // Формальная проверка секции: заполнены ли обязательные поля (select-поля необязательны).
-  // Реальная проверка каждого API будет подключена на этапе модуля «Касания».
-  const checkSection = (section: SectionDef, provider: ProviderOption) => {
+  // Проверка секции. Для Avito — реальная (сохраняем ключи и дёргаем Avito API),
+  // для остальных — формальная (заполнены ли обязательные поля).
+  const checkSection = async (section: SectionDef, provider: ProviderOption) => {
     const required = provider.fields.filter(f => !f.options);
-    const ok = required.length > 0 && required.every(f => (values[f.key] ?? "").trim());
-    setSectionCheck(s => ({ ...s, [section.id]: ok ? "ok" : "err" }));
+    const filled = required.length > 0 && required.every(f => (values[f.key] ?? "").trim());
+
+    if (section.id === "avito") {
+      if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
+      try {
+        // Сначала сохраняем введённые ключи в БД компании
+        let prevCfg: Record<string, unknown> = {};
+        try {
+          const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
+          if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
+        } catch { /* тихо */ }
+        await crmFetch("integrations", {
+          method: "POST",
+          body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
+        });
+        // Затем реальная проверка связи с Avito
+        const res = await crmFetch("avito-check", { method: "POST" }) as { ok?: boolean; error?: string };
+        setSectionCheck(s => ({ ...s, [section.id]: res?.ok ? "ok" : "err" }));
+      } catch {
+        setSectionCheck(s => ({ ...s, [section.id]: "err" }));
+      }
+      return;
+    }
+
+    setSectionCheck(s => ({ ...s, [section.id]: filled ? "ok" : "err" }));
   };
 
   // ── Telegram интеграция (перенос из «Своего агента», 1:1) ──

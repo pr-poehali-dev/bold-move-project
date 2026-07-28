@@ -1,12 +1,98 @@
 import json
 import os
 import re
+import hashlib
 import base64
 import uuid
 import psycopg2
 import boto3
 import urllib.request as _ureq
 from datetime import datetime
+
+
+# ── Шифрование чувствительных данных интеграций (Avito Client Secret и т.п.) ──
+# Ключ CRM_ENCRYPTION_KEY хранится в секретах проекта (не в БД). Любую строку
+# приводим к валидному Fernet-ключу через SHA-256 -> base64 (32 байта).
+def _fernet():
+    from cryptography.fernet import Fernet
+    raw = os.environ.get("CRM_ENCRYPTION_KEY", "")
+    if not raw:
+        return None
+    key = base64.urlsafe_b64encode(hashlib.sha256(raw.encode()).digest())
+    return Fernet(key)
+
+def encrypt_secret(plain):
+    """Шифрует строку. Возвращает 'enc:...' или сам текст, если ключа нет/пусто."""
+    if not plain:
+        return plain
+    f = _fernet()
+    if not f:
+        return plain  # нет ключа шифрования — сохраняем как есть (fallback)
+    return "enc:" + f.encrypt(plain.encode()).decode()
+
+def decrypt_secret(stored):
+    """Расшифровывает строку с префиксом 'enc:'. Обычный текст возвращает как есть."""
+    if not stored or not isinstance(stored, str):
+        return stored
+    if not stored.startswith("enc:"):
+        return stored  # старое незашифрованное значение — обратная совместимость
+    f = _fernet()
+    if not f:
+        return ""
+    try:
+        return f.decrypt(stored[4:].encode()).decode()
+    except Exception:
+        return ""
+
+
+# ── Avito Messenger API ──────────────────────────────────────────────────────
+def avito_get_token(client_id, client_secret):
+    """OAuth2 client_credentials -> access_token. Возвращает (token, error)."""
+    if not client_id or not client_secret:
+        return None, "нет client_id/client_secret"
+    data = urllib_urlencode({
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }).encode()
+    req = _ureq.Request("https://api.avito.ru/token", data=data,
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read().decode())
+        tok = resp.get("access_token")
+        if not tok:
+            return None, "Avito не вернул токен"
+        return tok, None
+    except Exception as e:
+        return None, f"Avito auth: {str(e)[:200]}"
+
+
+def avito_api_get(token, path):
+    req = _ureq.Request(f"https://api.avito.ru{path}",
+                        headers={"Authorization": f"Bearer {token}"}, method="GET")
+    with _ureq.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode())
+
+
+def avito_send_message(token, avito_user_id, chat_id, text):
+    """Отправляет сообщение в Avito-чат. Возвращает (message_id, error)."""
+    data = json.dumps({"message": {"text": text}, "type": "text"}).encode()
+    req = _ureq.Request(
+        f"https://api.avito.ru/messenger/v1/accounts/{avito_user_id}/chats/{chat_id}/messages",
+        data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read().decode())
+        return resp.get("id"), None
+    except Exception as e:
+        return None, f"Avito send: {str(e)[:200]}"
+
+
+def urllib_urlencode(d):
+    from urllib.parse import urlencode
+    return urlencode(d)
 
 SCHEMA = "t_p45929761_bold_move_project"
 CORS = {
@@ -1959,19 +2045,49 @@ def handler(event: dict, context) -> dict:
             if not owner_id:
                 return err("company not resolved", 400)
 
-            # GET — прочитать config компании
+            # Секретные поля (шифруются в БД, наружу отдаются маской "••••")
+            SECRET_KEYS = ("avito_client_secret", "whatsapp_token", "mistral_key",
+                           "openai_key", "assemblyai_key", "whisper_key", "other_key")
+            SECRET_MASK = "••••••••"
+
+            # GET — прочитать config компании (секреты маскируем, не отдаём открыто)
             if method == "GET":
                 cur.execute(
                     f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s",
                     (owner_id,))
                 row = cur.fetchone()
-                return ok({"config": row[0] if row else {}})
+                cfg = dict(row[0]) if row and row[0] else {}
+                for k in SECRET_KEYS:
+                    if cfg.get(k):
+                        cfg[k] = SECRET_MASK  # значение задано, но наружу не отдаём
+                return ok({"config": cfg})
 
-            # POST — сохранить config (upsert)
+            # POST — сохранить config (upsert). Секреты шифруем; маску игнорируем
+            # (значит поле не меняли — оставляем прежнее зашифрованное значение).
             if method == "POST":
                 cfg = body.get("config", {})
                 if not isinstance(cfg, dict):
                     return err("config must be an object")
+
+                cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+                prev_row = cur.fetchone()
+                prev_cfg = dict(prev_row[0]) if prev_row and prev_row[0] else {}
+
+                for k in SECRET_KEYS:
+                    if k not in cfg:
+                        continue
+                    val = cfg[k]
+                    if val == SECRET_MASK or val == "":
+                        # не меняли (пришла маска) — оставляем прежнее значение
+                        if prev_cfg.get(k):
+                            cfg[k] = prev_cfg[k]
+                        else:
+                            cfg.pop(k, None)
+                    elif isinstance(val, str) and val.startswith("enc:"):
+                        pass  # уже зашифровано — не трогаем
+                    else:
+                        cfg[k] = encrypt_secret(val)
+
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
                     VALUES (%s, %s, NOW())
@@ -1980,6 +2096,43 @@ def handler(event: dict, context) -> dict:
                 """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
                 conn.commit()
                 return ok({"saved": True})
+
+        # ── AVITO-CHECK: реальная проверка связи с Avito (кнопка «Проверить») ──────
+        if resource == "avito-check" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            client_id_a = cfg.get("avito_client_id")
+            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
+            if not client_id_a or not client_secret_a:
+                return err("Сначала сохраните Client ID и Client Secret", 400)
+
+            token, terr = avito_get_token(client_id_a, client_secret_a)
+            if terr:
+                return err(terr, 400)
+            try:
+                me = avito_api_get(token, "/core/v1/accounts/self")
+                avito_user_id = me.get("id")
+            except Exception as e:
+                return err(f"Avito: не удалось получить профиль: {str(e)[:150]}", 400)
+
+            # Сохраняем avito_user_id в конфиг — понадобится для отправки
+            cfg["_avito_user_id"] = avito_user_id
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+
+            return ok({"ok": True, "avito_user_id": avito_user_id,
+                       "name": me.get("name") or me.get("email")})
 
         # ── FIN-SETTINGS: настройки блока Доходы/Затраты — общие на компанию ───────
         # (видимость строк, кастомные строки). Раньше жили в localStorage браузера —
@@ -2404,6 +2557,68 @@ def handler(event: dict, context) -> dict:
 
             return ok({"client_id": client_id, "saved": True, "analysis": analysis})
 
+        # ── AVITO-WEBHOOK: приём входящих от Avito Messenger (Avito шлёт сам) ──────
+        # URL этого вебхука регистрируется в Avito. Защита — секретный ключ в query.
+        if resource == "avito-webhook" and method == "POST":
+            company_id_q = qs.get("company_id")
+            webhook_key  = qs.get("key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            # Формат Avito: {"payload": {"type":"message","value":{...}}}
+            value = ((body or {}).get("payload") or {}).get("value") or {}
+            av_chat_id = value.get("chat_id")
+            av_author  = value.get("author_id")
+            av_user_id = value.get("user_id")  # получатель = наш аккаунт
+            content    = value.get("content") or {}
+            text       = content.get("text")
+            msg_id     = value.get("id")
+
+            # Игнорируем свои же исходящие (author == наш аккаунт) и служебные без текста
+            if not av_chat_id or not text:
+                return ok({"skipped": True})
+            if av_author and av_user_id and str(av_author) == str(av_user_id):
+                return ok({"skipped_own": True})
+
+            # Находим/создаём клиента по avito chat_id (телефона в Avito обычно нет)
+            cur.execute(
+                f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND channel_ids->>'avito' = %s",
+                (owner_id, str(av_chat_id)))
+            client_row = cur.fetchone()
+            if not client_row:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) "
+                    f"VALUES (%s, %s, %s::jsonb) RETURNING id",
+                    (owner_id, None, json.dumps({"avito": str(av_chat_id)})))
+                client_row = cur.fetchone()
+                conn.commit()
+            client_id = client_row[0]
+
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, status)
+                    VALUES (%s, 'avito', 'in', %s, %s, 'received')
+                """, (client_id, f"avito_{msg_id}" if msg_id else None, text))
+                conn.commit()
+            except psycopg2.errors.UniqueViolation:
+                conn.rollback()
+                return ok({"duplicate": True})
+
+            analysis, aerr = run_client_analysis(cur, conn, client_id, None, None)
+            if aerr:
+                print(f"[avito-webhook] analysis skipped: {aerr}")
+            return ok({"client_id": client_id, "saved": True})
+
         # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
         # Кладёт сообщение в ленту со статусом 'pending' — воркер на VPS заберёт его
         # через pending-messages (опрос) и подтвердит через mark-sent.
@@ -2445,18 +2660,33 @@ def handler(event: dict, context) -> dict:
             if not external_chat_id:
                 return err(f"нет привязки к каналу «{channel}» — клиент ещё не писал через него", 400)
 
+            # Avito отправляется СРАЗУ через API (без воркера), Telegram/MAX — через
+            # очередь pending (их заберёт воркер на VPS).
+            initial_status = "pending"
+            if channel == "avito":
+                cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+                arow = cur.fetchone()
+                acfg = arow[0] if arow else {}
+                token, terr = avito_get_token(acfg.get("avito_client_id"),
+                                              decrypt_secret(acfg.get("avito_client_secret")))
+                avito_user_id = acfg.get("_avito_user_id")
+                if terr or not avito_user_id:
+                    return err(terr or "Avito не настроен — нажмите «Проверить» в Интеграциях", 400)
+                _, serr = avito_send_message(token, avito_user_id, external_chat_id, text)
+                initial_status = "error" if serr else "sent"
+
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, text, status)
-                VALUES (%s, %s, 'out', %s, 'pending')
+                VALUES (%s, %s, 'out', %s, %s)
                 RETURNING id, created_at
-            """, (client_id, channel, text))
+            """, (client_id, channel, text, initial_status))
             new_row = cur.fetchone()
             conn.commit()
 
             return ok({
                 "touch_id": new_row[0],
                 "created_at": new_row[1],
-                "status": "pending",
+                "status": initial_status,
             })
 
         # ── PENDING-MESSAGES: воркер на VPS опрашивает — есть что отправить? ───────
