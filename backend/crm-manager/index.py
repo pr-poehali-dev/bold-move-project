@@ -95,6 +95,8 @@ def urllib_urlencode(d):
     return urlencode(d)
 
 SCHEMA = "t_p45929761_bold_move_project"
+# Публичный URL этой же функции — нужен для регистрации внешних вебхуков (Avito и т.п.)
+SELF_FUNCTION_URL = "https://functions.poehali.dev/37f12dd8-c3c7-4bc9-9451-27dd60d66a3b"
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -2122,8 +2124,31 @@ def handler(event: dict, context) -> dict:
             except Exception as e:
                 return err(f"Avito: не удалось получить профиль: {str(e)[:150]}", 400)
 
-            # Сохраняем avito_user_id в конфиг — понадобится для отправки
             cfg["_avito_user_id"] = avito_user_id
+
+            # Автоматически подписываем Avito на входящие сообщения (webhook v3).
+            # Нужен секретный ключ вебхука — генерируем, если ещё нет.
+            wh_key = cfg.get("_channel_webhook_key")
+            if not wh_key:
+                wh_key = uuid.uuid4().hex
+                cfg["_channel_webhook_key"] = wh_key
+            webhook_url = (f"{SELF_FUNCTION_URL}?r=avito-webhook"
+                           f"&company_id={owner_id}&key={wh_key}")
+            webhook_ok = False
+            webhook_err = None
+            try:
+                wdata = json.dumps({"url": webhook_url}).encode()
+                wreq = _ureq.Request("https://api.avito.ru/messenger/v3/webhook", data=wdata,
+                                     headers={"Authorization": f"Bearer {token}",
+                                              "Content-Type": "application/json"}, method="POST")
+                with _ureq.urlopen(wreq, timeout=15) as r:
+                    r.read()
+                webhook_ok = True
+                cfg["_avito_webhook_registered"] = True
+            except Exception as e:
+                webhook_err = str(e)[:200]
+                print(f"[avito-check] webhook register failed: {webhook_err}")
+
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
                 VALUES (%s, %s, NOW())
@@ -2132,7 +2157,8 @@ def handler(event: dict, context) -> dict:
             conn.commit()
 
             return ok({"ok": True, "avito_user_id": avito_user_id,
-                       "name": me.get("name") or me.get("email")})
+                       "name": me.get("name") or me.get("email"),
+                       "webhook_registered": webhook_ok, "webhook_error": webhook_err})
 
         # ── FIN-SETTINGS: настройки блока Доходы/Затраты — общие на компанию ───────
         # (видимость строк, кастомные строки). Раньше жили в localStorage браузера —
