@@ -2142,9 +2142,10 @@ def handler(event: dict, context) -> dict:
                                      headers={"Authorization": f"Bearer {token}",
                                               "Content-Type": "application/json"}, method="POST")
                 with _ureq.urlopen(wreq, timeout=15) as r:
-                    r.read()
+                    webhook_resp_raw = r.read().decode()
                 webhook_ok = True
                 cfg["_avito_webhook_registered"] = True
+                print(f"[avito-check] webhook register response: {webhook_resp_raw[:300]}")
             except Exception as e:
                 webhook_err = str(e)[:200]
                 print(f"[avito-check] webhook register failed: {webhook_err}")
@@ -2159,6 +2160,34 @@ def handler(event: dict, context) -> dict:
             return ok({"ok": True, "avito_user_id": avito_user_id,
                        "name": me.get("name") or me.get("email"),
                        "webhook_registered": webhook_ok, "webhook_error": webhook_err})
+
+        # ── AVITO-WEBHOOK-STATUS: диагностика — что реально видит Avito (список подписок) ──
+        if resource == "avito-webhook-status" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            client_id_a = cfg.get("avito_client_id")
+            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
+            if not client_id_a or not client_secret_a:
+                return err("Avito не настроен", 400)
+
+            token, terr = avito_get_token(client_id_a, client_secret_a)
+            if terr:
+                return err(terr, 400)
+            try:
+                subs = avito_api_get(token, "/messenger/v1/subscriptions")
+            except Exception as e:
+                return err(f"Не удалось получить подписки: {str(e)[:200]}", 400)
+
+            expected_url = (f"{SELF_FUNCTION_URL}?r=avito-webhook"
+                            f"&company_id={owner_id}&key={cfg.get('_channel_webhook_key')}")
+            return ok({"subscriptions": subs, "expected_url": expected_url})
 
         # ── FIN-SETTINGS: настройки блока Доходы/Затраты — общие на компанию ───────
         # (видимость строк, кастомные строки). Раньше жили в localStorage браузера —
