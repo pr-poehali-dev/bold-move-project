@@ -239,6 +239,7 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
       {/* Drawer */}
       {selected && (
         <ClientDrawer client={selected} allClientOrders={getClientOrders(selected, clients)} onClose={() => setSelected(null)}
+          defaultTab="touches" contactMode
           onUpdated={() => { load(); }}
           onDeleted={() => { setSelected(null); load(); }}
           canEdit={canEdit} canFinance={canFinance} canFiles={canFiles}

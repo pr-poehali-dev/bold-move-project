@@ -18,7 +18,9 @@ interface Props {
   onUpdated: () => void;
   onDeleted: (deletedId: number) => void;
   isLocalCard?: boolean;
-  defaultTab?: "client" | "orders";
+  defaultTab?: "client" | "orders" | "touches";
+  /** Открыто из списка «Клиенты» — контакт, а не конкретная заявка: шапка показывает имя, а не «Заявка №X» */
+  contactMode?: boolean;
   defaultOrderId?: number;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
@@ -35,12 +37,12 @@ interface Props {
   onOpenAgent?:   (client: Client) => void;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", contactMode = false, defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
   const t = useTheme();
   const [data, setData]               = useState<Client>(client);
   const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "estimate" | "plan" | "touches" | "analytics">(defaultTab as "client" | "orders" | "plan");
+  const [drawerTab, setDrawerTab]     = useState<"client" | "orders" | "estimate" | "plan" | "touches" | "analytics">(defaultTab as "client" | "orders" | "plan" | "touches");
   const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied, setCopied]           = useState(false);
@@ -86,7 +88,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
   const lsKey = `order_title_${ord.id}`;
   const customTitle = localStorage.getItem(lsKey);
-  const orderTitle = customTitle || `Заявка №${ord.id}`;
+  // В режиме «Клиенты» заголовок — имя человека, а не номер конкретной заявки
+  const orderTitle = contactMode
+    ? (data.client_name || "Клиент без имени")
+    : (customTitle || `Заявка №${ord.id}`);
   const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
 
   return (
@@ -114,8 +119,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Название заявки */}
-              {editingTitle ? (
+              {/* Название заявки (или имя клиента — в contactMode) */}
+              {editingTitle && !contactMode ? (
                 <input
                   autoFocus
                   defaultValue={orderTitle}
@@ -137,10 +142,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
                 />
               ) : (
                 <div
-                  className="text-sm sm:text-base font-bold text-white truncate cursor-text hover:opacity-80 transition"
+                  className={`text-sm sm:text-base font-bold text-white truncate transition ${contactMode ? "" : "cursor-text hover:opacity-80"}`}
                   style={{ maxWidth: "min(180px, 40vw)" }}
-                  title="Нажмите чтобы изменить название"
-                  onClick={() => setEditingTitle(true)}>
+                  title={contactMode ? undefined : "Нажмите чтобы изменить название"}
+                  onClick={() => !contactMode && setEditingTitle(true)}>
                   {orderTitle}
                 </div>
               )}
