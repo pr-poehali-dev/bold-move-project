@@ -37,6 +37,107 @@ def ok(data):
 def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
+def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=None):
+    """Пересобирает ИИ-анализ клиента по всей истории касаний.
+    Возвращает (analysis_dict, error_message). error_message=None при успехе.
+    Не бросает исключения — вызывающий код сам решает, что делать при ошибке
+    (например, вебхук просто логирует и не валит сохранение сообщения)."""
+    cur.execute(f"""
+        SELECT channel, direction, text, duration_sec, created_at
+        FROM {SCHEMA}.touch_events
+        WHERE client_id=%s ORDER BY created_at ASC, id ASC
+    """, (client_id,))
+    rows = cur.fetchall()
+    if not rows:
+        return None, "нет касаний для анализа"
+
+    lines = []
+    for r in rows:
+        ch, direction, text, dur, created = r
+        who = "Клиент" if direction == "in" else "Мы"
+        when = created.strftime("%d.%m %H:%M") if created else ""
+        if ch == "call":
+            body_txt = f"звонок {dur or 0} сек" + (f": {text}" if text else "")
+        else:
+            body_txt = text or "(без текста)"
+        lines.append(f"[{when}] ({ch}) {who}: {body_txt}")
+    history_text = "\n".join(lines[-200:])
+
+    polza_key = os.environ.get("POLZA_API_KEY", "")
+    if not polza_key:
+        return None, "AI недоступен — нет ключа"
+
+    sys_prompt = "Отвечай только валидным JSON без markdown и пояснений."
+    user_prompt = (
+        "Ты аналитик отдела продаж. На вход — вся история общения с клиентом "
+        "(звонки и переписки из разных каналов) по порядку времени.\n"
+        "Верни ТОЛЬКО валидный JSON без markdown:\n"
+        '{\n'
+        '  "state_summary": "2-4 предложения: где сейчас клиент, чего хочет, возражения/риски, уровень интереса",\n'
+        '  "next_action": "конкретная рекомендация к следующему касанию: что сказать/написать, когда и по какому каналу",\n'
+        '  "interest": "high|medium|low",\n'
+        '  "interest_label": "Высокий|Средний|Низкий",\n'
+        '  "stage": "короткое название стадии сделки",\n'
+        '  "outcome": "success|failure|pending",\n'
+        '  "outcome_label": "Успех|Отказ|В работе",\n'
+        '  "risks": ["риск1", "риск2"],\n'
+        '  "key_points": ["важный факт о клиенте 1", "..."]\n'
+        '}\n'
+        "Правила: опирайся только на факты из истории, не выдумывай. "
+        "Рекомендация должна быть практичной и конкретной.\n\n"
+        f"История общения с клиентом{' ' + client_name if client_name else ''} ({client_phone or ''}):\n{history_text}"
+    )
+    payload = json.dumps({
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+        "max_tokens": 800, "temperature": 0.1,
+    }).encode()
+    req = _ureq.Request(
+        "https://api.polza.ai/api/v1/chat/completions", data=payload,
+        headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=45) as r:
+            ai_resp = json.loads(r.read().decode())
+        content = ai_resp["choices"][0]["message"]["content"]
+        m = re.search(r'\{[\s\S]*\}', content)
+        if not m:
+            return None, "AI вернул неожиданный формат"
+        parsed = json.loads(m.group(0))
+    except Exception as e:
+        return None, f"AI ошибка: {str(e)[:200]}"
+
+    state_summary  = parsed.get("state_summary")
+    next_action    = parsed.get("next_action")
+    interest       = parsed.get("interest")
+    interest_label = parsed.get("interest_label")
+    stage          = parsed.get("stage")
+    outcome        = parsed.get("outcome")
+    outcome_label  = parsed.get("outcome_label")
+    risks          = json.dumps(parsed.get("risks") or [], ensure_ascii=False)
+    key_points     = json.dumps(parsed.get("key_points") or [], ensure_ascii=False)
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.touch_client_analyses
+            (client_id, state_summary, next_action, interest, interest_label,
+             stage, outcome, outcome_label, risks, key_points)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (client_id, state_summary, next_action, interest, interest_label,
+          stage, outcome, outcome_label, risks, key_points))
+    cur.execute(f"""
+        UPDATE {SCHEMA}.touch_clients
+        SET state_summary=%s, next_action=%s, interest=%s, stage=%s, analysis_updated_at=NOW()
+        WHERE id=%s
+    """, (state_summary, next_action, interest, stage, client_id))
+    conn.commit()
+
+    return {
+        "state_summary": state_summary, "next_action": next_action,
+        "interest": interest, "interest_label": interest_label,
+        "stage": stage, "outcome": outcome, "outcome_label": outcome_label,
+        "risks": parsed.get("risks") or [], "key_points": parsed.get("key_points") or [],
+    }, None
+
+
 def normalize_phone(raw):
     """Нормализует номер к виду +7XXXXXXXXXX. Возвращает '' если номер невалиден."""
     if not raw:
@@ -2038,103 +2139,11 @@ def handler(event: dict, context) -> dict:
                 return err("client not found", 404)
             client_id, client_phone, client_name = cli[0], cli[1], cli[2]
 
-            cur.execute(f"""
-                SELECT channel, direction, text, duration_sec, created_at
-                FROM {SCHEMA}.touch_events
-                WHERE client_id=%s ORDER BY created_at ASC, id ASC
-            """, (client_id,))
-            rows = cur.fetchall()
-            if not rows:
-                return err("нет касаний для анализа", 400)
+            analysis, err_msg = run_client_analysis(cur, conn, client_id, client_phone, client_name)
+            if err_msg:
+                return err(err_msg, 400 if "нет касаний" in err_msg else 500 if "нет ключа" in err_msg else 502)
 
-            lines = []
-            for r in rows:
-                ch, direction, text, dur, created = r
-                who = "Клиент" if direction == "in" else "Мы"
-                when = created.strftime("%d.%m %H:%M") if created else ""
-                if ch == "call":
-                    body_txt = f"звонок {dur or 0} сек" + (f": {text}" if text else "")
-                else:
-                    body_txt = text or "(без текста)"
-                lines.append(f"[{when}] ({ch}) {who}: {body_txt}")
-            history_text = "\n".join(lines[-200:])  # ограничим объём истории
-
-            polza_key = os.environ.get("POLZA_API_KEY", "")
-            if not polza_key:
-                return err("AI недоступен — нет ключа", 500)
-
-            sys_prompt = "Отвечай только валидным JSON без markdown и пояснений."
-            user_prompt = (
-                "Ты аналитик отдела продаж. На вход — вся история общения с клиентом "
-                "(звонки и переписки из разных каналов) по порядку времени.\n"
-                "Верни ТОЛЬКО валидный JSON без markdown:\n"
-                '{\n'
-                '  "state_summary": "2-4 предложения: где сейчас клиент, чего хочет, возражения/риски, уровень интереса",\n'
-                '  "next_action": "конкретная рекомендация к следующему касанию: что сказать/написать, когда и по какому каналу",\n'
-                '  "interest": "high|medium|low",\n'
-                '  "interest_label": "Высокий|Средний|Низкий",\n'
-                '  "stage": "короткое название стадии сделки",\n'
-                '  "outcome": "success|failure|pending",\n'
-                '  "outcome_label": "Успех|Отказ|В работе",\n'
-                '  "risks": ["риск1", "риск2"],\n'
-                '  "key_points": ["важный факт о клиенте 1", "..."]\n'
-                '}\n'
-                "Правила: опирайся только на факты из истории, не выдумывай. "
-                "Рекомендация должна быть практичной и конкретной.\n\n"
-                f"История общения с клиентом{' ' + client_name if client_name else ''} ({client_phone}):\n{history_text}"
-            )
-            payload = json.dumps({
-                "model": "openai/gpt-4o-mini",
-                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
-                "max_tokens": 800, "temperature": 0.1,
-            }).encode()
-            req = _ureq.Request(
-                "https://api.polza.ai/api/v1/chat/completions", data=payload,
-                headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
-            try:
-                with _ureq.urlopen(req, timeout=45) as r:
-                    ai_resp = json.loads(r.read().decode())
-                content = ai_resp["choices"][0]["message"]["content"]
-                m = re.search(r'\{[\s\S]*\}', content)
-                if not m:
-                    return err("AI вернул неожиданный формат", 502)
-                parsed = json.loads(m.group(0))
-            except Exception as e:
-                return err(f"AI ошибка: {str(e)[:200]}", 502)
-
-            state_summary = parsed.get("state_summary")
-            next_action   = parsed.get("next_action")
-            interest      = parsed.get("interest")
-            interest_label= parsed.get("interest_label")
-            stage         = parsed.get("stage")
-            outcome       = parsed.get("outcome")
-            outcome_label = parsed.get("outcome_label")
-            risks         = json.dumps(parsed.get("risks") or [], ensure_ascii=False)
-            key_points    = json.dumps(parsed.get("key_points") or [], ensure_ascii=False)
-
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.touch_client_analyses
-                    (client_id, state_summary, next_action, interest, interest_label,
-                     stage, outcome, outcome_label, risks, key_points)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (client_id, state_summary, next_action, interest, interest_label,
-                  stage, outcome, outcome_label, risks, key_points))
-            cur.execute(f"""
-                UPDATE {SCHEMA}.touch_clients
-                SET state_summary=%s, next_action=%s, interest=%s, stage=%s, analysis_updated_at=NOW()
-                WHERE id=%s
-            """, (state_summary, next_action, interest, stage, client_id))
-            conn.commit()
-
-            return ok({
-                "client_id": client_id,
-                "analysis": {
-                    "state_summary": state_summary, "next_action": next_action,
-                    "interest": interest, "interest_label": interest_label,
-                    "stage": stage, "outcome": outcome, "outcome_label": outcome_label,
-                    "risks": parsed.get("risks") or [], "key_points": parsed.get("key_points") or [],
-                },
-            })
+            return ok({"client_id": client_id, "analysis": analysis})
 
         # ── ANALYZE-CALL: ИИ-оценка отдельного звонка (перенос ТЗ 8.1) ─────────────
         if resource == "analyze-call" and method == "POST":
@@ -2268,6 +2277,123 @@ def handler(event: dict, context) -> dict:
                     "key_phrases_operator": parsed.get("key_phrases_operator") or [],
                 },
             })
+
+        # ── CHANNEL-CONFIG: секретный ключ приёма сообщений для воркера на VPS ─────
+        # Компания видит/генерирует свой ключ во вкладке «Интеграции». Этот ключ
+        # воркер (Telethon/PyMax) подставляет в заголовок при вызове channel-webhook.
+        if resource == "channel-config":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            if method == "GET":
+                return ok({"webhook_key": cfg.get("_channel_webhook_key")})
+
+            if method == "POST" and body.get("regenerate"):
+                new_key = uuid.uuid4().hex
+                cfg["_channel_webhook_key"] = new_key
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+                conn.commit()
+                return ok({"webhook_key": new_key})
+
+            return err("unknown action")
+
+        # ── CHANNEL-WEBHOOK: приём сообщения от воркера (Telegram/MAX) ─────────────
+        # Вызывается НЕ сотрудником, а нашим воркером на VPS — авторизация через
+        # секретный webhook_key (не через сессию пользователя).
+        if resource == "channel-webhook" and method == "POST":
+            company_id_q = qs.get("company_id")
+            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и X-Webhook-Key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            channel     = body.get("channel")       # "telegram" | "max"
+            direction   = body.get("direction", "in")  # "in" (обычно вебхук = входящее)
+            phone       = body.get("phone")         # если воркер знает номер
+            external_chat_id = body.get("external_chat_id")  # id чата в канале (fallback без телефона)
+            name        = body.get("name")
+            text        = body.get("text")
+            external_id = body.get("external_id")   # id сообщения в канале — защита от дублей
+            attachments = body.get("attachments")
+
+            if channel not in ("telegram", "max", "avito", "whatsapp"):
+                return err("unknown channel")
+            if not phone and not external_chat_id:
+                return err("phone или external_chat_id обязателен")
+
+            # Находим/создаём клиента: приоритет — телефон, иначе внешний id канала
+            client_row = None
+            if phone:
+                norm = normalize_phone(phone)
+                if norm:
+                    cur.execute(
+                        f"SELECT id FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
+                        (norm, owner_id))
+                    client_row = cur.fetchone()
+                    if not client_row:
+                        cur.execute(
+                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
+                            (owner_id, norm, name))
+                        client_row = cur.fetchone()
+                        conn.commit()
+            if not client_row and external_chat_id:
+                # crm_contact_id используем как временное хранилище внешнего id канала,
+                # пока нет отдельного поля — ищем по нему в рамках компании и канала.
+                marker = f"{channel}:{external_chat_id}"
+                cur.execute(
+                    f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND crm_contact_id IS NULL "
+                    f"AND phone=%s",
+                    (owner_id, marker))
+                client_row = cur.fetchone()
+                if not client_row:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
+                        (owner_id, marker, name))
+                    client_row = cur.fetchone()
+                    conn.commit()
+
+            client_id = client_row[0]
+
+            # Сохраняем касание (UNIQUE(channel, external_id) защищает от повторной вставки того же вебхука)
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'received')
+                """, (client_id, channel, direction, external_id,
+                      text, json.dumps(attachments, ensure_ascii=False) if attachments else None))
+                conn.commit()
+            except psycopg2.errors.UniqueViolation:
+                conn.rollback()
+                return ok({"duplicate": True, "client_id": client_id})
+
+            # Автоматический пересбор ИИ-анализа при входящем (решение владельца: дороже, но всегда свежо)
+            analysis = None
+            if direction == "in":
+                analysis, analysis_err = run_client_analysis(cur, conn, client_id, phone, name)
+                if analysis_err:
+                    print(f"[channel-webhook] analysis skipped: {analysis_err}")
+
+            return ok({"client_id": client_id, "saved": True, "analysis": analysis})
 
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
