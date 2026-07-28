@@ -3,155 +3,13 @@ import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { updateBrand } from "./own-agent/brandApi";
 import { crmFetch } from "./crm/crmApi";
+import { GROUPS, SECTIONS, type SectionDef, type ProviderOption } from "./integrations/integrationsConfig";
+import NotifyIntegrationCard from "./integrations/NotifyIntegrationCard";
+import ProviderSection from "./integrations/ProviderSection";
 
 interface Props {
   isDark: boolean;
 }
-
-interface FieldDef {
-  key: string;
-  label: string;
-  placeholder: string;
-  type?: "text" | "password";
-  options?: string[];   // если задано — рендерим выпадающий список
-}
-
-interface ProviderOption {
-  id: string;
-  label: string;
-  fields: FieldDef[];
-}
-
-interface SectionDef {
-  id: string;
-  group: string;   // ключ группы
-  title: string;
-  desc: string;
-  icon: string;
-  providers: ProviderOption[];
-}
-
-// Смысловые группы вкладки «Интеграции»
-const GROUPS: { id: string; title: string; desc: string }[] = [
-  { id: "channels", title: "Каналы общения с клиентом",
-    desc: "Двусторонняя переписка: клиент пишет — сообщение попадает в ленту «Касания», отвечаете из CRM." },
-  { id: "ai", title: "ИИ и обработка",
-    desc: "Распознавание звонков и модель, которая анализирует историю клиента." },
-  { id: "telephony", title: "Телефония (АТС)",
-    desc: "Входящие звонки для транскрибации и анализа." },
-];
-
-const SECTIONS: SectionDef[] = [
-  // ── Каналы общения с клиентом ──
-  {
-    id: "tg_bot", group: "channels",
-    title: "Telegram-бот",
-    desc: "Двусторонняя переписка с клиентом через вашего Telegram-бота.",
-    icon: "Send",
-    providers: [
-      { id: "tg_bot", label: "Telegram", fields: [
-        { key: "tg_channel_token", label: "Токен бота (для переписки)", placeholder: "123456:AA...", type: "password" },
-      ]},
-    ],
-  },
-  {
-    id: "max_bot", group: "channels",
-    title: "MAX-бот",
-    desc: "Двусторонняя переписка с клиентом через MAX-бота.",
-    icon: "MessageCircle",
-    providers: [
-      { id: "max_bot", label: "MAX", fields: [
-        { key: "max_channel_token", label: "Токен бота MAX (для переписки)", placeholder: "...", type: "password" },
-      ]},
-    ],
-  },
-  {
-    id: "avito", group: "channels",
-    title: "Avito",
-    desc: "Приём и отправка сообщений через Avito Messenger API.",
-    icon: "MessagesSquare",
-    providers: [
-      { id: "avito", label: "Avito", fields: [
-        { key: "avito_client_id", label: "Client ID", placeholder: "..." },
-        { key: "avito_client_secret", label: "Client Secret", placeholder: "...", type: "password" },
-      ]},
-    ],
-  },
-  {
-    id: "webchat", group: "channels",
-    title: "Веб-чат на сайте",
-    desc: "Виджет чата на вашем сайте — клиент пишет прямо там, без мессенджеров.",
-    icon: "MessageSquareText",
-    providers: [
-      { id: "webchat", label: "Веб-чат", fields: [
-        { key: "webchat_site_url", label: "Адрес сайта", placeholder: "https://..." },
-      ]},
-    ],
-  },
-  {
-    id: "whatsapp", group: "channels",
-    title: "WhatsApp",
-    desc: "Приём и отправка через официальный WhatsApp Cloud API.",
-    icon: "Phone",
-    providers: [
-      { id: "whatsapp", label: "WhatsApp", fields: [
-        { key: "whatsapp_phone_id", label: "Phone Number ID", placeholder: "..." },
-        { key: "whatsapp_token", label: "Access Token", placeholder: "...", type: "password" },
-      ]},
-    ],
-  },
-  // ── ИИ и обработка ──
-  {
-    id: "transcription", group: "ai",
-    title: "Транскрибация звонков",
-    desc: "Сервис, который превращает записи звонков в текст.",
-    icon: "AudioLines",
-    providers: [
-      { id: "assemblyai", label: "AssemblyAI", fields: [
-        { key: "assemblyai_key", label: "API-ключ", placeholder: "sk-...", type: "password" },
-      ]},
-      { id: "whisper", label: "Whisper (OpenAI)", fields: [
-        { key: "whisper_key", label: "API-ключ OpenAI", placeholder: "sk-...", type: "password" },
-        { key: "whisper_model", label: "Модель", placeholder: "whisper-1" },
-      ]},
-    ],
-  },
-  {
-    id: "llm", group: "ai",
-    title: "Думающая LLM",
-    desc: "Модель, которая анализирует историю клиента и даёт рекомендации.",
-    icon: "BrainCircuit",
-    providers: [
-      { id: "mistral", label: "Mistral AI", fields: [
-        { key: "mistral_key", label: "API-ключ", placeholder: "...", type: "password" },
-        { key: "mistral_model", label: "Модель", placeholder: "Модель",
-          options: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"] },
-      ]},
-      { id: "openai", label: "OpenAI", fields: [
-        { key: "openai_key", label: "API-ключ", placeholder: "sk-...", type: "password" },
-        { key: "openai_model", label: "Модель", placeholder: "Модель",
-          options: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"] },
-      ]},
-      { id: "other", label: "Другая", fields: [
-        { key: "other_base_url", label: "Base URL", placeholder: "https://api.example.com/v1" },
-        { key: "other_key", label: "API-ключ", placeholder: "...", type: "password" },
-        { key: "other_model", label: "Модель", placeholder: "название-модели" },
-      ]},
-    ],
-  },
-  // ── Телефония ──
-  {
-    id: "telephony", group: "telephony",
-    title: "Телефония (АТС)",
-    desc: "Входящие звонки приходят на этот вебхук.",
-    icon: "PhoneCall",
-    providers: [
-      { id: "webhook", label: "Вебхук АТС", fields: [
-        { key: "telephony_webhook", label: "URL вебхука", placeholder: "https://..." },
-      ]},
-    ],
-  },
-];
 
 export default function TabIntegrations({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
@@ -312,116 +170,30 @@ export default function TabIntegrations({ isDark }: Props) {
         </div>
 
         {/* Интеграция с Telegram */}
-        <div className="rounded-2xl p-4"
-          style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(124,58,237,0.15)" }}>
-              <Icon name="Send" size={14} style={{ color: "#a78bfa" }} />
-            </div>
-            <div>
-              <div className="text-sm font-black" style={{ color: text }}>Интеграция с Telegram</div>
-              <div className="text-[11px]" style={{ color: muted }}>Новые заявки будут приходить в ваш бот</div>
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <div>
-              <input
-                value={tgToken}
-                onChange={e => setTgToken(e.target.value)}
-                placeholder="Токен бота (получить у @BotFather)"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
-                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
-              />
-            </div>
-            <div>
-              <input
-                value={tgChat}
-                onChange={e => setTgChat(e.target.value)}
-                placeholder="ID чата или группы (узнать у @userinfobot)"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
-                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
-              />
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={testTelegram}
-                disabled={!tgToken || !tgChat || tgTesting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-                {tgTesting
-                  ? <><div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
-                  : <><Icon name="Zap" size={11} /> Проверить</>}
-              </button>
-              {tgTestResult === "ok" && (
-                <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-                  <Icon name="CheckCircle2" size={12} /> Сообщение отправлено!
-                </span>
-              )}
-              {tgTestResult === "err" && (
-                <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-                  <Icon name="AlertTriangle" size={12} /> Ошибка — проверьте токен и ID чата
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <NotifyIntegrationCard
+          cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
+          iconName="Send"
+          title="Интеграция с Telegram"
+          subtitle="Новые заявки будут приходить в ваш бот"
+          tokenValue={tgToken} onTokenChange={setTgToken}
+          tokenPlaceholder="Токен бота (получить у @BotFather)"
+          chatValue={tgChat} onChatChange={setTgChat}
+          chatPlaceholder="ID чата или группы (узнать у @userinfobot)"
+          onTest={testTelegram} testing={tgTesting} testResult={tgTestResult}
+        />
 
         {/* Интеграция с MAX */}
-        <div className="rounded-2xl p-4"
-          style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(124,58,237,0.15)" }}>
-              <span style={{ fontSize: 15, lineHeight: 1, color: "#a78bfa", fontWeight: 900 }}>М</span>
-            </div>
-            <div>
-              <div className="text-sm font-black" style={{ color: text }}>Интеграция с MAX</div>
-              <div className="text-[11px]" style={{ color: muted }}>Новые заявки будут приходить в ваш бот MAX</div>
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <div>
-              <input
-                value={maxToken}
-                onChange={e => setMaxToken(e.target.value)}
-                placeholder="Токен бота (получить у @MasterBot в MAX)"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
-                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
-              />
-            </div>
-            <div>
-              <input
-                value={maxChat}
-                onChange={e => setMaxChat(e.target.value)}
-                placeholder="ID чата (числовой ID получателя)"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition placeholder:text-white placeholder:font-semibold"
-                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: text }}
-              />
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={testMax}
-                disabled={!maxToken || !maxChat || maxTesting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40"
-                style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-                {maxTesting
-                  ? <><div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> Проверка...</>
-                  : <><Icon name="Zap" size={11} /> Проверить</>}
-              </button>
-              {maxTestResult === "ok" && (
-                <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-                  <Icon name="CheckCircle2" size={12} /> Сообщение отправлено!
-                </span>
-              )}
-              {maxTestResult === "err" && (
-                <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-                  <Icon name="AlertTriangle" size={12} /> Ошибка — проверьте токен и ID чата
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <NotifyIntegrationCard
+          cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
+          iconNode={<span style={{ fontSize: 15, lineHeight: 1, color: "#a78bfa", fontWeight: 900 }}>М</span>}
+          title="Интеграция с MAX"
+          subtitle="Новые заявки будут приходить в ваш бот MAX"
+          tokenValue={maxToken} onTokenChange={setMaxToken}
+          tokenPlaceholder="Токен бота (получить у @MasterBot в MAX)"
+          chatValue={maxChat} onChatChange={setMaxChat}
+          chatPlaceholder="ID чата (числовой ID получателя)"
+          onTest={testMax} testing={maxTesting} testResult={maxTestResult}
+        />
 
         {/* ═══ ГРУППЫ: Каналы общения · ИИ · Телефония ═══ */}
         {GROUPS.map(group => {
@@ -437,106 +209,19 @@ export default function TabIntegrations({ isDark }: Props) {
                 </div>
               </div>
 
-              {groupSections.map(section => {
-                const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
-                const multiProvider = section.providers.length > 1;
-                return (
-            <div key={section.id} className="rounded-2xl p-4"
-              style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
-
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(124,58,237,0.12)" }}>
-                  <Icon name={section.icon} size={17} style={{ color: "#a78bfa" }} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold" style={{ color: txt }}>{section.title}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: txtSub }}>{section.desc}</div>
-                </div>
-              </div>
-
-              {multiProvider && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {section.providers.map(p => {
-                    const active = p.id === current.id;
-                    return (
-                      <button key={p.id}
-                        onClick={() => setActiveProvider(s => ({ ...s, [section.id]: p.id }))}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                        style={{
-                          background: active ? "rgba(124,58,237,0.18)" : (isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6"),
-                          color: active ? "#a78bfa" : txtSub,
-                          border: `1px solid ${active ? "rgba(124,58,237,0.4)" : "transparent"}`,
-                        }}>
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2.5">
-                {current.fields.map(f => {
-                  const isSecret = f.type === "password";
-                  const show = revealed[f.key];
-                  return (
-                    <div key={f.key}>
-                      {f.options ? (
-                        <select
-                          value={values[f.key] ?? ""}
-                          onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-                          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition font-semibold"
-                          style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: values[f.key] ? txt : "#fff" }}>
-                          <option value="">{f.label} (по умолчанию)</option>
-                          {f.options.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      ) : (
-                        <div className="relative">
-                          <input
-                            type={isSecret && !show ? "password" : "text"}
-                            value={values[f.key] ?? ""}
-                            onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-                            placeholder={f.label}
-                            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
-                            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt, paddingRight: isSecret ? 40 : undefined }}
-                          />
-                          {isSecret && (
-                            <button type="button"
-                              onClick={() => setRevealed(r => ({ ...r, [f.key]: !r[f.key] }))}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition"
-                              style={{ color: txtSub }}>
-                              <Icon name={show ? "EyeOff" : "Eye"} size={15} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Проверить — формальная проверка (заполнены ли поля) */}
-              <div className="flex items-center gap-2 mt-3">
-                <button
-                  onClick={() => checkSection(section, current)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
-                  style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-                  <Icon name="Zap" size={11} /> Проверить
-                </button>
-                {sectionCheck[section.id] === "ok" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-                    <Icon name="CheckCircle2" size={12} /> Поля заполнены
-                  </span>
-                )}
-                {sectionCheck[section.id] === "err" && (
-                  <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-                    <Icon name="AlertTriangle" size={12} /> Заполните обязательные поля
-                  </span>
-                )}
-              </div>
-            </div>
-                );
-              })}
+              {groupSections.map(section => (
+                <ProviderSection
+                  key={section.id}
+                  section={section}
+                  isDark={isDark}
+                  txt={txt} txtSub={txtSub}
+                  cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+                  activeProvider={activeProvider} setActiveProvider={setActiveProvider}
+                  values={values} setValues={setValues}
+                  revealed={revealed} setRevealed={setRevealed}
+                  sectionCheck={sectionCheck} checkSection={checkSection}
+                />
+              ))}
             </div>
           );
         })}
