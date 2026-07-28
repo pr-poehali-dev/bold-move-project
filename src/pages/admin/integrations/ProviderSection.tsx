@@ -42,7 +42,30 @@ export default function ProviderSection({
         </div>
       </div>
 
-      {multiProvider && (
+      {/* Личный аккаунт: вход по QR/номеру через VPS-воркер (не поля-токены) */}
+      {section.kind === "account" && (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg w-fit"
+            style={{ background: "rgba(148,163,184,0.12)", color: txtSub }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#94a3b8" }} /> Не подключено
+          </div>
+          <button
+            onClick={() => checkSection(section, current)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition w-fit"
+            style={{ background: "#7c3aed", color: "#fff" }}>
+            <Icon name={section.authMethod === "qr" ? "QrCode" : "Smartphone"} size={13} />
+            {section.authMethod === "qr" ? "Подключить по QR-коду" : "Подключить по номеру"}
+          </button>
+          <div className="text-[10px]" style={{ color: txtSub }}>
+            {section.authMethod === "qr"
+              ? "Появится QR-код — отсканируйте его приложением Telegram (Настройки → Устройства → Подключить устройство)."
+              : "Введёте номер телефона, придёт код в приложение MAX — подтвердите вход."}
+            {" "}Требуется подключённый сервер-воркер.
+          </div>
+        </div>
+      )}
+
+      {section.kind !== "account" && multiProvider && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {section.providers.map(p => {
             const active = p.id === current.id;
@@ -62,7 +85,7 @@ export default function ProviderSection({
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      {section.kind !== "account" && <div className="flex flex-col gap-2.5">
         {current.fields.map(f => {
           const isSecret = f.type === "password";
           const show = revealed[f.key];
@@ -100,10 +123,10 @@ export default function ProviderSection({
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      {/* Проверить — формальная проверка (заполнены ли поля) */}
-      <div className="flex items-center gap-2 mt-3">
+      {/* Проверить — только для секций с полями (не для личных аккаунтов) */}
+      {section.kind !== "account" && <div className="flex items-center gap-2 mt-3">
         <button
           onClick={() => checkSection(section, current)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
@@ -112,15 +135,15 @@ export default function ProviderSection({
         </button>
         {sectionCheck[section.id] === "ok" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-            <Icon name="CheckCircle2" size={12} /> Поля заполнены
+            <Icon name="CheckCircle2" size={12} /> {section.id === "avito" ? "Связь работает" : "Поля заполнены"}
           </span>
         )}
         {sectionCheck[section.id] === "err" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-            <Icon name="AlertTriangle" size={12} /> Заполните обязательные поля
+            <Icon name="AlertTriangle" size={12} /> {section.id === "avito" ? "Проверьте ключи Avito" : "Заполните обязательные поля"}
           </span>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

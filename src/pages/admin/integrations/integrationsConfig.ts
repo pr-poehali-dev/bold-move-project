@@ -19,12 +19,20 @@ export interface SectionDef {
   desc: string;
   icon: string;
   providers: ProviderOption[];
+  /** "account" — личный аккаунт (вход по QR/номеру через VPS-воркер, а не поля-токены) */
+  kind?: "fields" | "account";
+  /** способ входа для kind="account": qr (Telegram) | code (MAX по номеру) */
+  authMethod?: "qr" | "code";
 }
 
 // Смысловые группы вкладки «Интеграции»
 export const GROUPS: { id: string; title: string; desc: string }[] = [
-  { id: "channels", title: "Каналы общения с клиентом",
-    desc: "Двусторонняя переписка: клиент пишет — сообщение попадает в ленту «Касания», отвечаете из CRM." },
+  { id: "accounts", title: "Личные аккаунты (мессенджеры)",
+    desc: "Пишете клиенту от своего личного аккаунта. Вход как в веб-версию — по QR или номеру телефона." },
+  { id: "bots", title: "Боты (уведомления)",
+    desc: "Официальные боты по токену: уведомления о заявках и переписка через бота." },
+  { id: "channels", title: "Другие каналы",
+    desc: "Avito и веб-чат на сайте — сообщения попадают в ленту «Касания»." },
   { id: "ai", title: "ИИ и обработка",
     desc: "Распознавание звонков и модель, которая анализирует историю клиента." },
   { id: "telephony", title: "Телефония (АТС)",
@@ -32,29 +40,47 @@ export const GROUPS: { id: string; title: string; desc: string }[] = [
 ];
 
 export const SECTIONS: SectionDef[] = [
-  // ── Каналы общения с клиентом ──
+  // ── Личные аккаунты (через VPS-воркер, вход по QR/номеру) ──
   {
-    id: "tg_bot", group: "channels",
-    title: "Telegram-бот",
-    desc: "Двусторонняя переписка с клиентом через вашего Telegram-бота.",
+    id: "tg_personal", group: "accounts",
+    title: "Личный Telegram",
+    desc: "Переписка от вашего личного аккаунта Telegram. Вход по QR-коду, как в веб-версии.",
     icon: "Send",
+    kind: "account", authMethod: "qr",
+    providers: [{ id: "tg_personal", label: "Telegram", fields: [] }],
+  },
+  {
+    id: "max_personal", group: "accounts",
+    title: "Личный MAX",
+    desc: "Переписка от вашего личного аккаунта MAX. Вход по номеру телефона и коду.",
+    icon: "MessageCircle",
+    kind: "account", authMethod: "code",
+    providers: [{ id: "max_personal", label: "MAX", fields: [] }],
+  },
+  // ── Боты (уведомления по токену) ──
+  {
+    id: "tg_bot", group: "bots",
+    title: "Telegram-бот",
+    desc: "Официальный бот по токену от @BotFather — уведомления о заявках.",
+    icon: "Bot",
     providers: [
       { id: "tg_bot", label: "Telegram", fields: [
-        { key: "tg_channel_token", label: "Токен бота (для переписки)", placeholder: "123456:AA...", type: "password" },
+        { key: "tg_channel_token", label: "Токен бота (получить у @BotFather)", placeholder: "123456:AA...", type: "password" },
       ]},
     ],
   },
   {
-    id: "max_bot", group: "channels",
+    id: "max_bot", group: "bots",
     title: "MAX-бот",
-    desc: "Двусторонняя переписка с клиентом через MAX-бота.",
-    icon: "MessageCircle",
+    desc: "Официальный бот MAX по токену — уведомления о заявках.",
+    icon: "Bot",
     providers: [
       { id: "max_bot", label: "MAX", fields: [
-        { key: "max_channel_token", label: "Токен бота MAX (для переписки)", placeholder: "...", type: "password" },
+        { key: "max_channel_token", label: "Токен бота MAX (получить у @MasterBot)", placeholder: "...", type: "password" },
       ]},
     ],
   },
+  // ── Другие каналы ──
   {
     id: "avito", group: "channels",
     title: "Avito",
@@ -75,18 +101,6 @@ export const SECTIONS: SectionDef[] = [
     providers: [
       { id: "webchat", label: "Веб-чат", fields: [
         { key: "webchat_site_url", label: "Адрес сайта", placeholder: "https://..." },
-      ]},
-    ],
-  },
-  {
-    id: "whatsapp", group: "channels",
-    title: "WhatsApp",
-    desc: "Приём и отправка через официальный WhatsApp Cloud API.",
-    icon: "Phone",
-    providers: [
-      { id: "whatsapp", label: "WhatsApp", fields: [
-        { key: "whatsapp_phone_id", label: "Phone Number ID", placeholder: "..." },
-        { key: "whatsapp_token", label: "Access Token", placeholder: "...", type: "password" },
       ]},
     ],
   },
