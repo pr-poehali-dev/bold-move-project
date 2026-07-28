@@ -78,10 +78,32 @@ export default function DrawerAnalyticsTab({ phone, name }: Props) {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone]);
 
+  const [rebuildError, setRebuildError] = useState<string | null>(null);
+
   const rebuild = async () => {
-    // ИИ-пересбор подключится, когда будет готова функция analyze-client.
+    if (!phone) return;
     setRebuilding(true);
-    setTimeout(() => setRebuilding(false), 800);
+    setRebuildError(null);
+    try {
+      const d = await crmFetch("analyze-client", { method: "POST", body: JSON.stringify({ phone, name }) }) as
+        { analysis?: Analysis; error?: string };
+      if (d?.error) {
+        setRebuildError(d.error);
+      } else if (d?.analysis) {
+        setAnalysis({ ...d.analysis, created_at: new Date().toISOString() });
+        // Обновляем и краткий срез клиента, чтобы бейджи/лента тоже видели свежие данные
+        setClient(c => c ? {
+          ...c,
+          state_summary: d.analysis?.state_summary ?? c.state_summary,
+          next_action: d.analysis?.next_action ?? c.next_action,
+          interest: d.analysis?.interest ?? c.interest,
+          stage: d.analysis?.stage ?? c.stage,
+        } : c);
+      }
+    } catch {
+      setRebuildError("Не удалось связаться с сервером");
+    }
+    setRebuilding(false);
   };
 
   if (!phone) {
@@ -141,6 +163,13 @@ export default function DrawerAnalyticsTab({ phone, name }: Props) {
           {rebuilding ? "Собираю…" : "Пересобрать анализ"}
         </button>
       </div>
+
+      {rebuildError && (
+        <div className="text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
+          style={{ background: "#ef444422", color: "#ef4444" }}>
+          <Icon name="AlertTriangle" size={13} /> {rebuildError}
+        </div>
+      )}
 
       {!hasAnything ? (
         <div className="text-center text-sm py-10" style={{ color: t.textMute }}>

@@ -1,9 +1,11 @@
 import json
 import os
+import re
 import base64
 import uuid
 import psycopg2
 import boto3
+import urllib.request as _ureq
 from datetime import datetime
 
 SCHEMA = "t_p45929761_bold_move_project"
@@ -1960,6 +1962,133 @@ def handler(event: dict, context) -> dict:
                         "risks": a[7], "key_points": a[8], "created_at": a[9],
                     }
                 return ok({"client": client, "touches": touches, "analysis": analysis})
+
+        # ── ANALYZE-CLIENT: ИИ-пересбор сводки по всей истории касаний ────────────
+        if resource == "analyze-client" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            client_id = body.get("client_id") if isinstance(body, dict) else None
+            phone_q = body.get("phone") if isinstance(body, dict) else None
+            if not client_id and not phone_q:
+                return err("client_id or phone required")
+
+            if client_id:
+                cur.execute(
+                    f"SELECT id, phone, name FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                    (client_id, owner_id))
+            else:
+                norm = normalize_phone(phone_q)
+                if not norm:
+                    return err("phone invalid")
+                cur.execute(
+                    f"SELECT id, phone, name FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
+                    (norm, owner_id))
+            cli = cur.fetchone()
+            if not cli:
+                return err("client not found", 404)
+            client_id, client_phone, client_name = cli[0], cli[1], cli[2]
+
+            cur.execute(f"""
+                SELECT channel, direction, text, duration_sec, created_at
+                FROM {SCHEMA}.touch_events
+                WHERE client_id=%s ORDER BY created_at ASC, id ASC
+            """, (client_id,))
+            rows = cur.fetchall()
+            if not rows:
+                return err("нет касаний для анализа", 400)
+
+            lines = []
+            for r in rows:
+                ch, direction, text, dur, created = r
+                who = "Клиент" if direction == "in" else "Мы"
+                when = created.strftime("%d.%m %H:%M") if created else ""
+                if ch == "call":
+                    body_txt = f"звонок {dur or 0} сек" + (f": {text}" if text else "")
+                else:
+                    body_txt = text or "(без текста)"
+                lines.append(f"[{when}] ({ch}) {who}: {body_txt}")
+            history_text = "\n".join(lines[-200:])  # ограничим объём истории
+
+            polza_key = os.environ.get("POLZA_API_KEY", "")
+            if not polza_key:
+                return err("AI недоступен — нет ключа", 500)
+
+            sys_prompt = "Отвечай только валидным JSON без markdown и пояснений."
+            user_prompt = (
+                "Ты аналитик отдела продаж. На вход — вся история общения с клиентом "
+                "(звонки и переписки из разных каналов) по порядку времени.\n"
+                "Верни ТОЛЬКО валидный JSON без markdown:\n"
+                '{\n'
+                '  "state_summary": "2-4 предложения: где сейчас клиент, чего хочет, возражения/риски, уровень интереса",\n'
+                '  "next_action": "конкретная рекомендация к следующему касанию: что сказать/написать, когда и по какому каналу",\n'
+                '  "interest": "high|medium|low",\n'
+                '  "interest_label": "Высокий|Средний|Низкий",\n'
+                '  "stage": "короткое название стадии сделки",\n'
+                '  "outcome": "success|failure|pending",\n'
+                '  "outcome_label": "Успех|Отказ|В работе",\n'
+                '  "risks": ["риск1", "риск2"],\n'
+                '  "key_points": ["важный факт о клиенте 1", "..."]\n'
+                '}\n'
+                "Правила: опирайся только на факты из истории, не выдумывай. "
+                "Рекомендация должна быть практичной и конкретной.\n\n"
+                f"История общения с клиентом{' ' + client_name if client_name else ''} ({client_phone}):\n{history_text}"
+            )
+            payload = json.dumps({
+                "model": "openai/gpt-4o-mini",
+                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "max_tokens": 800, "temperature": 0.1,
+            }).encode()
+            req = _ureq.Request(
+                "https://api.polza.ai/api/v1/chat/completions", data=payload,
+                headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
+            try:
+                with _ureq.urlopen(req, timeout=45) as r:
+                    ai_resp = json.loads(r.read().decode())
+                content = ai_resp["choices"][0]["message"]["content"]
+                m = re.search(r'\{[\s\S]*\}', content)
+                if not m:
+                    return err("AI вернул неожиданный формат", 502)
+                parsed = json.loads(m.group(0))
+            except Exception as e:
+                return err(f"AI ошибка: {str(e)[:200]}", 502)
+
+            state_summary = parsed.get("state_summary")
+            next_action   = parsed.get("next_action")
+            interest      = parsed.get("interest")
+            interest_label= parsed.get("interest_label")
+            stage         = parsed.get("stage")
+            outcome       = parsed.get("outcome")
+            outcome_label = parsed.get("outcome_label")
+            risks         = json.dumps(parsed.get("risks") or [], ensure_ascii=False)
+            key_points    = json.dumps(parsed.get("key_points") or [], ensure_ascii=False)
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.touch_client_analyses
+                    (client_id, state_summary, next_action, interest, interest_label,
+                     stage, outcome, outcome_label, risks, key_points)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (client_id, state_summary, next_action, interest, interest_label,
+                  stage, outcome, outcome_label, risks, key_points))
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_clients
+                SET state_summary=%s, next_action=%s, interest=%s, stage=%s, analysis_updated_at=NOW()
+                WHERE id=%s
+            """, (state_summary, next_action, interest, stage, client_id))
+            conn.commit()
+
+            return ok({
+                "client_id": client_id,
+                "analysis": {
+                    "state_summary": state_summary, "next_action": next_action,
+                    "interest": interest, "interest_label": interest_label,
+                    "stage": stage, "outcome": outcome, "outcome_label": outcome_label,
+                    "risks": parsed.get("risks") or [], "key_points": parsed.get("key_points") or [],
+                },
+            })
 
         return err("unknown resource", 404)
 
