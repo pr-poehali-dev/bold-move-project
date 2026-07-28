@@ -327,7 +327,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* ЗАЯВКИ */}
           {drawerTab === "orders" && (
-            <div className="flex flex-col sm:flex-row h-full min-h-0 sm:pl-6">
+            <div className="flex flex-col sm:flex-row h-full min-h-0">
 
               {/* ── МОБИЛЕ: горизонтальный скролл заявок сверху ── */}
               {allClientOrders.length > 1 && (
