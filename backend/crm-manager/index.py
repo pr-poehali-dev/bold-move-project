@@ -1942,7 +1942,24 @@ def handler(event: dict, context) -> dict:
                     "text": r[4], "audio_url": r[5], "duration_sec": r[6],
                     "attachments": r[7], "status": r[8], "created_at": r[9],
                 } for r in cur.fetchall()]
-                return ok({"client": client, "touches": touches})
+
+                # Последний детальный ИИ-анализ клиента (для вкладки «Аналитика»)
+                cur.execute(f"""
+                    SELECT state_summary, next_action, interest, interest_label,
+                           stage, outcome, outcome_label, risks, key_points, created_at
+                    FROM {SCHEMA}.touch_client_analyses
+                    WHERE client_id=%s ORDER BY created_at DESC, id DESC LIMIT 1
+                """, (client_id,))
+                a = cur.fetchone()
+                analysis = None
+                if a:
+                    analysis = {
+                        "state_summary": a[0], "next_action": a[1],
+                        "interest": a[2], "interest_label": a[3],
+                        "stage": a[4], "outcome": a[5], "outcome_label": a[6],
+                        "risks": a[7], "key_points": a[8], "created_at": a[9],
+                    }
+                return ok({"client": client, "touches": touches, "analysis": analysis})
 
         return err("unknown resource", 404)
 

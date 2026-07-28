@@ -7,6 +7,7 @@ import DrawerInfoTab from "./DrawerInfoTab";
 import ClientTab from "./ClientTab";
 import DrawerPlanTab from "./DrawerPlanTab";
 import DrawerTouchesTab from "./DrawerTouchesTab";
+import DrawerAnalyticsTab from "./DrawerAnalyticsTab";
 import PdfOptionsModal from "./PdfOptionsModal";
 import { useEstimateData } from "./useEstimateData";
 
@@ -274,9 +275,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* АНАЛИТИКА */}
           {drawerTab === "analytics" && (
-            <div className="px-3 sm:px-6 py-8 text-center text-sm" style={{ color: t.textMute }}>
-              ИИ-аналитика по клиенту появится здесь на следующем шаге.
-            </div>
+            <DrawerAnalyticsTab phone={data.phone} name={data.client_name} />
           )}
 
           {/* ЧЕРТЕЖИ */}
