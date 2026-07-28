@@ -1865,6 +1865,46 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"saved": True})
 
+        # ── TOUCHES: лента касаний клиента (модуль «Касания») ─────────────────────
+        if resource == "touches":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            if method == "GET":
+                client_id = qs.get("client_id")
+                if not client_id:
+                    return err("client_id required")
+                # Проверяем, что клиент принадлежит этой компании
+                cur.execute(
+                    f"SELECT id, phone, name, state_summary, next_action, interest, stage "
+                    f"FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                    (client_id, owner_id))
+                cli = cur.fetchone()
+                if not cli:
+                    return err("not found", 404)
+                client = {
+                    "id": cli[0], "phone": cli[1], "name": cli[2],
+                    "state_summary": cli[3], "next_action": cli[4],
+                    "interest": cli[5], "stage": cli[6],
+                }
+                # Лента касаний по времени
+                cur.execute(f"""
+                    SELECT id, channel, direction, external_id, text, audio_url,
+                           duration_sec, attachments, status, created_at
+                    FROM {SCHEMA}.touch_events
+                    WHERE client_id=%s
+                    ORDER BY created_at ASC, id ASC
+                """, (client_id,))
+                touches = [{
+                    "id": r[0], "channel": r[1], "direction": r[2], "external_id": r[3],
+                    "text": r[4], "audio_url": r[5], "duration_sec": r[6],
+                    "attachments": r[7], "status": r[8], "created_at": r[9],
+                } for r in cur.fetchall()]
+                return ok({"client": client, "touches": touches})
+
         return err("unknown resource", 404)
 
     except Exception as e:

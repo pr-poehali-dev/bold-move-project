@@ -122,6 +122,14 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "Требуется авторизация"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET touches without auth is rejected",
+      "method": "GET",
+      "path": "/?r=touches&client_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
     }
   ]
 }
