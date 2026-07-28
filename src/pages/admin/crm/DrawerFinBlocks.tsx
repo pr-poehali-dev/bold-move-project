@@ -395,6 +395,17 @@ export function DrawerCostsBlock({
           />
         )}
 
+        {autoLoading && rowsToRender.length === 0 && (
+          <div className="flex flex-col gap-1.5 py-1">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="flex items-center justify-between py-1.5">
+                <div className="h-3 rounded animate-pulse" style={{ width: 90 + i * 20, background: t.surface2 }} />
+                <div className="h-3 w-14 rounded animate-pulse" style={{ background: t.surface2 }} />
+              </div>
+            ))}
+          </div>
+        )}
+
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={rowsToRender.map(r => r.key)} strategy={verticalListSortingStrategy}>
             {rowsToRender.map(rule => {

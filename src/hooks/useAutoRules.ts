@@ -1,6 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 
 const API_URL = "https://functions.poehali.dev/5e79f038-550c-41c6-8064-443681d7f8b4";
+const CACHE_KEY = "auto_rules_cache_v1";
+
+interface CachedAutoRules {
+  rules: RuleEntry[];
+  auto_mode: boolean;
+  use_installation_price: boolean;
+  use_measure_price: boolean;
+  use_management_price: boolean;
+}
+
+function loadCache(): CachedAutoRules | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) as CachedAutoRules : null;
+  } catch { return null; }
+}
+
+function saveCache(v: CachedAutoRules) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(v)); } catch { /* тихо */ }
+}
 
 export interface RuleEntry {
   key: string;
@@ -30,26 +50,37 @@ function getToken(): string {
 }
 
 export function useAutoRules(): AutoRulesState {
-  const [rules, setRules] = useState<RuleEntry[]>([]);
-  const [auto_mode, setAutoMode] = useState(false);
-  const [use_installation_price, setUseInstallationPrice] = useState(false);
-  const [use_measure_price, setUseMeasurePrice] = useState(false);
-  const [use_management_price, setUseManagementPrice] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Правила компании меняются редко — сразу показываем то, что закэшировано
+  // в localStorage (мгновенно, без "пустой" карточки), а в фоне тянем свежее из БД.
+  const cached = loadCache();
+  const [rules, setRules] = useState<RuleEntry[]>(cached?.rules ?? []);
+  const [auto_mode, setAutoMode] = useState(cached?.auto_mode ?? false);
+  const [use_installation_price, setUseInstallationPrice] = useState(cached?.use_installation_price ?? false);
+  const [use_measure_price, setUseMeasurePrice] = useState(cached?.use_measure_price ?? false);
+  const [use_management_price, setUseManagementPrice] = useState(cached?.use_management_price ?? false);
+  const [loading, setLoading] = useState(!cached);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!loadCache()) setLoading(true);
     try {
       const res = await fetch(API_URL, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       const data = await res.json();
-      setRules(data.rules || []);
-      setAutoMode(data.auto_mode ?? false);
-      setUseInstallationPrice(data.use_installation_price ?? false);
-      setUseMeasurePrice(data.use_measure_price ?? false);
-      setUseManagementPrice(data.use_management_price ?? false);
+      const next: CachedAutoRules = {
+        rules: data.rules || [],
+        auto_mode: data.auto_mode ?? false,
+        use_installation_price: data.use_installation_price ?? false,
+        use_measure_price: data.use_measure_price ?? false,
+        use_management_price: data.use_management_price ?? false,
+      };
+      setRules(next.rules);
+      setAutoMode(next.auto_mode);
+      setUseInstallationPrice(next.use_installation_price);
+      setUseMeasurePrice(next.use_measure_price);
+      setUseManagementPrice(next.use_management_price);
+      saveCache(next);
     } finally {
       setLoading(false);
     }
@@ -74,6 +105,7 @@ export function useAutoRules(): AutoRulesState {
       setUseInstallationPrice(installVal);
       setUseMeasurePrice(measureVal);
       setUseManagementPrice(managementVal);
+      saveCache({ rules: newRules, auto_mode: newAutoMode, use_installation_price: installVal, use_measure_price: measureVal, use_management_price: managementVal });
       window.dispatchEvent(new CustomEvent("auto-rules-updated"));
     } finally {
       setSaving(false);
