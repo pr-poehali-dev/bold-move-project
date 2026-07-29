@@ -171,16 +171,29 @@ def avito_api_get(token, path):
         return json.loads(r.read().decode())
 
 
-def avito_fetch_client_name(token, avito_user_id, chat_id):
+def avito_fetch_client_name(token, avito_user_id, chat_id, our_user_id=None):
     """Возвращает имя собеседника (покупателя) из Avito-чата или None.
+    avito_user_id — id аккаунта для формирования URL запроса.
+    our_user_id — НАШ реальный id продавца (из конфига интеграции): именно его
+    исключаем из участников, чтобы не подставить название собственного магазина.
     У Avito имя часто появляется не сразу — поэтому вызывается повторно, пока имя не получено."""
     try:
         chat_info = avito_api_get(token, f"/messenger/v2/accounts/{avito_user_id}/chats/{chat_id}")
+        # Кого считаем «собой»: сначала сохранённый our_user_id, иначе — avito_user_id из вебхука
+        self_ids = {str(x) for x in (our_user_id, avito_user_id) if x is not None}
         for u in (chat_info.get("users") or []):
-            if str(u.get("id")) != str(avito_user_id):
+            if str(u.get("id")) not in self_ids:
                 name = (u.get("name") or "").strip()
                 if name:
                     return name
+        # Fallback: если так имя не нашли (например self_ids ошибочны) —
+        # берём любого участника с непустым именем, кроме сохранённого our_user_id.
+        if our_user_id is not None:
+            for u in (chat_info.get("users") or []):
+                if str(u.get("id")) != str(our_user_id):
+                    name = (u.get("name") or "").strip()
+                    if name:
+                        return name
     except Exception as e:
         print(f"[avito] name fetch skipped: {str(e)[:200]}")
     return None
@@ -2908,9 +2921,10 @@ def handler(event: dict, context) -> dict:
                 # Если не получилось (нет токена / API недоступен) — используем заглушку,
                 # приём сообщения это не блокирует (Avito ждёт быстрый ответ).
                 real_name = None
+                our_uid = cfg.get("_avito_user_id")
                 token, terr = avito_get_messenger_token(cur, conn, owner_id, cfg)
                 if token:
-                    real_name = avito_fetch_client_name(token, av_user_id, av_chat_id)
+                    real_name = avito_fetch_client_name(token, av_user_id, av_chat_id, our_uid)
                 client_name = real_name or "Клиент с Avito"
 
                 cur.execute(f"""
@@ -2933,10 +2947,11 @@ def handler(event: dict, context) -> dict:
                 nrow = cur.fetchone()
                 cur_name = (nrow[0] if nrow else None) or ""
                 if not cur_name.strip() or cur_name.strip() == "Клиент с Avito":
+                    our_uid = cfg.get("_avito_user_id")
                     token, terr = avito_get_messenger_token(cur, conn, owner_id, cfg)
                     if token:
-                        fresh_name = avito_fetch_client_name(token, av_user_id, av_chat_id)
-                        if fresh_name:
+                        fresh_name = avito_fetch_client_name(token, av_user_id, av_chat_id, our_uid)
+                        if fresh_name and fresh_name.strip() != (cur_name or "").strip():
                             cur.execute(
                                 f"UPDATE {SCHEMA}.touch_clients SET name=%s WHERE id=%s",
                                 (fresh_name, client_id))
