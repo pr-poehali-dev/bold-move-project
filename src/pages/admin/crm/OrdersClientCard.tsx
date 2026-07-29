@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch, getClientOrders } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch, getClientOrders, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
@@ -233,9 +233,18 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
           <div className="flex items-start mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold truncate" style={{ color: t.text }}>
-                  {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-sm font-bold truncate" style={{ color: t.text }}>
+                    {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+                  </span>
+                  {!isDone && !isCancelled && stageDuration(c.status_changed_at) && (
+                    <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0"
+                      style={{ background: t.surface2, color: t.textMute }}
+                      title="Времени на текущем этапе">
+                      <Icon name="Clock" size={9} /> {stageDuration(c.status_changed_at)}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {ordersCount > 1 && (
                     <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold"

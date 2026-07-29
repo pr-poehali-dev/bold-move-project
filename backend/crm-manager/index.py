@@ -601,7 +601,7 @@ def handler(event: dict, context) -> dict:
                            lc.responsible_phone, lc.map_link, lc.tags,
                            lc.photo_before_url, lc.photo_after_url, lc.document_url,
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.cancel_reason,
-                           lc.updated_at, lc.project_id, lc.avito_chat_url,
+                           lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
                            COALESCE(u.is_demo, FALSE) AS is_demo
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
@@ -649,8 +649,8 @@ def handler(event: dict, context) -> dict:
                     f"""INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, client_status, measure_date, install_date,
                          notes, address, area, budget, source, created_via,
-                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id, status_changed_at)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
@@ -760,6 +760,21 @@ def handler(event: dict, context) -> dict:
                     if new_status and new_status not in allowed_statuses:
                         return err("Нет доступа для перевода на этот этап", 403)
 
+                # При переводе на этап «В работе» (call) без явно указанного подэтапа —
+                # автоматически ставим подэтап «Новый в работе» (если он есть у компании).
+                new_status_val = body.get("status")
+                if new_status_val == ("ca" "ll") and "sub_status" not in body:
+                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    orow = cur.fetchone()
+                    owner_cmp = (orow[0] if orow else None) or company_id
+                    if owner_cmp is not None:
+                        cur.execute(f"""SELECT id FROM {SCHEMA}.order_substatuses
+                            WHERE company_id=%s AND parent_status='working' AND label='Новый в работе'
+                            ORDER BY position, id LIMIT 1""", (owner_cmp,))
+                        srow = cur.fetchone()
+                        if srow:
+                            body["sub_status"] = str(srow[0])
+
                 sets, vals = [], []
                 for f in ALL_CLIENT_FIELDS:
                     if f in body:
@@ -772,6 +787,10 @@ def handler(event: dict, context) -> dict:
                 if not sets:
                     return err("nothing to update")
                 sets.append("updated_at = NOW()")
+                # Момент входа на этап — обновляем только при реальной смене статуса,
+                # чтобы таймер «сколько на этапе» не сбрасывался при любой правке карточки.
+                if "status" in body:
+                    sets.append("status_changed_at = NOW()")
                 vals.append(int(cid))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET {', '.join(sets)} WHERE id = %s", vals)
 
@@ -1587,8 +1606,8 @@ def handler(event: dict, context) -> dict:
                     session_id = f"plan-{new_id}"
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.live_chats
-                            (session_id, client_name, phone, address, status, created_via, company_id, project_id)
-                        VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
+                            (session_id, client_name, phone, address, status, created_via, company_id, project_id, status_changed_at)
+                        VALUES (%s,%s,%s,%s,'new','plan',%s,%s,NOW()) RETURNING id
                     """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
                     chat_id = cur.fetchone()[0]
                 # 3. Связываем проект с заявкой
@@ -1911,8 +1930,8 @@ def handler(event: dict, context) -> dict:
                 session_id = f"plan-{proj_id}"
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, address, status, created_via, company_id, project_id)
-                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s) RETURNING id
+                        (session_id, client_name, phone, address, status, created_via, company_id, project_id, status_changed_at)
+                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s,NOW()) RETURNING id
                 """, (session_id, client_name or proj_name, phone, address, insert_cmp, proj_id))
                 chat_id = cur.fetchone()[0]
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s, company_id=%s WHERE id=%s", (chat_id, insert_cmp, proj_id))
@@ -2878,8 +2897,8 @@ def handler(event: dict, context) -> dict:
 
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, notes, source, created_via, company_id, avito_chat_url)
-                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s)
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id, avito_chat_url, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s, NOW())
                     RETURNING id
                 """, (f"avito_{av_chat_id}", client_name, "",
                       f"Первое сообщение: {text[:200]}", final_company_id, avito_chat_url))

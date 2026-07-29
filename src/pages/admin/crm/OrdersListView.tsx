@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
+import { Client, STATUS_LABELS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
@@ -116,70 +116,64 @@ export function OrdersListView({
     : clientsByStatusSubFilter;
 
   // Два визуально разделённых блока фильтров: «Этапы» (нейтральная палитра, акцент
-  // фиолетовый у выбранного) и «Источники» (у каждого источника свой цвет). Разделены
-  // подписью-меткой группы и вертикальным разделителем, чтобы не путались между собой.
-  const hasStageFilters  = tabStatuses.length > 0 || mySubstatuses.length > 0;
-  const hasSourceFilters = sourcesPresent.length > 0;
+  // фиолетовый у выбранного) и «Источники» (у каждого источника свой цвет).
+  // Чипы с нулевым счётчиком не показываем (кроме выбранного — чтобы можно было снять фильтр).
+  const stageChips = tabStatuses
+    .map(s => ({ key: s, label: statusLabels[s] || STATUS_LABELS[s] || s, color: t.accent,
+                 cnt: clientsByStatus.filter(c => c.status === s).length, isSel: activeStatusFilter === s,
+                 onClick: () => setActiveStatusFilter(activeStatusFilter === s ? null : s) }))
+    .filter(x => x.cnt > 0 || x.isSel);
+  const subChips = mySubstatuses
+    .map(s => ({ key: `sub-${s.id}`, label: s.label, color: s.color,
+                 cnt: clientsByStatusAndFilter.filter(c => c.sub_status === String(s.id)).length,
+                 isSel: activeSubFilter === String(s.id),
+                 onClick: () => setActiveSubFilter(activeSubFilter === String(s.id) ? null : String(s.id)) }))
+    .filter(x => x.cnt > 0 || x.isSel);
+  const sourceChips = sourcesPresent
+    .map(sourceName => {
+      const src = orderSources.find(s => s.name === sourceName);
+      return { key: `src-${sourceName}`, label: src?.name || sourceName, color: src?.color || "#64748b",
+               cnt: clientsByStatusSubFilter.filter(c => c.source === sourceName).length,
+               isSel: activeSourceFilter === sourceName,
+               onClick: () => setActiveSourceFilter(activeSourceFilter === sourceName ? null : sourceName) };
+    })
+    .filter(x => x.cnt > 0 || x.isSel);
+
+  const hasStageFilters  = stageChips.length > 0 || subChips.length > 0;
+  const hasSourceFilters = sourceChips.length > 0;
   const renderFilterRow = () =>
     (hasStageFilters || hasSourceFilters) && (
       <div className="flex items-start gap-3 flex-wrap mb-4">
         {hasStageFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
-            {tabStatuses.map(s => {
-              const label = statusLabels[s] || STATUS_LABELS[s] || s;
-              const cnt = clientsByStatus.filter(c => c.status === s).length;
-              const isSel = activeStatusFilter === s;
-              return (
-                <button key={`status-${s}`} onClick={() => setActiveStatusFilter(isSel ? null : s)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
-                  style={{
-                    background: isSel ? t.accent : t.surface,
-                    borderColor: isSel ? t.accent : t.border,
-                    color: isSel ? "#fff" : t.textSub,
-                  }}>
-                  {label} <span className="font-bold">{cnt}</span>
-                </button>
-              );
-            })}
-            {mySubstatuses.map(s => {
-              const cnt = clientsByStatusAndFilter.filter(c => c.sub_status === String(s.id)).length;
-              const isSel = activeSubFilter === String(s.id);
-              return (
-                <button key={`sub-${s.id}`} onClick={() => setActiveSubFilter(isSel ? null : String(s.id))}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
-                  style={{
-                    background: isSel ? s.color : t.surface,
-                    borderColor: isSel ? s.color : t.border,
-                    color: isSel ? "#fff" : t.textSub,
-                  }}>
-                  {s.label} <span className="font-bold">{cnt}</span>
-                </button>
-              );
-            })}
+            {[...stageChips, ...subChips].map(x => (
+              <button key={x.key} onClick={x.onClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                style={{
+                  background: x.isSel ? x.color : t.surface,
+                  borderColor: x.isSel ? x.color : t.border,
+                  color: x.isSel ? "#fff" : t.textSub,
+                }}>
+                {x.label} <span className="font-bold">{x.cnt}</span>
+              </button>
+            ))}
           </div>
         )}
         {hasSourceFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Источник</span>
-            {sourcesPresent.map(sourceName => {
-              const src = orderSources.find(s => s.name === sourceName);
-              const label = src?.name || sourceName;
-              const color = src?.color || "#64748b";
-              const cnt = clientsByStatusSubFilter.filter(c => c.source === sourceName).length;
-              const isSel = activeSourceFilter === sourceName;
-              return (
-                <button key={`src-${sourceName}`} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
-                  style={{
-                    background: isSel ? color : color + "18",
-                    borderColor: color,
-                    color: isSel ? "#fff" : color,
-                  }}>
-                  {label} <span className="font-bold">{cnt}</span>
-                </button>
-              );
-            })}
+            {sourceChips.map(x => (
+              <button key={x.key} onClick={x.onClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                style={{
+                  background: x.isSel ? x.color : x.color + "18",
+                  borderColor: x.color,
+                  color: x.isSel ? "#fff" : x.color,
+                }}>
+                {x.label} <span className="font-bold">{x.cnt}</span>
+              </button>
+            ))}
           </div>
         )}
       </div>

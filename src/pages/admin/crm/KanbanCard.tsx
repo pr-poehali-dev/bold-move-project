@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
+import { STATUS_LABELS, STATUS_COLORS, Client, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
@@ -85,9 +85,18 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
         {/* Шапка клиента */}
         {/* Заголовок + статус в одной строке */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-xs font-bold truncate" style={{ color: t.text }}>
-            {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-bold truncate" style={{ color: t.text }}>
+              {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
+            </span>
+            {client.status !== "done" && client.status !== "cancelled" && stageDuration(client.status_changed_at) && (
+              <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0"
+                style={{ background: t.surface2, color: t.textMute }}
+                title="Времени на текущем этапе">
+                <Icon name="Clock" size={9} /> {stageDuration(client.status_changed_at)}
+              </span>
+            )}
+          </div>
           {isInstall
             ? <InstallProgress client={client} color={color} />
             : src

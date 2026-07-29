@@ -181,10 +181,25 @@ export interface Client {
   project_id?: number | null;
   is_demo?: boolean;
   avito_chat_url?: string | null;
+  status_changed_at?: string | null;
 }
 
 export function fmt(n: number): string {
   return n.toLocaleString("ru-RU");
+}
+
+// Компактная длительность нахождения на этапе: «5 мин», «3 ч», «2 дн».
+// from — момент входа на этап (status_changed_at). Пусто → возвращает "".
+export function stageDuration(from: string | null | undefined): string {
+  if (!from) return "";
+  const start = new Date(from).getTime();
+  if (isNaN(start)) return "";
+  const mins = Math.max(0, Math.floor((Date.now() - start) / 60000));
+  if (mins < 60) return `${mins} мин`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} ч`;
+  const days = Math.floor(hours / 24);
+  return `${days} дн`;
 }
 
 // Группировка заявок по клиенту: сначала по телефону, fallback — по имени

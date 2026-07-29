@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "./themeContext";
 import { STATUS_LABELS, STATUS_COLORS } from "./crmApi";
+import { useSubstatuses } from "./substatusContext";
 import DrumPicker, { DrumItem } from "./DrumPicker";
 import Icon from "@/components/ui/icon";
 
@@ -25,27 +26,37 @@ const DRUM_ITEMS: DrumItem[] = STATUS_ORDER.map(s => ({
 }));
 
 // ── Воронка для десктопа (оригинальный вид) ───────────────────────────────
+// tabId — соответствие вкладке воронки, из которой берём кастомные подэтапы (substatus).
 const FUNNEL_STAGES = [
-  { statuses: ["new"],                                                                    label: "Заявка",   color: "#8b5cf6", icon: "Inbox" },
-  { statuses: ["call"],                                                                   label: "В работе", color: "#a78bfa", icon: "Zap" },
-  { statuses: ["measure", "measured"],                                                    label: "Замер",    color: "#f59e0b", icon: "Ruler" },
-  { statuses: ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"], label: "Монтаж",  color: "#f97316", icon: "Wrench" },
-  { statuses: ["done"],                                                                   label: "Готово",   color: "#10b981", icon: "CheckCircle2" },
-  { statuses: ["cancelled"],                                                              label: "Отказ",    color: "#ef4444", icon: "XCircle" },
+  { statuses: ["new"],                                                                    label: "Заявка",   color: "#8b5cf6", icon: "Inbox",       tabId: "leads" },
+  { statuses: ["call"],                                                                   label: "В работе", color: "#a78bfa", icon: "Zap",         tabId: "working" },
+  { statuses: ["measure", "measured"],                                                    label: "Замер",    color: "#f59e0b", icon: "Ruler",       tabId: "measures" },
+  { statuses: ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"], label: "Монтаж",  color: "#f97316", icon: "Wrench",      tabId: "installs" },
+  { statuses: ["done"],                                                                   label: "Готово",   color: "#10b981", icon: "CheckCircle2", tabId: "done" },
+  { statuses: ["cancelled"],                                                              label: "Отказ",    color: "#ef4444", icon: "XCircle",     tabId: "done" },
 ] as const;
 
 const STAGE_DETAIL: Record<string, string[]> = {
-  "В работе": ["call"],
   "Замер":    ["measure", "measured"],
   "Монтаж":   ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"],
 };
 
-function DesktopFunnel({ status, onSave }: { status: string; onSave: (s: string) => void }) {
+function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus }: {
+  status: string; subStatus: string | null;
+  onSave: (s: string) => void; onSaveSubStatus: (v: string | null) => void;
+}) {
   const t = useTheme();
+  const allSubs = useSubstatuses();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const currentStageIdx = FUNNEL_STAGES.findIndex(g => g.statuses.includes(status as never));
   const currentStage    = FUNNEL_STAGES[currentStageIdx];
   const mainStages      = FUNNEL_STAGES.filter(g => g.label !== "Отказ");
+
+  // Кастомные подэтапы для конкретного этапа воронки (по tabId)
+  const subsFor = (tabId: string) => allSubs.filter(s => s.parent_status === tabId);
+  // У этапа есть что разворачивать, если есть системные детали ИЛИ кастомные подэтапы
+  const hasDetail = (g: typeof FUNNEL_STAGES[number]) =>
+    !!STAGE_DETAIL[g.label] || subsFor(g.tabId).length > 0;
 
   return (
     <div className="pt-2 pb-2 space-y-2">
@@ -57,7 +68,9 @@ function DesktopFunnel({ status, onSave }: { status: string; onSave: (s: string)
             <div key={g.label} className="flex items-center flex-1 min-w-0">
               <button
                 onClick={() => {
-                  if (STAGE_DETAIL[g.label]) {
+                  if (hasDetail(g)) {
+                    // Переводим на первый статус этапа (если ещё не на нём) и разворачиваем подэтапы
+                    if (!g.statuses.includes(status as never)) onSave(g.statuses[0]);
                     setExpandedStage(expandedStage === g.label ? null : g.label);
                   } else {
                     onSave(g.statuses[0]);
@@ -107,19 +120,40 @@ function DesktopFunnel({ status, onSave }: { status: string; onSave: (s: string)
         </button>
       </div>
 
-      {expandedStage && STAGE_DETAIL[expandedStage] && (
-        <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-          {STAGE_DETAIL[expandedStage].map(s => (
-            <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
-              style={status === s
-                ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
-                : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
-      )}
+      {expandedStage && (() => {
+        const stage = FUNNEL_STAGES.find(g => g.label === expandedStage);
+        const detailStatuses = STAGE_DETAIL[expandedStage] || [];
+        const subs = stage ? subsFor(stage.tabId) : [];
+        if (detailStatuses.length === 0 && subs.length === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
+            {/* Системные статусы этапа (Замер/Монтаж) */}
+            {detailStatuses.map(s => (
+              <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
+                style={status === s
+                  ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
+                  : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
+            {/* Кастомные подэтапы (те же, что на карточке): «Новый в работе», «На прогреве» и т.п. */}
+            {subs.map(s => {
+              const active = subStatus === String(s.id);
+              return (
+                <button key={`sub-${s.id}`}
+                  onClick={() => { onSaveSubStatus(active ? null : String(s.id)); }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
+                  style={active
+                    ? { background: s.color, color: "#fff", borderColor: s.color }
+                    : { borderColor: t.border2, background: t.surface, color: t.textSub }}>
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -204,8 +238,10 @@ function MobileDrum({ status, onSave }: { status: string; onSave: (s: string) =>
 }
 
 // ── Экспортируемый компонент ──────────────────────────────────────────────
-export function StatusSelector({ status, onSave, readOnly = false }: {
-  status: string; onSave: (s: string) => void; readOnly?: boolean;
+export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStatus, readOnly = false }: {
+  status: string; subStatus?: string | null;
+  onSave: (s: string) => void; onSaveSubStatus?: (v: string | null) => void;
+  readOnly?: boolean;
 }) {
   if (readOnly) {
     // Только просмотр — без возможности смены
@@ -224,7 +260,8 @@ export function StatusSelector({ status, onSave, readOnly = false }: {
     <>
       {/* Десктоп: воронка с кнопками */}
       <div className="hidden sm:block">
-        <DesktopFunnel status={status} onSave={onSave} />
+        <DesktopFunnel status={status} subStatus={subStatus} onSave={onSave}
+          onSaveSubStatus={onSaveSubStatus ?? (() => {})} />
       </div>
       {/* Мобиле: барабан с подтверждением */}
       <div className="sm:hidden">

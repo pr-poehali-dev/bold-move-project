@@ -252,10 +252,12 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           hidden={hiddenBlocks.has("status")}>
           <StatusSelector
             status={data.status}
+            subStatus={data.sub_status ?? null}
             readOnly={!canOrdersEdit}
             onSave={s => {
               saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
             }}
+            onSaveSubStatus={v => save({ sub_status: v })}
           />
         </Section>
       )}
