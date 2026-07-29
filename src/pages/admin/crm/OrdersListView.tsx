@@ -115,60 +115,73 @@ export function OrdersListView({
     ? clientsByStatusSubFilter.filter(c => (c.source || null) === activeSourceFilter)
     : clientsByStatusSubFilter;
 
-  // Единый ряд фильтров: этапы статуса + свои этапы + источники — одна нейтральная палитра,
-  // акцент только у выбранного чипа (единый стиль вместо разноцветных бирок).
+  // Два визуально разделённых блока фильтров: «Этапы» (нейтральная палитра, акцент
+  // фиолетовый у выбранного) и «Источники» (у каждого источника свой цвет). Разделены
+  // подписью-меткой группы и вертикальным разделителем, чтобы не путались между собой.
+  const hasStageFilters  = tabStatuses.length > 0 || mySubstatuses.length > 0;
+  const hasSourceFilters = sourcesPresent.length > 0;
   const renderFilterRow = () =>
-    (tabStatuses.length > 0 || mySubstatuses.length > 0 || sourcesPresent.length > 0) && (
-      <div className="flex gap-1.5 flex-wrap mb-4">
-        {tabStatuses.map(s => {
-          const label = statusLabels[s] || STATUS_LABELS[s] || s;
-          const cnt = clientsByStatus.filter(c => c.status === s).length;
-          const isSel = activeStatusFilter === s;
-          return (
-            <button key={`status-${s}`} onClick={() => setActiveStatusFilter(isSel ? null : s)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
-              style={{
-                background: isSel ? t.accent + "22" : t.surface2,
-                borderColor: isSel ? t.accent : t.border,
-                color: isSel ? t.accentLight : t.textSub,
-              }}>
-              {label} <span className="font-bold">{cnt}</span>
-            </button>
-          );
-        })}
-        {mySubstatuses.map(s => {
-          const cnt = clientsByStatusAndFilter.filter(c => c.sub_status === String(s.id)).length;
-          const isSel = activeSubFilter === String(s.id);
-          return (
-            <button key={`sub-${s.id}`} onClick={() => setActiveSubFilter(isSel ? null : String(s.id))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
-              style={{
-                background: isSel ? t.accent + "22" : t.surface2,
-                borderColor: isSel ? t.accent : t.border,
-                color: isSel ? t.accentLight : t.textSub,
-              }}>
-              {s.label} <span className="font-bold">{cnt}</span>
-            </button>
-          );
-        })}
-        {sourcesPresent.map(sourceName => {
-          const src = orderSources.find(s => s.name === sourceName);
-          const label = src?.name || sourceName;
-          const color = src?.color || "#64748b";
-          const cnt = clientsByStatusSubFilter.filter(c => c.source === sourceName).length;
-          const isSel = activeSourceFilter === sourceName;
-          return (
-            <button key={`src-${sourceName}`} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
-              style={{
-                background: isSel ? color + "25" : color + "12",
-                borderColor: isSel ? color : color + "40",
-                color,
-              }}>
-              {label} <span className="font-bold">{cnt}</span>
-            </button>
-          );
-        })}
+    (hasStageFilters || hasSourceFilters) && (
+      <div className="flex items-start gap-3 flex-wrap mb-4">
+        {hasStageFilters && (
+          <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+            <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
+            {tabStatuses.map(s => {
+              const label = statusLabels[s] || STATUS_LABELS[s] || s;
+              const cnt = clientsByStatus.filter(c => c.status === s).length;
+              const isSel = activeStatusFilter === s;
+              return (
+                <button key={`status-${s}`} onClick={() => setActiveStatusFilter(isSel ? null : s)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                  style={{
+                    background: isSel ? t.accent : t.surface,
+                    borderColor: isSel ? t.accent : t.border,
+                    color: isSel ? "#fff" : t.textSub,
+                  }}>
+                  {label} <span className="font-bold">{cnt}</span>
+                </button>
+              );
+            })}
+            {mySubstatuses.map(s => {
+              const cnt = clientsByStatusAndFilter.filter(c => c.sub_status === String(s.id)).length;
+              const isSel = activeSubFilter === String(s.id);
+              return (
+                <button key={`sub-${s.id}`} onClick={() => setActiveSubFilter(isSel ? null : String(s.id))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                  style={{
+                    background: isSel ? s.color : t.surface,
+                    borderColor: isSel ? s.color : t.border,
+                    color: isSel ? "#fff" : t.textSub,
+                  }}>
+                  {s.label} <span className="font-bold">{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {hasSourceFilters && (
+          <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+            <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Источник</span>
+            {sourcesPresent.map(sourceName => {
+              const src = orderSources.find(s => s.name === sourceName);
+              const label = src?.name || sourceName;
+              const color = src?.color || "#64748b";
+              const cnt = clientsByStatusSubFilter.filter(c => c.source === sourceName).length;
+              const isSel = activeSourceFilter === sourceName;
+              return (
+                <button key={`src-${sourceName}`} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                  style={{
+                    background: isSel ? color : color + "18",
+                    borderColor: color,
+                    color: isSel ? "#fff" : color,
+                  }}>
+                  {label} <span className="font-bold">{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
 

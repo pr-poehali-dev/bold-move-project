@@ -36,9 +36,9 @@ function SubstatusPills({ client, tabId, onUpdate }: { client: Client; tabId: st
           <button key={s.id} onClick={e => handleClick(e, s.id)}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition"
             style={{
-              background: active ? s.color + "25" : "rgba(128,128,128,0.08)",
-              color: active ? s.color : "rgba(150,150,150,0.6)",
-              border: `1px solid ${active ? s.color + "50" : "transparent"}`,
+              background: active ? s.color : "rgba(128,128,128,0.08)",
+              color: active ? "#fff" : "rgba(150,150,150,0.6)",
+              border: `1px solid ${active ? s.color : "transparent"}`,
             }}>
             {s.label}
           </button>
