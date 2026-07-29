@@ -5,9 +5,11 @@ import UserDropdown from "@/components/UserDropdown";
 import ProfileModal from "@/components/ProfileModal";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmClients from "./CrmClients";
+import CrmMessages from "./CrmMessages";
 import CrmOrders from "./CrmOrders";
 import CrmCalendar from "./CrmCalendar";
 import CrmKanban from "./CrmKanban";
+import { useInboxUnread } from "./useInboxUnread";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { SubstatusContext } from "./substatusContext";
 import { crmFetch, Client } from "./crmApi";
@@ -17,12 +19,13 @@ import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
 
-type CrmTab = "analytics" | "clients" | "orders" | "calendar" | "kanban";
+type CrmTab = "analytics" | "clients" | "messages" | "orders" | "calendar" | "kanban";
 
 // Все возможные табы с привязкой к новым правам
 const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissions }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers",       perm: "orders_view"   },
   { id: "clients",   label: "Клиенты",   icon: "Users",       perm: "clients_view"  },
+  { id: "messages",  label: "Сообщения", icon: "MessagesSquare", perm: "clients_view" },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar_view" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics_view"},
 ];
@@ -58,6 +61,8 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const safeInitialTab: CrmTab | undefined =
     initialTab && visibleTabs.some(tb => tb.id === initialTab) ? initialTab : undefined;
   const [tab, setTab] = useState<CrmTab>(safeInitialTab ?? visibleTabs[0]?.id ?? "orders");
+  // Счётчик непрочитанных для красного кружка на вкладке «Сообщения»
+  const inboxUnread = useInboxUnread(canClientsView);
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -160,9 +165,10 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
           {/* Фиксированные вкладки (фильтрованные по правам) */}
           {visibleTabs.map(tb => {
             const active = tab === tb.id;
+            const badge = tb.id === "messages" ? inboxUnread : 0;
             return (
               <button key={tb.id} onClick={() => setTab(tb.id)}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
+                className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-xs sm:text-sm rounded-xl transition whitespace-nowrap font-medium border"
                 style={active ? {
                   background: t.accent + "18", color: t.accentLight, borderColor: t.accent + "35",
                 } : {
@@ -170,6 +176,12 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
                 }}>
                 <Icon name={tb.icon} size={16} />
                 <span className="hidden sm:inline">{tb.label}</span>
+                {badge > 0 && (
+                  <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-extrabold text-white"
+                    style={{ background: "#ef4444", border: `1.5px solid ${t.surface}`, lineHeight: 1 }}>
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -233,6 +245,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
         {/* Контент */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-6">
           {tab === "analytics" && canAnalytics && <CrmAnalytics />}
+          {tab === "messages"  && canClientsView && <CrmMessages />}
           {tab === "clients"   && canClientsView && (
             <CrmClients
               canEdit={canClientsEdit}

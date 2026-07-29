@@ -3157,6 +3157,51 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"updated": True})
 
+        # ── TOUCH-INBOX: список диалогов для раздела «Сообщения» (единый инбокс) ──
+        # Все клиенты, у кого есть хотя бы одно касание, отсортированы по времени
+        # последнего сообщения (свежие сверху). Отдаём превью последнего сообщения,
+        # канал, направление и id связанной заявки (для открытия переписки справа).
+        if resource == "touch-inbox" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"""
+                SELECT tc.id, tc.name, tc.phone, tc.crm_contact_id,
+                       tc.interest, tc.stage,
+                       le.channel, le.direction, le.text, le.created_at,
+                       (SELECT COUNT(*) FROM {SCHEMA}.touch_events te2
+                        WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count
+                FROM {SCHEMA}.touch_clients tc
+                JOIN LATERAL (
+                    SELECT channel, direction, text, created_at
+                    FROM {SCHEMA}.touch_events te
+                    WHERE te.client_id = tc.id
+                    ORDER BY te.created_at DESC, te.id DESC
+                    LIMIT 1
+                ) le ON TRUE
+                WHERE tc.company_id = %s
+                ORDER BY le.created_at DESC
+                LIMIT 200
+            """, (owner_id,))
+            dialogs = [{
+                "client_id": r[0],
+                "name": r[1],
+                "phone": r[2],
+                "contact_id": r[3],
+                "interest": r[4],
+                "stage": r[5],
+                "last_channel": r[6],
+                "last_direction": r[7],
+                "last_text": (r[8] or "")[:120],
+                "last_at": r[9],
+                "unread": r[7] == "in",
+                "in_count": r[10],
+            } for r in cur.fetchall()]
+            return ok({"dialogs": dialogs})
+
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
         if resource == "touch-badges" and method == "GET":
