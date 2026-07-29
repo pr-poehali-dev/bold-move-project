@@ -21,7 +21,6 @@ import { OrdersListView } from "./OrdersListView";
 import type { Substatus } from "./OrdersTabs";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { OrderSourcesContext } from "./orderSourcesContext";
-import { SourceStats } from "./SourceStats";
 import { TrashModal } from "./TrashModal";
 
 interface Props {
@@ -53,13 +52,10 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
   const [activeTab, setActiveTab] = useState("leads");
   const [selected, setSelected]   = useState<Client | null>(null);
   const [viewMode, setViewMode]   = useState<"grid" | "list" | "kanban">("grid");
-  const [sourceFilter, setSourceFilter] = useState("");
   const [trashOpen, setTrashOpen] = useState(false);
   const { sources } = useOrderSources();
 
-  const clients = sourceFilter
-    ? allClients.filter(c => (c.source || "") === sourceFilter)
-    : allClients;
+  const clients = allClients;
 
   // Open client from URL ?order= or from calendar
   const [initialHandled, setInitialHandled] = useState(false);
@@ -279,28 +275,6 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
             <Icon name="Plus" size={14} />
             <span className="hidden sm:inline">Заявка</span>
           </button>
-
-          {/* Фильтр по источнику */}
-          <div className="relative flex-shrink-0">
-            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-2.5 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-              style={sourceFilter
-                ? { background: "#10b98118", color: "#10b981", border: "1px solid #10b98140" }
-                : { background: t.surface, color: t.textMute, border: `1px solid ${t.border}` }}>
-              <option value="">Все источники</option>
-              {sources.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-            </select>
-            <Icon name="ChevronDown" size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: sourceFilter ? "#10b981" : t.textMute }} />
-          </div>
-
-          {/* Статистика по источникам */}
-          <SourceStats
-            clients={allClients}
-            sources={sources}
-            active={sourceFilter}
-            onPick={name => setSourceFilter(name === sourceFilter ? "" : name)}
-          />
 
           {/* Корзина удалённых заявок */}
           <button onClick={() => setTrashOpen(true)}
