@@ -69,6 +69,10 @@ export function OrdersListView({
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
   useEffect(() => { setActiveStatusFilter(null); }, [activeTab]);
 
+  // Активный фильтр по своему этапу (substatus). Тоже сбрасывается при смене вкладки.
+  const [activeSubFilter, setActiveSubFilter] = useState<string | null>(null);
+  useEffect(() => { setActiveSubFilter(null); }, [activeTab]);
+
   // Активный фильтр по источнику (Авито/Квиз/Директ/...). Тоже сбрасывается при смене вкладки.
   const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null);
   useEffect(() => { setActiveSourceFilter(null); }, [activeTab]);
@@ -94,63 +98,78 @@ export function OrdersListView({
   // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).
   // Вкладка "done" уже имеет свой переключатель Выполнено/Отказ — бирки там не дублируем.
   const tabStatuses = activeTab !== "done" && currentTab.statuses.length > 1 ? currentTab.statuses : [];
+  // Свои этапы (кастомные substatus), привязанные к текущей вкладке
+  const mySubstatuses = substatuses.filter(s => s.parent_status === activeTab);
   const clientsByStatusAndFilter = activeStatusFilter != null
     ? clientsByStatus.filter(c => c.status === activeStatusFilter)
     : clientsByStatus;
+  const clientsByStatusSubFilter = activeSubFilter != null
+    ? clientsByStatusAndFilter.filter(c => c.sub_status === activeSubFilter)
+    : clientsByStatusAndFilter;
 
   // Источники (Авито/Квиз/Директ/...), реально встречающиеся среди текущих заявок
   const sourcesPresent = Array.from(new Set(
-    clientsByStatusAndFilter.map(c => c.source).filter((s): s is string => !!s)
+    clientsByStatusSubFilter.map(c => c.source).filter((s): s is string => !!s)
   ));
   const currentClients = activeSourceFilter != null
-    ? clientsByStatusAndFilter.filter(c => (c.source || null) === activeSourceFilter)
-    : clientsByStatusAndFilter;
+    ? clientsByStatusSubFilter.filter(c => (c.source || null) === activeSourceFilter)
+    : clientsByStatusSubFilter;
 
-  const renderSubstatusBadges = () => tabStatuses.length > 0 && (
-    <div className="flex gap-1.5 flex-wrap mb-2.5">
-      {tabStatuses.map(s => {
-        const label = statusLabels[s] || STATUS_LABELS[s] || s;
-        const color = statusColors[s] || STATUS_COLORS[s] || "#8b5cf6";
-        const cnt = clientsByStatus.filter(c => c.status === s).length;
-        const isSel = activeStatusFilter === s;
-        return (
-          <button key={s} onClick={() => setActiveStatusFilter(isSel ? null : s)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
-            style={{
-              background: isSel ? color + "22" : color + "10",
-              borderColor: isSel ? color : color + "30",
-              color,
-            }}>
-            {label} <span className="font-bold">{cnt}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  // Фильтр по источнику — та же логика, что и по статусу, только по полю source
-  const renderSourceBadges = () => sourcesPresent.length > 0 && (
-    <div className="flex gap-1.5 flex-wrap mb-4">
-      {sourcesPresent.map(sourceName => {
-        const src = orderSources.find(s => s.name === sourceName);
-        const label = src?.name || sourceName;
-        const color = src?.color || "#64748b";
-        const cnt = clientsByStatusAndFilter.filter(c => c.source === sourceName).length;
-        const isSel = activeSourceFilter === sourceName;
-        return (
-          <button key={sourceName} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
-            style={{
-              background: isSel ? color + "22" : color + "10",
-              borderColor: isSel ? color : color + "30",
-              color,
-            }}>
-            {label} <span className="font-bold">{cnt}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
+  // Единый ряд фильтров: этапы статуса + свои этапы + источники — одна нейтральная палитра,
+  // акцент только у выбранного чипа (единый стиль вместо разноцветных бирок).
+  const renderFilterRow = () =>
+    (tabStatuses.length > 0 || mySubstatuses.length > 0 || sourcesPresent.length > 0) && (
+      <div className="flex gap-1.5 flex-wrap mb-4">
+        {tabStatuses.map(s => {
+          const label = statusLabels[s] || STATUS_LABELS[s] || s;
+          const cnt = clientsByStatus.filter(c => c.status === s).length;
+          const isSel = activeStatusFilter === s;
+          return (
+            <button key={`status-${s}`} onClick={() => setActiveStatusFilter(isSel ? null : s)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
+              style={{
+                background: isSel ? t.accent + "22" : t.surface2,
+                borderColor: isSel ? t.accent : t.border,
+                color: isSel ? t.accentLight : t.textSub,
+              }}>
+              {label} <span className="font-bold">{cnt}</span>
+            </button>
+          );
+        })}
+        {mySubstatuses.map(s => {
+          const cnt = clientsByStatusAndFilter.filter(c => c.sub_status === String(s.id)).length;
+          const isSel = activeSubFilter === String(s.id);
+          return (
+            <button key={`sub-${s.id}`} onClick={() => setActiveSubFilter(isSel ? null : String(s.id))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
+              style={{
+                background: isSel ? t.accent + "22" : t.surface2,
+                borderColor: isSel ? t.accent : t.border,
+                color: isSel ? t.accentLight : t.textSub,
+              }}>
+              {s.label} <span className="font-bold">{cnt}</span>
+            </button>
+          );
+        })}
+        {sourcesPresent.map(sourceName => {
+          const src = orderSources.find(s => s.name === sourceName);
+          const label = src?.name || sourceName;
+          const cnt = clientsByStatusSubFilter.filter(c => c.source === sourceName).length;
+          const isSel = activeSourceFilter === sourceName;
+          return (
+            <button key={`src-${sourceName}`} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
+              style={{
+                background: isSel ? t.accent + "22" : t.surface2,
+                borderColor: isSel ? t.accent : t.border,
+                color: isSel ? t.accentLight : t.textSub,
+              }}>
+              {label} <span className="font-bold">{cnt}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
 
   const filterSearch = (list: Client[]) => {
     if (!search) return list;
@@ -212,8 +231,7 @@ export function OrdersListView({
         </div>
       ) : activeTab === "installs" ? (
         <div>
-          {renderSubstatusBadges()}
-          {renderSourceBadges()}
+          {renderFilterRow()}
           {viewMode === "list" ? (
             <div className="space-y-2">
               {sortByDate(filterSearch(currentClients)).map(renderRow)}
@@ -253,7 +271,7 @@ export function OrdersListView({
               );
             })}
           </div>
-          {renderSourceBadges()}
+          {renderFilterRow()}
 
           {(() => {
             const group = DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0];
@@ -275,8 +293,7 @@ export function OrdersListView({
         </div>
       ) : viewMode === "list" ? (
         <div>
-          {renderSubstatusBadges()}
-          {renderSourceBadges()}
+          {renderFilterRow()}
           <div className="space-y-2">
             {sortByDate(filterSearch(currentClients)).map(renderRow)}
             {currentClients.length === 0 && (
@@ -289,8 +306,7 @@ export function OrdersListView({
         </div>
       ) : (
         <div>
-          {renderSubstatusBadges()}
-          {renderSourceBadges()}
+          {renderFilterRow()}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {sortByDate(filterSearch(currentClients)).map(renderCard)}
             {currentClients.length === 0 && (
