@@ -152,7 +152,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
   const debt        = contractSum - paid;
   const profit      = income - costs;
-  const hasProject  = !!c.project_id;
   const ordersCount = allClients ? getClientOrders(c, allClients).length : 1;
 
   const handleNext = async (e: React.MouseEvent) => {
@@ -164,7 +163,7 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden"
+    <div className="relative rounded-2xl overflow-hidden h-full flex flex-col"
       style={{ background: t.surface, border: `1px solid ${t.border}` }}>
 
       {/* Фоны свайпа — только мобайл */}
@@ -186,7 +185,7 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
       </div>
 
       {/* Карточка */}
-      <div ref={cardRef} className="flex flex-col"
+      <div ref={cardRef} className="flex flex-col flex-1"
         style={{
           position: "relative", zIndex: 1, background: t.surface,
           willChange: "transform", userSelect: "none",
@@ -331,34 +330,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
               Причина отказа: {c.cancel_reason}
             </div>
           )}
-        </div>
-
-        {/* Кнопки экосистемы — десктоп всегда видны, мобайл скрыты (там свайп) */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 pb-3" onClick={e => e.stopPropagation()}>
-          {hasProject ? (
-            <button
-              onClick={() => window.open(`/plan?project_id=${c.project_id}`, "_blank")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
-              style={{ background: "#3b82f610", color: "#60a5fa", border: "1px dashed #3b82f640" }}>
-              <Icon name="Layers" size={12} />
-              В построитель
-            </button>
-          ) : (
-            <button
-              onClick={() => onSwipeBuilder?.(c)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
-              style={{ background: "#3b82f610", color: "#60a5fa", border: "1px dashed #3b82f640" }}>
-              <Icon name="Layers" size={12} />
-              В построитель
-            </button>
-          )}
-          <button
-            onClick={() => onSwipeAgent?.(c)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
-            style={{ background: "#10b98110", color: "#34d399", border: "1px dashed #10b98140" }}>
-            <Icon name="Bot" size={12} />
-            В агент
-          </button>
         </div>
 
         {/* Следующий шаг */}
