@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Client, STATUS_LABELS } from "./crmApi";
+import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
@@ -77,6 +77,10 @@ export function OrdersListView({
   const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null);
   useEffect(() => { setActiveSourceFilter(null); }, [activeTab]);
 
+  // Активный фильтр по метке (Недозвон/Перезвонить/...). Тоже сбрасывается при смене вкладки.
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  useEffect(() => { setActiveTagFilter(null); }, [activeTab]);
+
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
       id: tab.id, label: tabLabels[tab.id] || tab.label, icon: tab.icon,
@@ -111,9 +115,17 @@ export function OrdersListView({
   const sourcesPresent = Array.from(new Set(
     clientsByStatusSubFilter.map(c => c.source).filter((s): s is string => !!s)
   ));
-  const currentClients = activeSourceFilter != null
+  const clientsBySourceFilter = activeSourceFilter != null
     ? clientsByStatusSubFilter.filter(c => (c.source || null) === activeSourceFilter)
     : clientsByStatusSubFilter;
+
+  // Метки (Недозвон/Перезвонить/...), реально встречающиеся среди текущих заявок
+  const tagsPresent = Array.from(new Set(
+    clientsBySourceFilter.flatMap(c => c.tags || []).filter((s): s is string => !!s)
+  ));
+  const currentClients = activeTagFilter != null
+    ? clientsBySourceFilter.filter(c => (c.tags || []).includes(activeTagFilter))
+    : clientsBySourceFilter;
 
   // Два визуально разделённых блока фильтров: «Этапы» (нейтральная палитра, акцент
   // фиолетовый у выбранного) и «Источники» (у каждого источника свой цвет).
@@ -138,11 +150,21 @@ export function OrdersListView({
                onClick: () => setActiveSourceFilter(activeSourceFilter === sourceName ? null : sourceName) };
     })
     .filter(x => x.cnt > 0 || x.isSel);
+  const tagChips = tagsPresent
+    .map(tagName => {
+      const def = DEFAULT_TAGS.find(d => d.label === tagName);
+      return { key: `tag-${tagName}`, label: tagName, color: def?.color || "#8b5cf6",
+               cnt: clientsBySourceFilter.filter(c => (c.tags || []).includes(tagName)).length,
+               isSel: activeTagFilter === tagName,
+               onClick: () => setActiveTagFilter(activeTagFilter === tagName ? null : tagName) };
+    })
+    .filter(x => x.cnt > 0 || x.isSel);
 
   const hasStageFilters  = stageChips.length > 0 || subChips.length > 0;
   const hasSourceFilters = sourceChips.length > 0;
+  const hasTagFilters    = tagChips.length > 0;
   const renderFilterRow = () =>
-    (hasStageFilters || hasSourceFilters) && (
+    (hasStageFilters || hasSourceFilters || hasTagFilters) && (
       <div className="flex items-start gap-3 flex-wrap mb-4">
         {hasStageFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
@@ -164,6 +186,22 @@ export function OrdersListView({
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Источник</span>
             {sourceChips.map(x => (
+              <button key={x.key} onClick={x.onClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                style={{
+                  background: x.isSel ? x.color : x.color + "18",
+                  borderColor: x.color,
+                  color: x.isSel ? "#fff" : x.color,
+                }}>
+                {x.label} <span className="font-bold">{x.cnt}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {hasTagFilters && (
+          <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+            <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Метка</span>
+            {tagChips.map(x => (
               <button key={x.key} onClick={x.onClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                 style={{
