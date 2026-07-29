@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Client, STATUS_LABELS, STATUS_COLORS, crmFetch, getClientOrders, stageDuration } from "./crmApi";
+import { Client, STATUS_LABELS, STATUS_COLORS, getClientOrders, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
@@ -11,43 +11,6 @@ const THRESHOLD  = 44;
 
 function vibe(ms: number | number[]) {
   if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
-}
-
-function SubstatusPills({ client, tabId, onUpdate }: { client: Client; tabId: string; onUpdate: (subStatus: string | null) => void }) {
-  const allSubs = useSubstatuses();
-  const steps = allSubs.filter(s => s.parent_status === tabId);
-  if (steps.length === 0) return null;
-  const current = client.sub_status;
-
-  const handleClick = async (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    const newVal = current === String(id) ? null : String(id);
-    onUpdate(newVal);
-    await crmFetch("clients", {
-      method: "PUT",
-      body: JSON.stringify({ sub_status: newVal }),
-    }, { id: String(client.id) });
-  };
-
-  return (
-    <div className="flex flex-wrap gap-1 mt-2" onClick={e => e.stopPropagation()}>
-      {steps.map(s => {
-        const active = current === String(s.id);
-        return (
-          <button key={s.id} onClick={e => handleClick(e, s.id)}
-            className="text-[10px] font-semibold px-2 py-0.5 rounded-full transition"
-            style={{
-              background: active ? s.color : "rgba(128,128,128,0.08)",
-              color: active ? "#fff" : "rgba(150,150,150,0.7)",
-              border: `1px solid ${active ? s.color : "transparent"}`,
-              boxShadow: active ? `0 0 0 1px ${s.color}40` : "none",
-            }}>
-            {s.label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function InstallProgress({ client }: { client: Client }) {
@@ -96,8 +59,9 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   const t = useTheme();
   const orderSources = useOrderSourcesCtx();
   const src = sourceDisplay(c.source, orderSources);
+  const allSubs = useSubstatuses();
   const [stepping, setStepping]             = useState(false);
-  const [localSubStatus, setLocalSubStatus] = useState<string | null>(c.sub_status ?? null);
+  const localSubStatus = c.sub_status ?? null;
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset]       = useState(0);
@@ -170,6 +134,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
 
   const clientWithSub = { ...c, sub_status: localSubStatus };
   const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
+  // Активный подэтап (напр. «Новый в работе») — показываем его в углу вместо общего статуса
+  const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
   const isInstall   = tab?.id === "installs";
   const isCancelled = c.status === "cancelled";
   const isDone      = c.status === "done";
@@ -276,10 +242,15 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
                   )}
                   {isInstall
                     ? <InstallProgress client={clientWithSub} />
-                    : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                        style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                        {STATUS_LABELS[c.status] || c.status}
-                      </span>
+                    : activeSub
+                      ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                          style={{ background: activeSub.color, color: "#fff" }}>
+                          {activeSub.label}
+                        </span>
+                      : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                          style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                          {STATUS_LABELS[c.status] || c.status}
+                        </span>
                   }
                 </div>
               </div>
@@ -331,8 +302,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
               )}
             </div>
           )}
-
-          {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
 
           {income > 0 && (
             <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1" style={{ borderTop: `1px solid ${t.border2}` }}>
