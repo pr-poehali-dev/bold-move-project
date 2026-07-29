@@ -69,10 +69,12 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const load = async () => {
+  // silent=true — фоновое обновление (поллинг): не показываем спиннер загрузки,
+  // чтобы лента не «мигала» каждые несколько секунд.
+  const load = async (silent = false) => {
     // Грузим по телефону (обычные клиенты) ИЛИ по id заявки (Avito без телефона)
     if (!phone && !contactId) { setLoading(false); return; }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const extra: Record<string, string> = {};
       if (phone) {
@@ -87,11 +89,20 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
         setTouches(d.touches ?? []);
       }
     } catch { /* тихо */ }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
+
+  // Тихий поллинг ленты — подхватывает новые сообщения от клиента и статус
+  // отправленных («отправляется» → «отправлено») без перезахода на страницу.
+  useEffect(() => {
+    if (!phone && !contactId) return;
+    const timer = setInterval(() => { load(true); }, 4000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, contactId]);
 
   const handleSend = async () => {
     const text = draft.trim();
