@@ -29,7 +29,8 @@ export function useUnreadTouches(contactId: number | undefined, phone: string | 
     const check = async () => {
       try {
         const extra: Record<string, string> = {};
-        if (phone) extra.phone = phone; else if (contactId) extra.contact_id = String(contactId);
+        if (contactId) extra.contact_id = String(contactId);
+        if (phone) extra.phone = phone;
         const d = await crmFetch("touches", undefined, extra) as { touches?: TouchLite[] };
         if (!alive) return;
         if (active) { setCount(0); return; }

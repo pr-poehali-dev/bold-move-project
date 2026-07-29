@@ -2486,16 +2486,52 @@ def handler(event: dict, context) -> dict:
                         return err("not found", 404)
                 elif contact_id:
                     # Режим по id заявки: находим touch_clients, привязанный к этой заявке
-                    # (touch_clients.crm_contact_id = live_chats.id). Так работает Avito,
-                    # где у клиента нет телефона, но есть переписка по chat_id.
+                    # (touch_clients.crm_contact_id = live_chats.id). ПРИОРИТЕТ выше телефона:
+                    # если у заявки уже есть переписка (напр. Avito по chat_id), а менеджер
+                    # позже вписал телефон клиента вручную — канал сменился, но клиент тот же,
+                    # переписка не должна теряться. При этом если телефон передан и у найденной
+                    # записи он ещё не заполнен — дописываем его сюда же (не создаём нового).
                     cur.execute(
                         f"SELECT {cols} FROM {SCHEMA}.touch_clients "
                         f"WHERE crm_contact_id=%s AND company_id=%s ORDER BY id LIMIT 1",
                         (contact_id, owner_id))
                     cli = cur.fetchone()
+                    if cli and phone_q:
+                        norm = normalize_phone(phone_q)
+                        if norm and not (cli[1] or "").strip():
+                            cur.execute(
+                                f"UPDATE {SCHEMA}.touch_clients SET phone=%s WHERE id=%s RETURNING {cols}",
+                                (norm, cli[0]))
+                            cli = cur.fetchone()
+                            conn.commit()
                     if not cli:
-                        # Нет привязанного touch_client — истории касаний ещё нет
-                        return ok({"client": None, "touches": []})
+                        # Нет привязанного touch_client по заявке — история касаний ещё не
+                        # начиналась. Если при этом передан телефон — ищем/заводим клиента
+                        # по нему как обычно (стандартный сценарий без Avito).
+                        if phone_q:
+                            norm = normalize_phone(phone_q)
+                            if not norm:
+                                return err("phone invalid")
+                            cur.execute(
+                                f"SELECT {cols} FROM {SCHEMA}.touch_clients "
+                                f"WHERE phone=%s AND company_id=%s",
+                                (norm, owner_id))
+                            cli = cur.fetchone()
+                            if not cli:
+                                cur.execute(
+                                    f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name, crm_contact_id) "
+                                    f"VALUES (%s, %s, %s, %s) RETURNING {cols}",
+                                    (owner_id, norm, name_q or None, contact_id))
+                                cli = cur.fetchone()
+                                conn.commit()
+                            else:
+                                # Найден по телефону, но не был привязан к этой заявке — привязываем
+                                cur.execute(
+                                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s AND crm_contact_id IS NULL",
+                                    (contact_id, cli[0]))
+                                conn.commit()
+                        else:
+                            return ok({"client": None, "touches": []})
                 elif phone_q:
                     # Режим по номеру телефона: найти или создать touch_clients
                     norm = normalize_phone(phone_q)

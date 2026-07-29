@@ -72,17 +72,17 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   // silent=true — фоновое обновление (поллинг): не показываем спиннер загрузки,
   // чтобы лента не «мигала» каждые несколько секунд.
   const load = async (silent = false) => {
-    // Грузим по телефону (обычные клиенты) ИЛИ по id заявки (Avito без телефона)
+    // Грузим по id заявки (contact_id) — он в приоритете, чтобы не терять уже начатую
+    // переписку (напр. Avito), если у заявки позже появился телефон. Телефон передаём
+    // ТОЖЕ (если есть) — backend сам дозапишет его в найденную по заявке запись,
+    // не создавая нового клиента и не обрывая историю касаний.
     if (!phone && !contactId) { setLoading(false); return; }
     if (!silent) setLoading(true);
     try {
       const extra: Record<string, string> = {};
-      if (phone) {
-        extra.phone = phone;
-        if (name) extra.name = name;
-      } else if (contactId) {
-        extra.contact_id = String(contactId);
-      }
+      if (contactId) extra.contact_id = String(contactId);
+      if (phone) extra.phone = phone;
+      if (name) extra.name = name;
       const d = await crmFetch("touches", undefined, extra) as { client?: TouchClient; touches?: Touch[]; error?: string };
       if (d && !d.error) {
         setClient(d.client ?? null);
