@@ -28,10 +28,14 @@ export const PRESET_TAG_COLORS = [
 export const BUILTIN_FIELDS: CustomClientField[] = [
   { id: "builtin_name",  label: "Имя клиента",       clientKey: "client_name", builtin: true },
   { id: "builtin_phone", label: "Телефон",           clientKey: "phone",       builtin: true },
-  { id: "builtin_notes", label: "Заметка о клиенте", clientKey: "notes",       builtin: true },
+  { id: "builtin_notes", label: "Комментарий",        clientKey: "notes",       builtin: true },
 ];
 
 // ── Список полей (встроенные + кастомные, порядок и скрытые) ───────────────
+
+// Встроенные поля, у которых метку нужно принудительно синхронизировать с BUILTIN_FIELDS
+// (переименования на уровне продукта, напр. «Заметка о клиенте» → «Комментарий»).
+const FORCE_RELABEL_IDS = new Set(["builtin_notes"]);
 
 export function loadClientFields(): CustomClientField[] {
   try {
@@ -40,7 +44,15 @@ export function loadClientFields(): CustomClientField[] {
       // Мержим: добавляем новые встроенные если их нет
       const savedIds = new Set(saved.map((f: CustomClientField) => f.id));
       const missing = BUILTIN_FIELDS.filter(f => !savedIds.has(f.id));
-      return [...saved, ...missing];
+      // Для отдельных встроенных полей подтягиваем актуальную метку из BUILTIN_FIELDS
+      const merged = (saved as CustomClientField[]).map(f => {
+        if (FORCE_RELABEL_IDS.has(f.id)) {
+          const bi = BUILTIN_FIELDS.find(b => b.id === f.id);
+          if (bi) return { ...f, label: bi.label };
+        }
+        return f;
+      });
+      return [...merged, ...missing];
     }
   } catch { /**/ }
   return [...BUILTIN_FIELDS];

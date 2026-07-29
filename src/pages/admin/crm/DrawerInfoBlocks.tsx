@@ -40,8 +40,12 @@ const CREATED_VIA_LABELS: Record<string, { label: string; icon: string; color: s
   manual: { label: "CRM",         icon: "LayoutGrid",    color: "#3b82f6" },
 };
 
-function CreatedViaRow({ value, createdAt }: { value: string | null | undefined; createdAt?: string | null }) {
-  const info = value ? CREATED_VIA_LABELS[value] : undefined;
+function CreatedViaRow({ value, createdAt, source }: { value: string | null | undefined; createdAt?: string | null; source?: string | null }) {
+  // Заявка из интеграции Avito — показываем это вместо технического «Чат»
+  const isAvito = (source || "").trim().toLowerCase() === "авито" || (source || "").trim().toLowerCase() === "avito";
+  const info = isAvito
+    ? { label: "Интеграция Avito", icon: "MessagesSquare", color: "#f97316" }
+    : (value ? CREATED_VIA_LABELS[value] : undefined);
   if (!info) return null;
   const dateStr = (() => {
     if (!createdAt) return null;
@@ -209,6 +213,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
                 value={val}
                 onSave={v => saveWithLog({ [saveKey]: v } as Partial<Client>, `${field.label}: ${v}`, "User", "#10b981")}
                 placeholder={field.label}
+                multiline={field.id === "builtin_notes"}
               />
             </RowWithToggle>
           );
@@ -238,7 +243,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         value={data.source || ""}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
-      <CreatedViaRow value={data.created_via} createdAt={data.created_at} />
+      <CreatedViaRow value={data.created_via} createdAt={data.created_at} source={data.source} />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );

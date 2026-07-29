@@ -22,7 +22,7 @@ function isPhoneValid(masked: string): boolean {
   return masked.replace(/\D/g, "").length === 11;
 }
 
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
@@ -30,6 +30,8 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   placeholder?: string;
   hideLabel?: boolean;
   labelExtra?: React.ReactNode;
+  /** Показывать значение целиком с переносом строк (без обрезки truncate) — напр. для комментария */
+  multiline?: boolean;
 }) {
   const t = useTheme();
   const [editing,      setEditing]      = useState(false);
@@ -127,7 +129,9 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
             }}
           />
         ) : (
-          <button onClick={startEdit} className="flex-1 text-right text-sm transition hover:opacity-70 truncate py-2">
+          <button onClick={startEdit}
+            className={`flex-1 text-right text-sm transition hover:opacity-70 py-2 ${multiline ? "min-w-0" : "truncate"}`}
+            style={multiline ? { whiteSpace: "pre-wrap", wordBreak: "break-word" } : undefined}>
             {displayVal()
               ? <span style={{ color: "#fff" }}>{displayVal()}</span>
               : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}

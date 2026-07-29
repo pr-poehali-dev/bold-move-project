@@ -124,6 +124,21 @@ export function DrawerHeader({
           </a>
         )}
 
+        {/* Открыть диалог в Avito */}
+        {ord.avito_chat_url && (
+          <a
+            href={ord.avito_chat_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90"
+            style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.25)" }}
+            title="Открыть диалог в Avito"
+          >
+            <Icon name="ExternalLink" size={13} />
+            <span className="hidden sm:inline">Avito</span>
+          </a>
+        )}
+
         {/* Перейти в бот — только на десктопе */}
         {onOpenAgent && (
           <button
