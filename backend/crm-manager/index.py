@@ -2852,6 +2852,16 @@ def handler(event: dict, context) -> dict:
             if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
                 return err("неверный ключ", 401)
 
+            # ── ВРЕМЕННАЯ ДИАГНОСТИКА (включено ~на 2 дня) ──────────────────────
+            # Логируем ПОЛНЫЙ сырой JSON от Avito, чтобы проверить: приходит ли в
+            # событиях (звонок / отклик / «показал номер») подменный телефон покупателя.
+            # Ставим ДО отсева событий без текста — именно такие события нас интересуют.
+            # TODO: удалить после снятия данных.
+            try:
+                print(f"[avito-webhook RAW] {json.dumps(body, ensure_ascii=False)[:4000]}")
+            except Exception:
+                print(f"[avito-webhook RAW] <unserializable body>")
+
             # Формат Avito: {"payload": {"type":"message","value":{...}}}
             value = ((body or {}).get("payload") or {}).get("value") or {}
             av_chat_id = value.get("chat_id")
