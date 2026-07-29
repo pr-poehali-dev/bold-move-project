@@ -2316,6 +2316,28 @@ def handler(event: dict, context) -> dict:
                        "name": me.get("name") or me.get("email"),
                        "webhook_registered": webhook_ok, "webhook_error": webhook_err})
 
+        # ── ВРЕМЕННАЯ ДИАГНОСТИКА: проверяем, даёт ли client_credentials-токен
+        # доступ к чтению чатов Messenger (без OAuth-входа). Только чтение, ничего
+        # не меняет и не отправляет. TODO: удалить после проверки.
+        if resource == "avito-messenger-test" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            client_id_a = cfg.get("avito_client_id")
+            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
+            avito_uid = cfg.get("_avito_user_id")
+            token, terr = avito_get_token(client_id_a, client_secret_a)
+            if terr:
+                return ok({"step": "get_token", "error": terr})
+            try:
+                chats = avito_api_get(token, f"/messenger/v2/accounts/{avito_uid}/chats?limit=3")
+                return ok({"step": "list_chats", "success": True, "sample": json.dumps(chats)[:1500]})
+            except Exception as e:
+                return ok({"step": "list_chats", "success": False, "error": str(e)[:400]})
+
         # ── AVITO-AUTH-URL: ссылка для входа владельца Avito-аккаунта ──────────────
         # Без этого шага Avito НЕ даёт прав messenger:read/write — сообщения не
         # приходят на вебхук, даже если сама подписка формально зарегистрирована.
