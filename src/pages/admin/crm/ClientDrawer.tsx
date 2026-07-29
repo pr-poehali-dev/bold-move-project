@@ -142,7 +142,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           drawerTab={drawerTab}
           setDrawerTab={setDrawerTab}
           ordersCount={allClientOrders.length}
-          hasProject={!!data.project_id}
           setPdfModalOpen={setPdfModalOpen}
         />
 

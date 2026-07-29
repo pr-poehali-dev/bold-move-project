@@ -8,20 +8,19 @@ interface Props {
   drawerTab: DrawerTabId;
   setDrawerTab: (tab: DrawerTabId) => void;
   ordersCount: number;
-  hasProject: boolean;
   setPdfModalOpen: (v: boolean) => void;
 }
 
-export function DrawerTabsBar({ t, drawerTab, setDrawerTab, ordersCount, hasProject, setPdfModalOpen }: Props) {
+export function DrawerTabsBar({ t, drawerTab, setDrawerTab, ordersCount, setPdfModalOpen }: Props) {
   return (
     <div className="flex items-center gap-1.5 px-3 sm:px-6 py-2.5 overflow-x-auto flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}`, scrollbarWidth: "none" }}>
       {([
         { id: "client",   label: "Клиент",   icon: "User" },
-        { id: "touches",  label: "Касания",  icon: "MessagesSquare" },
-        { id: "analytics",label: "Аналитика",icon: "Sparkles" },
         { id: "orders",   label: `Заявки (${ordersCount})`, icon: "ClipboardList" },
+        { id: "touches",  label: "Касания",  icon: "MessagesSquare" },
         { id: "estimate", label: "Смета",    icon: "FileSpreadsheet" },
-        ...(hasProject ? [{ id: "plan", label: "Чертежи", icon: "LayoutDashboard" }] : []),
+        { id: "plan",     label: "Чертежи",  icon: "LayoutDashboard" },
+        { id: "analytics",label: "Аналитика",icon: "Sparkles" },
       ] as const).map((tab: { id: string; label: string; icon: string }) => {
         const active = drawerTab === tab.id;
         return (
