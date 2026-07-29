@@ -26,8 +26,8 @@ export const DARK: Omit<ThemeCtx, "toggle"> = {
   border:   "rgba(255,255,255,0.07)",
   border2:  "rgba(255,255,255,0.04)",
   text:     "#f1f1f8",
-  textSub:  "rgba(255,255,255,0.45)",
-  textMute: "rgba(255,255,255,0.22)",
+  textSub:  "rgba(255,255,255,0.75)",
+  textMute: "rgba(255,255,255,0.50)",
   accent:      "#7c3aed",
   accentLight: "#a78bfa",
 };
