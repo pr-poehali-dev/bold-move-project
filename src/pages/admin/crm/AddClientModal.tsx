@@ -152,6 +152,7 @@ export function AddClientModal({ onClose, onCreated, linkProjectId }: Props) {
               onBlur={handlePhoneBlur}
               placeholder="+7 977 606-89-01"
               type="tel"
+              autoComplete="off"
               inputMode="numeric"
               maxLength={16}
               className="w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition"

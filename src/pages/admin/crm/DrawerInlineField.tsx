@@ -113,6 +113,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
             type={isPhone ? "tel" : type}
             defaultValue={valRef.current}
             autoFocus
+            autoComplete="off"
             onChange={isPhone ? handlePhoneChange : (e: ChangeEvent<HTMLInputElement>) => { valRef.current = e.target.value; }}
             onBlur={commit}
             onKeyDown={e => {
