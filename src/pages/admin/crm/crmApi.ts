@@ -202,15 +202,13 @@ export function stageDuration(from: string | null | undefined): string {
   return `${days} дн`;
 }
 
-// Группировка заявок по клиенту: сначала по телефону, fallback — по имени
+// Группировка заявок по клиенту — ТОЛЬКО по телефону.
+// По имени НЕ группируем: тёзки (напр. несколько «Александр» без телефона) —
+// это разные люди, объединять их нельзя. Заявка без телефона — всегда отдельная.
 export function getClientOrders(client: Client, allClients: Client[]): Client[] {
   const phone = (client.phone || "").trim().replace(/\D/g, "");
   if (phone) {
     return allClients.filter(c => (c.phone || "").trim().replace(/\D/g, "") === phone);
-  }
-  const name = (client.client_name || "").trim().toLowerCase();
-  if (name) {
-    return allClients.filter(c => (c.client_name || "").trim().toLowerCase() === name);
   }
   return [client];
 }
