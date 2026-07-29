@@ -203,13 +203,21 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
                   <span className="text-sm font-bold truncate" style={{ color: t.text }}>
                     {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
                   </span>
-                  {!isDone && !isCancelled && stageDuration(c.status_changed_at) && (
-                    <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0"
-                      style={{ background: t.surface2, color: t.textMute }}
-                      title="Времени на текущем этапе">
-                      <Icon name="Clock" size={9} /> {stageDuration(c.status_changed_at)}
-                    </span>
-                  )}
+                  {(() => {
+                    const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
+                    const age = stageDuration(c.created_at);
+                    if (!onStage && !age) return null;
+                    return (
+                      <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
+                        style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+                        title={`На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
+                        <Icon name="Clock" size={9} style={{ color: t.accentLight }} />
+                        {onStage && <span style={{ color: t.text }}>{onStage}</span>}
+                        {onStage && age && <span style={{ color: t.textMute }}>/</span>}
+                        {age && <span style={{ color: t.textSub }}>{age}</span>}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {ordersCount > 1 && (
