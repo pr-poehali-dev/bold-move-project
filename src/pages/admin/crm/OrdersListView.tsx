@@ -154,15 +154,16 @@ export function OrdersListView({
         {sourcesPresent.map(sourceName => {
           const src = orderSources.find(s => s.name === sourceName);
           const label = src?.name || sourceName;
+          const color = src?.color || "#64748b";
           const cnt = clientsByStatusSubFilter.filter(c => c.source === sourceName).length;
           const isSel = activeSourceFilter === sourceName;
           return (
             <button key={`src-${sourceName}`} onClick={() => setActiveSourceFilter(isSel ? null : sourceName)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition"
               style={{
-                background: isSel ? t.accent + "22" : t.surface2,
-                borderColor: isSel ? t.accent : t.border,
-                color: isSel ? t.accentLight : t.textSub,
+                background: isSel ? color + "25" : color + "12",
+                borderColor: isSel ? color : color + "40",
+                color,
               }}>
               {label} <span className="font-bold">{cnt}</span>
             </button>
