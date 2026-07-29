@@ -198,69 +198,67 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
         <div className="p-3 sm:p-4 cursor-pointer hover:brightness-[1.03] transition flex-1" onClick={onClick}>
           <div className="flex items-start mb-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-sm font-bold truncate" style={{ color: t.text }}>
-                    {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold truncate flex-1 min-w-0" style={{ color: t.text }}>
+                  {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
+                </span>
+                {(() => {
+                  const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
+                  const age = stageDuration(c.created_at);
+                  if (!onStage && !age) return null;
+                  return (
+                    <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
+                      style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+                      title={`На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
+                      <Icon name="Clock" size={9} style={{ color: t.accentLight }} />
+                      {onStage && <span style={{ color: t.text }}>{onStage}</span>}
+                      {onStage && age && <span style={{ color: t.textMute }}>/</span>}
+                      {age && <span style={{ color: t.textSub }}>{age}</span>}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="flex items-center gap-1 flex-wrap mt-1">
+                {ordersCount > 1 && (
+                  <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                    style={{ background: "#7c3aed22", color: "#a78bfa" }}
+                    title={`Всего заявок у клиента: ${ordersCount}`}>
+                    <Icon name="Layers" size={9} /> {ordersCount}
                   </span>
-                  {(() => {
-                    const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
-                    const age = stageDuration(c.created_at);
-                    if (!onStage && !age) return null;
-                    return (
-                      <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
-                        style={{ background: t.surface2, border: `1px solid ${t.border}` }}
-                        title={`На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
-                        <Icon name="Clock" size={9} style={{ color: t.accentLight }} />
-                        {onStage && <span style={{ color: t.text }}>{onStage}</span>}
-                        {onStage && age && <span style={{ color: t.textMute }}>/</span>}
-                        {age && <span style={{ color: t.textSub }}>{age}</span>}
+                )}
+                {c.is_demo && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
+                    style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
+                    ДЕМО
+                  </span>
+                )}
+                {src && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                    style={{ background: src.color + "20", color: src.color }}>
+                    {src.label}
+                  </span>
+                )}
+                {c.avito_chat_url && (
+                  <button
+                    onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
+                    title="Открыть диалог в Avito"
+                    className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
+                    style={{ background: "#f9731620", color: "#f97316" }}>
+                    <Icon name="ExternalLink" size={9} /> Avito
+                  </button>
+                )}
+                {isInstall
+                  ? <InstallProgress client={clientWithSub} />
+                  : activeSub
+                    ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                        style={{ background: activeSub.color, color: "#fff" }}>
+                        {activeSub.label}
                       </span>
-                    );
-                  })()}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {ordersCount > 1 && (
-                    <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
-                      style={{ background: "#7c3aed22", color: "#a78bfa" }}
-                      title={`Всего заявок у клиента: ${ordersCount}`}>
-                      <Icon name="Layers" size={9} /> {ordersCount}
-                    </span>
-                  )}
-                  {c.is_demo && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
-                      style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
-                      ДЕМО
-                    </span>
-                  )}
-                  {src && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                      style={{ background: src.color + "20", color: src.color }}>
-                      {src.label}
-                    </span>
-                  )}
-                  {c.avito_chat_url && (
-                    <button
-                      onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
-                      title="Открыть диалог в Avito"
-                      className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
-                      style={{ background: "#f9731620", color: "#f97316" }}>
-                      <Icon name="ExternalLink" size={9} /> Avito
-                    </button>
-                  )}
-                  {isInstall
-                    ? <InstallProgress client={clientWithSub} />
-                    : activeSub
-                      ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                          style={{ background: activeSub.color, color: "#fff" }}>
-                          {activeSub.label}
-                        </span>
-                      : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                          style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                          {STATUS_LABELS[c.status] || c.status}
-                        </span>
-                  }
-                </div>
+                    : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                        style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
+                        {STATUS_LABELS[c.status] || c.status}
+                      </span>
+                }
               </div>
               <div className="space-y-1 mt-1.5">
                 {c.client_name && (
