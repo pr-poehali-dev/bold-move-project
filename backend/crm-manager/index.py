@@ -132,36 +132,23 @@ def avito_oauth_refresh(refresh_token, client_id, client_secret):
 
 
 def avito_get_messenger_token(cur, conn, owner_id, cfg):
-    """Возвращает рабочий OAuth-токен с правами messenger:read/write для компании.
-    Сам обновляет токен по refresh_token, если истёк, и сохраняет в БД.
-    Возвращает (token, error)."""
-    import time
-    access = decrypt_secret(cfg.get("_avito_oauth_access_token"))
-    refresh = decrypt_secret(cfg.get("_avito_oauth_refresh_token"))
-    expires_at = cfg.get("_avito_oauth_expires_at") or 0
-    if not access or not refresh:
-        return None, "Avito не подключён — нажмите «Подключить Avito» в Интеграциях"
+    """Возвращает рабочий токен для Messenger API (чтение/отправка сообщений).
 
-    if time.time() < expires_at - 60:
-        return access, None
-
+    ВАЖНО (подтверждено диагностикой 29.07): для приложений типа «персональная
+    авторизация» обычный client_credentials-токен (тот же, что используется для
+    регистрации вебхука) УЖЕ даёт доступ к чтению и отправке сообщений мессенджера —
+    отдельный OAuth-вход (authorization_code, кнопка «Подключить Avito» с редиректом
+    на avito.ru) для таких приложений не требуется и не поддерживается (Avito
+    отвечает «Что-то пошло не так» на странице /oauth).
+    Раньше здесь была логика OAuth (access/refresh токены) — намеренно упрощено.
+    Сигнатура и возврат (token, error) сохранены для обратной совместимости
+    со всеми точками вызова.
+    """
     client_id_a = cfg.get("avito_client_id")
     client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
-    resp, rerr = avito_oauth_refresh(refresh, client_id_a, client_secret_a)
-    if rerr:
-        return None, rerr
-
-    cfg["_avito_oauth_access_token"] = encrypt_secret(resp["access_token"])
-    if resp.get("refresh_token"):
-        cfg["_avito_oauth_refresh_token"] = encrypt_secret(resp["refresh_token"])
-    cfg["_avito_oauth_expires_at"] = time.time() + resp.get("expires_in", 86400)
-    cur.execute(f"""
-        INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
-        VALUES (%s, %s, NOW())
-        ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
-    """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
-    conn.commit()
-    return resp["access_token"], None
+    if not client_id_a or not client_secret_a:
+        return None, "Avito не подключён — заполните Client ID и Client Secret в Интеграциях"
+    return avito_get_token(client_id_a, client_secret_a)
 
 
 def avito_api_get(token, path):
@@ -2316,31 +2303,11 @@ def handler(event: dict, context) -> dict:
                        "name": me.get("name") or me.get("email"),
                        "webhook_registered": webhook_ok, "webhook_error": webhook_err})
 
-        # ── ВРЕМЕННАЯ ДИАГНОСТИКА: проверяем, даёт ли client_credentials-токен
-        # доступ к чтению чатов Messenger (без OAuth-входа). Только чтение, ничего
-        # не меняет и не отправляет. TODO: удалить после проверки.
-        if resource == "avito-messenger-test" and method == "GET":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = row[0] if row else {}
-            client_id_a = cfg.get("avito_client_id")
-            client_secret_a = decrypt_secret(cfg.get("avito_client_secret"))
-            avito_uid = cfg.get("_avito_user_id")
-            token, terr = avito_get_token(client_id_a, client_secret_a)
-            if terr:
-                return ok({"step": "get_token", "error": terr})
-            try:
-                chats = avito_api_get(token, f"/messenger/v2/accounts/{avito_uid}/chats?limit=3")
-                return ok({"step": "list_chats", "success": True, "sample": json.dumps(chats)[:1500]})
-            except Exception as e:
-                return ok({"step": "list_chats", "success": False, "error": str(e)[:400]})
-
-        # ── AVITO-AUTH-URL: ссылка для входа владельца Avito-аккаунта ──────────────
-        # Без этого шага Avito НЕ даёт прав messenger:read/write — сообщения не
-        # приходят на вебхук, даже если сама подписка формально зарегистрирована.
+        # ── AVITO-AUTH-URL: ссылка для входа владельца Avito-аккаунта (OAuth) ───────
+        # ПРИМЕЧАНИЕ (29.07): для приложений типа «персональная авторизация» этот
+        # путь НЕ работает (Avito отвечает «Что-то пошло не так» на /oauth) — и не
+        # нужен: обычный client_credentials-токен уже даёт права messenger:read/write
+        # (см. avito_get_messenger_token). Эндпоинт оставлен для др. типов приложений.
         if resource == "avito-auth-url" and method == "GET":
             if not authenticated:
                 return err("Требуется авторизация", 401)
