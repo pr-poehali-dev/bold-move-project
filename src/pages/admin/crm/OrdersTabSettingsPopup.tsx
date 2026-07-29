@@ -47,18 +47,24 @@ export function TabSettingsPopup({
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
   const [subLabel, setSubLabel] = useState("");
   const [subColor, setSubColor] = useState("#a78bfa");
+  const [addingSubmitting, setAddingSubmitting] = useState(false);
 
   const addSubstatus = async () => {
     const label = newLabel.trim();
-    if (!label) return;
-    const data = await crmFetch("substatuses", {
-      method: "POST",
-      body: JSON.stringify({ parent_status: tab.id, label, color: newColor }),
-    }) as { id: number; position: number };
-    onSubstatusesChange([...substatuses, { id: data.id, parent_status: tab.id, label, color: newColor, position: data.position }]);
-    setNewLabel("");
-    setNewColor("#a78bfa");
-    setAdding(false);
+    if (!label || addingSubmitting) return;
+    setAddingSubmitting(true);
+    try {
+      const data = await crmFetch("substatuses", {
+        method: "POST",
+        body: JSON.stringify({ parent_status: tab.id, label, color: newColor }),
+      }) as { id: number; position: number };
+      onSubstatusesChange([...substatuses, { id: data.id, parent_status: tab.id, label, color: newColor, position: data.position }]);
+      setNewLabel("");
+      setNewColor("#a78bfa");
+      setAdding(false);
+    } finally {
+      setAddingSubmitting(false);
+    }
   };
 
   const deleteSubstatus = async (id: number) => {
@@ -289,6 +295,7 @@ export function TabSettingsPopup({
                 onChange={e => setNewLabel(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") addSubstatus(); if (e.key === "Escape") { setAdding(false); setNewLabel(""); } }}
                 autoFocus
+                disabled={addingSubmitting}
                 placeholder="Название этапа"
                 className="flex-1 text-xs rounded px-1.5 py-1 focus:outline-none min-w-0"
                 style={{ background: t.surface2, border: `1px solid ${t.accent}60`, color: t.text }}
@@ -302,10 +309,10 @@ export function TabSettingsPopup({
               ))}
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={addSubstatus}
-                className="flex-1 text-[11px] py-1 rounded font-semibold"
-                style={{ background: t.accent, color: "#fff" }}>Добавить</button>
-              <button onClick={() => { setAdding(false); setNewLabel(""); }}
+              <button onClick={addSubstatus} disabled={addingSubmitting}
+                className="flex-1 text-[11px] py-1 rounded font-semibold disabled:opacity-50"
+                style={{ background: t.accent, color: "#fff" }}>{addingSubmitting ? "Добавляю…" : "Добавить"}</button>
+              <button onClick={() => { setAdding(false); setNewLabel(""); }} disabled={addingSubmitting}
                 className="text-[11px] px-2 py-1 rounded" style={{ color: t.textMute }}>Отмена</button>
             </div>
           </div>

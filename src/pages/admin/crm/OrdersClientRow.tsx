@@ -379,13 +379,24 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBui
         </div>
 
         <div className="w-44 flex-shrink-0">
-          {isInstall
-            ? <InstallProgress client={clientWithSub} />
-            : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                style={{ background: color + "20", color }}>
-                {STATUS_LABELS[c.status] || c.status}
-              </span>
-          }
+          <div className="flex items-center gap-1 flex-wrap">
+            {isInstall
+              ? <InstallProgress client={clientWithSub} />
+              : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                  style={{ background: color + "20", color }}>
+                  {STATUS_LABELS[c.status] || c.status}
+                </span>
+            }
+            {c.avito_chat_url && (
+              <button
+                onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
+                title="Открыть диалог в Avito"
+                className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
+                style={{ background: "#f9731620", color: "#f97316" }}>
+                <Icon name="ExternalLink" size={9} /> Avito
+              </button>
+            )}
+          </div>
           {tab && <SubstatusPills client={clientWithSub} tabId={tab.id} onUpdate={setLocalSubStatus} />}
           {(c.measure_date && !isInstall) && (
             <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: "#f59e0b" }}>

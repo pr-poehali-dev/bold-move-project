@@ -601,7 +601,7 @@ def handler(event: dict, context) -> dict:
                            lc.responsible_phone, lc.map_link, lc.tags,
                            lc.photo_before_url, lc.photo_after_url, lc.document_url,
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.cancel_reason,
-                           lc.updated_at, lc.project_id,
+                           lc.updated_at, lc.project_id, lc.avito_chat_url,
                            COALESCE(u.is_demo, FALSE) AS is_demo
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
@@ -1349,6 +1349,14 @@ def handler(event: dict, context) -> dict:
                 color  = body.get("color", "#a78bfa")
                 if not parent or not label:
                     return err("parent_status and label required")
+                # Защита от дублей (двойной клик / повторный запрос) — если этап
+                # с таким названием на этом табе уже есть, просто возвращаем его.
+                cur.execute(f"""SELECT id, position FROM {SCHEMA}.order_substatuses
+                    WHERE company_id=%s AND parent_status=%s AND label=%s
+                    ORDER BY id LIMIT 1""", (company_id, parent, label))
+                existing = cur.fetchone()
+                if existing:
+                    return ok({"id": existing[0], "position": existing[1]})
                 cur.execute(f"""SELECT COALESCE(MAX(position), -1) + 1
                     FROM {SCHEMA}.order_substatuses WHERE company_id=%s AND parent_status=%s""",
                     (company_id, parent))
@@ -2825,6 +2833,9 @@ def handler(event: dict, context) -> dict:
             if av_author and av_user_id and str(av_author) == str(av_user_id):
                 return ok({"skipped_own": True})
 
+            # Прямая ссылка на диалог в веб-версии Avito (для кнопки «Открыть в Avito»)
+            avito_chat_url = f"https://www.avito.ru/profile/messenger/channel/{av_chat_id}"
+
             # Находим/создаём клиента по avito chat_id (телефона в Avito обычно нет)
             cur.execute(
                 f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND channel_ids->>'avito' = %s",
@@ -2848,17 +2859,34 @@ def handler(event: dict, context) -> dict:
                 master_row = cur.fetchone()
                 master_id = master_row[0] if master_row else None
                 final_company_id = owner_id or master_id
+
+                # Пытаемся получить настоящее имя покупателя через Avito API.
+                # Если не получилось (нет токена / API недоступен) — используем заглушку,
+                # приём сообщения это не блокирует (Avito ждёт быстрый ответ).
+                real_name = None
+                try:
+                    token, terr = avito_get_messenger_token(cur, conn, owner_id, cfg)
+                    if token:
+                        chat_info = avito_api_get(token, f"/messenger/v2/accounts/{av_user_id}/chats/{av_chat_id}")
+                        for u in (chat_info.get("users") or []):
+                            if str(u.get("id")) != str(av_user_id):
+                                real_name = u.get("name")
+                                break
+                except Exception as e:
+                    print(f"[avito-webhook] name fetch skipped: {str(e)[:200]}")
+                client_name = real_name or "Клиент с Avito"
+
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, notes, source, created_via, company_id)
-                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s)
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id, avito_chat_url)
+                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s)
                     RETURNING id
-                """, (f"avito_{av_chat_id}", "Клиент с Avito", "",
-                      f"Первое сообщение: {text[:200]}", final_company_id))
+                """, (f"avito_{av_chat_id}", client_name, "",
+                      f"Первое сообщение: {text[:200]}", final_company_id, avito_chat_url))
                 new_order_id = cur.fetchone()[0]
                 cur.execute(
-                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
-                    (new_order_id, client_id))
+                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s, name=%s WHERE id=%s",
+                    (new_order_id, real_name, client_id))
                 conn.commit()
 
             try:

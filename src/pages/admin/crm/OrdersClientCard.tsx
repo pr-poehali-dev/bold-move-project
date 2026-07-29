@@ -255,6 +255,15 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
                       {src.label}
                     </span>
                   )}
+                  {c.avito_chat_url && (
+                    <button
+                      onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
+                      title="Открыть диалог в Avito"
+                      className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
+                      style={{ background: "#f9731620", color: "#f97316" }}>
+                      <Icon name="ExternalLink" size={9} /> Avito
+                    </button>
+                  )}
                   {isInstall
                     ? <InstallProgress client={clientWithSub} />
                     : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"

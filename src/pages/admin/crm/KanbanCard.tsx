@@ -100,6 +100,15 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
                   {STATUS_LABELS[client.status] || client.status}
                 </span>
           }
+          {client.avito_chat_url && (
+            <button
+              onClick={e => { e.stopPropagation(); window.open(client.avito_chat_url!, "_blank"); }}
+              title="Открыть диалог в Avito"
+              className="flex-shrink-0 flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
+              style={{ background: "#f9731620", color: "#f97316" }}>
+              <Icon name="ExternalLink" size={9} /> Avito
+            </button>
+          )}
         </div>
 
         {/* Имя + телефон + адрес */}

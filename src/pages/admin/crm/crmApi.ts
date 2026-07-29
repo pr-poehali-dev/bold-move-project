@@ -180,6 +180,7 @@ export interface Client {
   extra_payment_fact: number | null;
   project_id?: number | null;
   is_demo?: boolean;
+  avito_chat_url?: string | null;
 }
 
 export function fmt(n: number): string {
