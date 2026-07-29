@@ -12,6 +12,7 @@ import { useEstimateData } from "./useEstimateData";
 import { DrawerHeader } from "./DrawerHeader";
 import { DrawerTabsBar, DrawerTabId } from "./DrawerTabsBar";
 import { DrawerOrdersPanel } from "./DrawerOrdersPanel";
+import { useUnreadTouches } from "./useUnreadTouches";
 
 interface Props {
   client: Client;
@@ -53,6 +54,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const unreadTouches = useUnreadTouches(data.id, data.phone || undefined, drawerTab === "touches");
 
   const save = async (patch: Partial<Client>) => {
     setData(prev => ({ ...prev, ...patch }));
@@ -142,6 +144,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           drawerTab={drawerTab}
           setDrawerTab={setDrawerTab}
           ordersCount={allClientOrders.length}
+          unreadTouches={unreadTouches}
           setPdfModalOpen={setPdfModalOpen}
         />
 
