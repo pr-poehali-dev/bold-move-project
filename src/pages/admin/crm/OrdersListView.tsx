@@ -259,27 +259,44 @@ export function OrdersListView({
         </div>
       ) : activeTab === "done" ? (
         <div>
-          {/* Переключатель Выполнено / Отказ — показывает только одну группу за раз */}
-          <div className="flex gap-2 mb-4">
-            {DONE_GROUPS.map(group => {
-              const isSel = doneSubFilter === group.key;
-              const cnt = currentClients.filter(c => group.statuses.includes(c.status ?? "")).length;
-              return (
-                <button key={group.key} onClick={() => setDoneSubFilter(group.key)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                  style={{
-                    background: isSel ? group.color + "18" : t.surface,
-                    border: `1px solid ${isSel ? group.color + "45" : t.border}`,
-                    color: isSel ? group.color : t.textMute,
-                  }}>
-                  <Icon name={group.icon} size={13} />
-                  {group.label}
-                  <span className="px-1.5 py-0.5 rounded-md" style={{ background: group.color + "20", color: group.color }}>{cnt}</span>
-                </button>
-              );
-            })}
+          {/* Переключатель Выполнено/Отказ + источники — в одном ряду, как на других вкладках */}
+          <div className="flex items-start gap-3 flex-wrap mb-4">
+            <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+              <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
+              {DONE_GROUPS.map(group => {
+                const isSel = doneSubFilter === group.key;
+                const cnt = currentClients.filter(c => group.statuses.includes(c.status ?? "")).length;
+                return (
+                  <button key={group.key} onClick={() => setDoneSubFilter(group.key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
+                    style={{
+                      background: isSel ? group.color : t.surface,
+                      borderColor: isSel ? group.color : t.border,
+                      color: isSel ? "#fff" : t.textSub,
+                    }}>
+                    <Icon name={group.icon} size={12} />
+                    {group.label} <span className="font-bold">{cnt}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {sourceChips.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+                <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Источник</span>
+                {sourceChips.map(x => (
+                  <button key={x.key} onClick={x.onClick}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                    style={{
+                      background: x.isSel ? x.color : x.color + "18",
+                      borderColor: x.color,
+                      color: x.isSel ? "#fff" : x.color,
+                    }}>
+                    {x.label} <span className="font-bold">{x.cnt}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {renderFilterRow()}
 
           {(() => {
             const group = DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0];

@@ -33,7 +33,7 @@ export const ORDERS_TABS = [
   { id: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] as readonly string[],                                        emptyText: "Нет заявок в работе" },
   { id: "measures", label: "Замеры",    icon: "Ruler",        color: "#f59e0b", statuses: ["measure","measured"] as readonly string[],                          emptyText: "Нет замеров" },
   { id: "installs", label: "Монтажи",   icon: "Wrench",       color: "#f97316", statuses: ["contract","prepaid","install_scheduled","install_done","extra_paid"] as readonly string[], emptyText: "Нет активных монтажей" },
-  { id: "done",     label: "Выполнено", icon: "CheckCircle2", color: "#10b981", statuses: ["done","cancelled"] as readonly string[],                             emptyText: "Нет завершённых заказов" },
+  { id: "done",     label: "Финальный", icon: "CheckCircle2", color: "#10b981", statuses: ["done","cancelled"] as readonly string[],                             emptyText: "Нет завершённых заказов" },
 ] as const;
 
 export type OrdersTabId = typeof ORDERS_TABS[number]["id"];
