@@ -2480,6 +2480,7 @@ def handler(event: dict, context) -> dict:
 
             if method == "GET":
                 client_id = qs.get("client_id")
+                contact_id = qs.get("contact_id")  # id заявки live_chats (для Avito и др. каналов без телефона)
                 phone_q = qs.get("phone")
                 name_q = qs.get("name")
                 cols = ("id, phone, name, state_summary, next_action, "
@@ -2494,6 +2495,18 @@ def handler(event: dict, context) -> dict:
                     cli = cur.fetchone()
                     if not cli:
                         return err("not found", 404)
+                elif contact_id:
+                    # Режим по id заявки: находим touch_clients, привязанный к этой заявке
+                    # (touch_clients.crm_contact_id = live_chats.id). Так работает Avito,
+                    # где у клиента нет телефона, но есть переписка по chat_id.
+                    cur.execute(
+                        f"SELECT {cols} FROM {SCHEMA}.touch_clients "
+                        f"WHERE crm_contact_id=%s AND company_id=%s ORDER BY id LIMIT 1",
+                        (contact_id, owner_id))
+                    cli = cur.fetchone()
+                    if not cli:
+                        # Нет привязанного touch_client — истории касаний ещё нет
+                        return ok({"client": None, "touches": []})
                 elif phone_q:
                     # Режим по номеру телефона: найти или создать touch_clients
                     norm = normalize_phone(phone_q)

@@ -156,7 +156,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* КАСАНИЯ */}
           {drawerTab === "touches" && (
-            <DrawerTouchesTab phone={data.phone} name={data.client_name} />
+            <DrawerTouchesTab phone={data.phone} name={data.client_name} contactId={data.id} />
           )}
 
           {/* АНАЛИТИКА */}

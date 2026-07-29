@@ -29,6 +29,8 @@ interface TouchClient {
 interface Props {
   phone: string;
   name?: string;
+  /** id заявки (live_chats). Нужен для каналов без телефона (Avito): история грузится по нему. */
+  contactId?: number;
 }
 
 // Канал → иконка + подпись
@@ -54,24 +56,31 @@ const fmtDuration = (sec: number | null) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-export default function DrawerTouchesTab({ phone, name }: Props) {
+export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   const t = useTheme();
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<TouchClient | null>(null);
   const [touches, setTouches] = useState<Touch[]>([]);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [draft, setDraft] = useState("");
-  const [sendChannel, setSendChannel] = useState("telegram");
+  // По умолчанию Avito, если у клиента нет телефона (пришёл из Avito), иначе Telegram
+  const [sendChannel, setSendChannel] = useState(phone ? "telegram" : "avito");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
-    if (!phone) { setLoading(false); return; }
+    // Грузим по телефону (обычные клиенты) ИЛИ по id заявки (Avito без телефона)
+    if (!phone && !contactId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const extra: Record<string, string> = { phone };
-      if (name) extra.name = name;
+      const extra: Record<string, string> = {};
+      if (phone) {
+        extra.phone = phone;
+        if (name) extra.name = name;
+      } else if (contactId) {
+        extra.contact_id = String(contactId);
+      }
       const d = await crmFetch("touches", undefined, extra) as { client?: TouchClient; touches?: Touch[]; error?: string };
       if (d && !d.error) {
         setClient(d.client ?? null);
@@ -81,7 +90,7 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
 
   const handleSend = async () => {
@@ -112,14 +121,17 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
     setSending(false);
   };
 
-  if (!phone) {
+  // Нет ни телефона, ни истории по заявке (contactId) — показываем подсказку.
+  // Для Avito история грузится по contactId, поэтому заглушку показываем только когда
+  // и телефона нет, и переписки не нашлось.
+  if (!phone && !loading && touches.length === 0) {
     return (
       <div className="px-3 sm:px-6 py-10 text-center text-sm flex flex-col items-center gap-2" style={{ color: t.textMute }}>
-        <Icon name="PhoneOff" size={24} style={{ color: t.textMute }} />
-        <div>У клиента не указан номер телефона.</div>
+        <Icon name="MessagesSquare" size={24} style={{ color: t.textMute }} />
+        <div>Переписки пока нет.</div>
         <div className="text-xs max-w-xs">
-          Лента касаний и звонок привязаны к номеру телефона. Если клиент пришёл из Avito или
-          другого канала без номера — добавьте телефон на вкладке «Клиент», и здесь появится вся история.
+          Здесь появится вся история сообщений из Avito, мессенджеров и звонков по этому клиенту.
+          Для звонка добавьте телефон на вкладке «Клиент».
         </div>
       </div>
     );
@@ -133,19 +145,27 @@ export default function DrawerTouchesTab({ phone, name }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Шапка: номер телефона + звонок */}
-      <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2"
-        style={{ borderBottom: `1px solid ${t.border}` }}>
-        <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: t.textSub }}>
-          <Icon name="Phone" size={12} style={{ color: t.textMute }} />
-          {phone}
+      {/* Шапка: номер телефона + звонок — только если телефон указан */}
+      {phone ? (
+        <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2"
+          style={{ borderBottom: `1px solid ${t.border}` }}>
+          <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: t.textSub }}>
+            <Icon name="Phone" size={12} style={{ color: t.textMute }} />
+            {phone}
+          </div>
+          <a href={`tel:${phone}`}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97]"
+            style={{ background: "#22c55e22", color: "#22c55e" }}>
+            <Icon name="PhoneCall" size={13} /> Позвонить
+          </a>
         </div>
-        <a href={`tel:${phone}`}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97]"
-          style={{ background: "#22c55e22", color: "#22c55e" }}>
-          <Icon name="PhoneCall" size={13} /> Позвонить
-        </a>
-      </div>
+      ) : (
+        <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center gap-1.5 text-xs font-medium"
+          style={{ borderBottom: `1px solid ${t.border}`, color: t.textSub }}>
+          <Icon name="MessagesSquare" size={12} style={{ color: "#f97316" }} />
+          Переписка Avito
+        </div>
+      )}
 
       {/* Мини-шапка состояния клиента (быстрый контекст) */}
       {client && (client.next_action || client.interest || client.stage) && (
