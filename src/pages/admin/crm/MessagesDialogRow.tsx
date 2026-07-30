@@ -63,14 +63,10 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
         borderBottom: `1px solid ${t.border2}`,
       }}>
 
-      {/* Аватар: для Avito — фирменный оранжевый ярлык, для остальных — иконка канала */}
+      {/* Аватар: для Avito — фирменный логотип, для остальных — иконка канала */}
       <div className="relative flex-shrink-0">
         {avito ? (
-          <div className="h-10 min-w-[44px] px-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5"
-            style={{ background: "#f9731622", border: "1px solid #f9731650" }}>
-            <Icon name="MessagesSquare" size={13} style={{ color: "#f97316" }} />
-            <span className="text-[9px] font-extrabold tracking-wide leading-none" style={{ color: "#f97316" }}>Avito</span>
-          </div>
+          <img src="/avito-icon.png" alt="Avito" className="w-10 h-10 rounded-xl object-cover" />
         ) : (
           <div className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ background: meta.color + "22", color: meta.color }}>

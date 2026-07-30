@@ -165,10 +165,14 @@ export default function CrmMessages() {
               <button onClick={() => setSelected(null)} className="sm:hidden p-1 rounded-lg" style={{ color: t.textMute }}>
                 <Icon name="ChevronLeft" size={18} />
               </button>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: selMeta.color + "22", color: selMeta.color }}>
-                <Icon name={selMeta.icon} size={16} />
-              </div>
+              {isAvito(selected) ? (
+                <img src="/avito-icon.png" alt="Avito" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: selMeta.color + "22", color: selMeta.color }}>
+                  <Icon name={selMeta.icon} size={16} />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold truncate flex items-center gap-1" style={{ color: t.text }}>
                   {selected.favorite && <Icon name="Star" size={12} style={{ color: "#f59e0b", fill: "#f59e0b" }} />}
