@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { crmFetch, STATUS_COLORS, Client, ClientStatus } from "./crmApi";
-import Icon from "@/components/ui/icon";
+import { Client, ClientStatus } from "./crmApi";
 import { useTheme } from "./themeContext";
 import EstimateEditor from "./EstimateEditor";
 import ClientTab from "./ClientTab";
@@ -10,9 +9,11 @@ import DrawerAnalyticsTab from "./DrawerAnalyticsTab";
 import PdfOptionsModal from "./PdfOptionsModal";
 import { useEstimateData } from "./useEstimateData";
 import { DrawerHeader } from "./DrawerHeader";
-import { DrawerTabsBar, DrawerTabId } from "./DrawerTabsBar";
+import { DrawerTabsBar } from "./DrawerTabsBar";
 import { DrawerOrdersPanel } from "./DrawerOrdersPanel";
+import { DrawerDeleteConfirm } from "./DrawerDeleteConfirm";
 import { useUnreadTouches } from "./useUnreadTouches";
+import { useClientDrawerState } from "./useClientDrawerState";
 
 interface Props {
   client: Client;
@@ -42,61 +43,21 @@ interface Props {
 
 export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", contactMode = false, defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
   const t = useTheme();
-  const [data, setData]               = useState<Client>(client);
-  const [saving, setSaving]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [drawerTab, setDrawerTab]     = useState<DrawerTabId>(defaultTab as "client" | "orders" | "plan" | "touches");
-  const [comments, setComments]       = useState<{ text: string; date: string }[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [copied, setCopied]           = useState(false);
+  const [copied] = useState(false);
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
-  const [selectedOrderId, setSelectedOrderId] = useState<number>(defaultOrderId ?? client.id);
-  const [orderInnerTab, setOrderInnerTab] = useState<"info" | "estimate">("info");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+
+  const {
+    data, saving, drawerTab, setDrawerTab,
+    selectedOrderId, setSelectedOrderId, orderData, setOrderData,
+    save, saveOrder, ord, handleDelete, lsKey, orderTitle, displayColor,
+  } = useClientDrawerState(client, allClientOrders, isLocalCard, defaultTab, defaultOrderId, contactMode, onUpdated, onDeleted);
+
   const unreadTouches = useUnreadTouches(data.id, data.phone || undefined, drawerTab === "touches");
-
-  const save = async (patch: Partial<Client>) => {
-    setData(prev => ({ ...prev, ...patch }));
-    if (isLocalCard) return;
-    setSaving(true);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
-    setSaving(false);
-    onUpdated();
-  };
-
-  const [orderData, setOrderData] = useState<Client>(
-    allClientOrders.find(o => o.id === selectedOrderId) ?? allClientOrders[0] ?? data
-  );
-
   const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
-
-  const saveOrder = async (patch: Partial<Client>) => {
-    setOrderData(prev => ({ ...prev, ...patch }));
-    if (isLocalCard) return;
-    setSaving(true);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) });
-    setSaving(false);
-    onUpdated();
-  };
-
-  const ord = drawerTab === "orders" ? orderData : data;
-
-  const handleDelete = async () => {
-    const targetId = ord.id;
-    if (!isLocalCard) {
-      await crmFetch("clients", { method: "DELETE" }, { id: String(targetId) });
-    }
-    onDeleted(targetId);
-  };
-
-  const lsKey = `order_title_${ord.id}`;
-  const customTitle = localStorage.getItem(lsKey);
-  // В режиме «Клиенты» заголовок — имя человека, а не номер конкретной заявки
-  const orderTitle = contactMode
-    ? (data.client_name || "Клиент без имени")
-    : (customTitle || `Заявка №${ord.id}`);
-  const displayColor = STATUS_COLORS[ord.status] || "#8b5cf6";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4"
@@ -202,11 +163,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               setSelectedOrderId={setSelectedOrderId}
               orderData={orderData}
               setOrderData={setOrderData}
-              setOrderInnerTab={setOrderInnerTab}
+              setOrderInnerTab={() => {}}
               ordersListOpen={ordersListOpen}
               setOrdersListOpen={setOrdersListOpen}
               saveOrder={saveOrder}
-              setComments={setComments}
+              setComments={() => {}}
               hideHidden={hideHidden}
               canEdit={canEdit}
               canOrdersEdit={canOrdersEdit}
@@ -234,20 +195,13 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
       {/* Подтверждение удаления */}
       {confirmDelete && (
-        <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/60 p-4" onClick={() => setConfirmDelete(false)}>
-          <div className="rounded-2xl p-6 w-full max-w-xs shadow-2xl" style={{ background: t.surface, border: "1px solid rgba(239,68,68,0.25)" }} onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
-              <Icon name="Trash2" size={22} className="text-red-400" />
-            </div>
-            <h3 className="text-base font-bold text-center mb-2 text-white">Удалить заявку?</h3>
-            <p className="text-sm text-center mb-5" style={{ color: t.textMute }}>Заявка №{ord.id} «{ord.client_name || "Клиент"}» будет удалена</p>
-            <div className="flex gap-2">
-              <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-xl font-semibold transition">Удалить</button>
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 text-sm rounded-xl transition"
-                style={{ background: t.surface2, color: t.textSub }}>Отмена</button>
-            </div>
-          </div>
-        </div>
+        <DrawerDeleteConfirm
+          t={t}
+          orderId={ord.id}
+          clientName={ord.client_name || ""}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
       )}
     </div>
   );

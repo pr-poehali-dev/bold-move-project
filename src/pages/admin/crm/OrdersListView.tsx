@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
+import { filterOrdersBySearch } from "./ordersSearch";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
@@ -217,16 +218,7 @@ export function OrdersListView({
       </div>
     );
 
-  const filterSearch = (list: Client[]) => {
-    if (!search) return list;
-    const q = search.toLowerCase();
-    return list.filter(c =>
-      (c.client_name || "").toLowerCase().includes(q) ||
-      (c.phone || "").includes(q) ||
-      (c.address || "").toLowerCase().includes(q) ||
-      String(c.id).includes(q)
-    );
-  };
+  const filterSearch = (list: Client[]) => filterOrdersBySearch(list, search);
 
   // На вкладке "Замеры" сортируем по дате замера, на "Монтажи" — по дате монтажа.
   // Ближайшие по времени — первыми, заявки без даты — в конце.

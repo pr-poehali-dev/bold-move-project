@@ -1,20 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { crmFetch, Client, getClientOrders, getCrmToken } from "./crmApi";
+import { useState } from "react";
+import { crmFetch, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import ClientDrawer from "./ClientDrawer";
 import CrmActionModal from "./CrmActionModal";
 import { AddClientModal } from "./AddClientModal";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS } from "./ordersTypes";
-import func2url from "@/../backend/func2url.json";
-
-const CRM_URL = (func2url as Record<string, string>)["crm-manager"];
-import {
-  loadSyncedCustomCols, loadSyncedHidden, loadSyncedLabels, loadSyncedColors,
-  saveSyncedLabels, saveSyncedColors,
-  addSyncedCol, deleteSyncedCol, SyncedCol,
-} from "./syncedCols";
 import { OrdersEventsPanel } from "./OrdersEventsPanel";
 import { OrdersKanbanView } from "./OrdersKanbanView";
 import { OrdersListView } from "./OrdersListView";
@@ -22,6 +12,9 @@ import type { Substatus } from "./OrdersTabs";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { OrderSourcesContext } from "./orderSourcesContext";
 import { TrashModal } from "./TrashModal";
+import { useOrdersTabsConfig } from "./useOrdersTabsConfig";
+import { useOrderActionModal } from "./useOrderActionModal";
+import { useOrdersUrlParams } from "./useOrdersUrlParams";
 
 interface Props {
   clients: Client[];
@@ -47,7 +40,6 @@ interface Props {
 
 export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, onDrawerClose, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
   const t = useTheme();
-  const navigate = useNavigate();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
   const [selected, setSelected]   = useState<Client | null>(null);
@@ -57,185 +49,19 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
 
   const clients = allClients;
 
-  // Open client from URL ?order= or from calendar
-  const [initialHandled, setInitialHandled] = useState(false);
-  useEffect(() => {
-    if (!initialOrderId || allClients.length === 0 || initialHandled) return;
-    const found = allClients.find(c => c.id === initialOrderId);
-    if (found) {
-      setSelected(found);
-      setInitialHandled(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("order");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, [initialOrderId, allClients, initialHandled]);
+  const { showAddModal, setShowAddModal, newOrderLinkProjectId, setNewOrderLinkProjectId } =
+    useOrdersUrlParams(allClients, initialOrderId, setSelected);
 
-  // Открыть модалку новой заявки при ?new_order=1 (переход из проектов)
-  const [newOrderLinkProjectId, setNewOrderLinkProjectId] = useState<number | null>(null);
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    if (sp.get("new_order") === "1") {
-      const pid = sp.get("link_project_id");
-      if (pid) setNewOrderLinkProjectId(Number(pid));
-      setShowAddModal(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("new_order");
-      url.searchParams.delete("link_project_id");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []);
+  const tabsConfig = useOrdersTabsConfig();
 
-  // ── Tabs/columns — single source of truth ────────────────────────────────
-  const [tabLabels,  setTabLabels]  = useState<Record<string, string>>(loadSyncedLabels);
-  const [tabColors,  setTabColors]  = useState<Record<string, string>>(loadSyncedColors);
-  const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(loadSyncedHidden);
-  const [customTabs, setCustomTabs] = useState<SyncedCol[]>(loadSyncedCustomCols);
-
-  const handleSaveLabel = (id: string, val: string) => {
-    setTabLabels(prev => { const next = { ...prev, [id]: val }; saveSyncedLabels(next); return next; });
-  };
-  const handleSaveColor = (id: string, color: string) => {
-    setTabColors(prev => { const next = { ...prev, [id]: color }; saveSyncedColors(next); return next; });
-  };
-  const handleDeleteTab = (id: string) => {
-    const isBuiltin = ORDERS_TABS.some(t => t.id === id);
-    const msg = isBuiltin
-      ? `Скрыть этап «${tabLabels[id] || id}»? Он исчезнет из воронки и из канбан-доски.`
-      : `Удалить этап «${tabLabels[id] || id}»? Он удалится из воронки и из канбан-доски.`;
-    if (!window.confirm(msg)) return;
-    deleteSyncedCol(id, isBuiltin);
-    if (isBuiltin) {
-      setHiddenTabs(prev => { const next = new Set(prev); next.add(id); return next; });
-    } else {
-      setCustomTabs(prev => prev.filter(c => c.id !== id));
-    }
-  };
-  const handleAddTab = () => {
-    const col = addSyncedCol("Новый этап", "#8b5cf6", "Layers");
-    setCustomTabs(prev => [...prev, col]);
-  };
-
-  // ── Персонализация названий/цветов реальных этапов (status) внутри вкладки ─
-  // Хранится в БД (order_status_labels) — общая для всех сотрудников компании.
-  const [statusLabels, setStatusLabels] = useState<Record<string, string>>({});
-  const [statusColors, setStatusColors] = useState<Record<string, string>>({});
-  useEffect(() => {
-    crmFetch("status-labels").then(data => {
-      if (!Array.isArray(data)) return;
-      const labels: Record<string, string> = {};
-      const colors: Record<string, string> = {};
-      for (const row of data as { status: string; label: string | null; color: string | null }[]) {
-        if (row.label) labels[row.status] = row.label;
-        if (row.color) colors[row.status] = row.color;
-      }
-      setStatusLabels(labels);
-      setStatusColors(colors);
-    });
-  }, []);
-  const handleSaveStatusLabel = (status: string, val: string) => {
-    setStatusLabels(prev => ({ ...prev, [status]: val }));
-    crmFetch("status-labels", { method: "PUT", body: JSON.stringify({ status, label: val }) });
-  };
-  const handleSaveStatusColor = (status: string, color: string) => {
-    setStatusColors(prev => ({ ...prev, [status]: color }));
-    crmFetch("status-labels", { method: "PUT", body: JSON.stringify({ status, color }) });
-  };
-
-  // ── Shared client actions ─────────────────────────────────────────────────
   const handleNextStep = async (id: number, nextStatus: string) => {
     const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) }) as { error?: string };
     if (res?.error) { alert(res.error); return; }
     onStatusChange(id, nextStatus);
   };
 
-  // ── Модалка подтверждения действия ───────────────────────────────────────
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [actionModal, setActionModal] = useState<{ type: "builder" | "agent"; client: Client } | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const handleSwipeBuilder = (client: Client) => setActionModal({ type: "builder", client });
-  const handleSwipeAgent   = (client: Client) => setActionModal({ type: "agent",   client });
-
-  const handleActionConfirm = async () => {
-    if (!actionModal) return;
-    setActionLoading(true);
-
-    if (actionModal.type === "builder") {
-      const client = actionModal.client;
-
-      // Если проект уже привязан — просто открываем его
-      if (client.project_id) {
-        // Сохраняем привязку к CRM-заявке чтобы смета сохранялась в неё же
-        localStorage.setItem("crm_linked_session", JSON.stringify({
-          chat_id: client.id,
-          session_id: client.session_id,
-          client_name: client.client_name || `Заявка №${client.id}`,
-          phone: client.phone || "",
-          address: client.address || "",
-          auth_token: getCrmToken() || undefined,
-        }));
-        setActionModal(null);
-        setActionLoading(false);
-        navigate(`/plan?project_id=${client.project_id}`);
-        return;
-      }
-
-      // Создаём новый проект в построителе с данными клиента
-      const token = getCrmToken();
-      const res = await fetch(`${CRM_URL}?r=plan-projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "X-Authorization": `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          name: client.client_name || `Заявка №${client.id}`,
-          client_name: client.client_name || "",
-          address: client.address || "",
-          phone: client.phone || "",
-          crm_client_id: client.id,
-        }),
-      });
-      const data = await res.json();
-      if (data.id) {
-        // Привязываем project_id к заявке в CRM
-        await crmFetch("clients", {
-          method: "PUT",
-          body: JSON.stringify({ project_id: data.id }),
-        }, { id: String(client.id) });
-        // Сохраняем привязку к CRM-заявке чтобы смета сохранялась в неё же
-        localStorage.setItem("crm_linked_session", JSON.stringify({
-          chat_id: client.id,
-          session_id: client.session_id,
-          client_name: client.client_name || `Заявка №${client.id}`,
-          phone: client.phone || "",
-          address: client.address || "",
-          auth_token: getCrmToken() || undefined,
-        }));
-        onReload();
-        setActionModal(null);
-        setActionLoading(false);
-        navigate(`/plan?project_id=${data.id}`);
-      } else {
-        setActionLoading(false);
-      }
-
-    } else {
-      // Переходим в агент с привязкой к заявке через session_id
-      const client = actionModal.client;
-      localStorage.setItem("crm_linked_session", JSON.stringify({
-        chat_id: client.id,
-        session_id: client.session_id,
-        client_name: client.client_name || `Заявка №${client.id}`,
-        phone: client.phone || "",
-        address: client.address || "",
-      }));
-      setActionModal(null);
-      setActionLoading(false);
-      navigate("/");
-    }
-  };
+  const { actionModal, actionLoading, handleSwipeBuilder, handleSwipeAgent, handleActionConfirm, closeActionModal } =
+    useOrderActionModal(onReload);
 
   return (
     <OrderSourcesContext.Provider value={sources}>
@@ -324,20 +150,20 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onSetActiveTab={setActiveTab}
           onSwipeBuilder={handleSwipeBuilder}
           onSwipeAgent={handleSwipeAgent}
-          tabLabels={tabLabels}
-          tabColors={tabColors}
-          hiddenTabs={hiddenTabs}
-          customTabs={customTabs}
-          onSaveLabel={handleSaveLabel}
-          onSaveColor={handleSaveColor}
-          onDeleteTab={handleDeleteTab}
-          onAddTab={handleAddTab}
+          tabLabels={tabsConfig.tabLabels}
+          tabColors={tabsConfig.tabColors}
+          hiddenTabs={tabsConfig.hiddenTabs}
+          customTabs={tabsConfig.customTabs}
+          onSaveLabel={tabsConfig.handleSaveLabel}
+          onSaveColor={tabsConfig.handleSaveColor}
+          onDeleteTab={tabsConfig.handleDeleteTab}
+          onAddTab={tabsConfig.handleAddTab}
           substatuses={substatuses}
           onSubstatusesChange={onSubstatusesChange}
-          statusLabels={statusLabels}
-          statusColors={statusColors}
-          onSaveStatusLabel={handleSaveStatusLabel}
-          onSaveStatusColor={handleSaveStatusColor}
+          statusLabels={tabsConfig.statusLabels}
+          statusColors={tabsConfig.statusColors}
+          onSaveStatusLabel={tabsConfig.handleSaveStatusLabel}
+          onSaveStatusColor={tabsConfig.handleSaveStatusColor}
         />
       )}
 
@@ -381,7 +207,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           clientName={actionModal.client.client_name || `Заявка №${actionModal.client.id}`}
           loading={actionLoading}
           onConfirm={handleActionConfirm}
-          onCancel={() => { if (!actionLoading) setActionModal(null); }}
+          onCancel={closeActionModal}
         />
       )}
 

@@ -1,39 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Client, STATUS_LABELS, STATUS_COLORS, getClientOrders, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
-
-const SNAP_WIDTH = 88;
-const THRESHOLD  = 44;
-
-function vibe(ms: number | number[]) {
-  if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);
-}
-
-function InstallProgress({ client }: { client: Client }) {
-  const allSubs = useSubstatuses();
-  const steps = allSubs.filter(s => s.parent_status === "installs");
-  if (steps.length === 0) return null;
-  const idx = steps.findIndex(s => String(s.id) === client.sub_status);
-  return (
-    <div className="flex items-center gap-0.5">
-      {steps.map((s, i) => (
-        <div key={s.id} className="flex items-center gap-0.5">
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: i <= idx ? s.color : "rgba(128,128,128,0.2)" }} />
-          {i < steps.length - 1 && <div className="w-2 h-px" style={{ background: i < idx ? s.color : "rgba(128,128,128,0.15)" }} />}
-        </div>
-      ))}
-      {idx >= 0 && (
-        <span className="ml-1 text-[9px] font-medium" style={{ color: steps[idx].color }}>
-          {steps[idx].label}
-        </span>
-      )}
-    </div>
-  );
-}
+import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
+import { useSwipeGesture } from "./useSwipeGesture";
+import { useOrderMetrics } from "./useOrderMetrics";
 
 function Metric({ label, value, color, icon }: { label: string; value: string; color?: string; icon?: string }) {
   const t = useTheme();
@@ -64,73 +38,7 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   const localSubStatus = c.sub_status ?? null;
 
   const cardRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset]       = useState(0);
-  const [dragging, setDragging]   = useState(false);
-  const [swipeHint, setSwipeHint] = useState<"builder" | "agent" | null>(null);
-
-  const sx        = useRef(0);
-  const sy        = useRef(0);
-  const axis      = useRef<"h" | "v" | null>(null);
-  const alive     = useRef(false);
-  const vibed     = useRef(false);
-  const offsetRef = useRef(0);
-
-  const setOffsetSync    = useRef((v: number)  => { offsetRef.current = v; setOffset(v); });
-  const setDraggingSync  = useRef((v: boolean) => setDragging(v));
-  const setSwipeHintSync = useRef((v: "builder" | "agent" | null) => setSwipeHint(v));
-  setOffsetSync.current    = (v) => { offsetRef.current = v; setOffset(v); };
-  setDraggingSync.current  = (v) => setDragging(v);
-  setSwipeHintSync.current = (v) => setSwipeHint(v);
-
-  const cb = useRef({ onSwipeBuilder, onSwipeAgent, c });
-  cb.current = { onSwipeBuilder, onSwipeAgent, c };
-
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const onStart = (e: TouchEvent) => {
-      sx.current = e.touches[0].clientX; sy.current = e.touches[0].clientY;
-      axis.current = null; alive.current = true; vibed.current = false;
-      setDraggingSync.current(false); setSwipeHintSync.current(null);
-    };
-    const onMove = (e: TouchEvent) => {
-      if (!alive.current) return;
-      const dx = e.touches[0].clientX - sx.current;
-      const dy = e.touches[0].clientY - sy.current;
-      if (!axis.current) {
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-        axis.current = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
-      }
-      if (axis.current === "v") return;
-      e.preventDefault();
-      setDraggingSync.current(true);
-      const clamped = Math.max(-SNAP_WIDTH, Math.min(SNAP_WIDTH, dx));
-      setOffsetSync.current(clamped);
-      if (clamped >= THRESHOLD) setSwipeHintSync.current("agent");
-      else if (clamped <= -THRESHOLD) setSwipeHintSync.current("builder");
-      else setSwipeHintSync.current(null);
-      if (!vibed.current && Math.abs(dx) >= THRESHOLD) { vibe(25); vibed.current = true; }
-    };
-    const onEnd = () => {
-      if (!alive.current) return;
-      alive.current = false; setDraggingSync.current(false); setSwipeHintSync.current(null);
-      if (axis.current !== "h") return;
-      const cur = offsetRef.current;
-      if (cur >= THRESHOLD) { vibe(40); setOffsetSync.current(0); cb.current.onSwipeAgent?.(cb.current.c); }
-      else if (cur <= -THRESHOLD) { vibe([30, 60, 30]); setOffsetSync.current(0); cb.current.onSwipeBuilder?.(cb.current.c); }
-      else setOffsetSync.current(0);
-    };
-    el.addEventListener("touchstart",  onStart, { passive: true });
-    el.addEventListener("touchmove",   onMove,  { passive: false });
-    el.addEventListener("touchend",    onEnd,   { passive: true });
-    el.addEventListener("touchcancel", onEnd,   { passive: true });
-    return () => {
-      el.removeEventListener("touchstart",  onStart);
-      el.removeEventListener("touchmove",   onMove);
-      el.removeEventListener("touchend",    onEnd);
-      el.removeEventListener("touchcancel", onEnd);
-    };
-  }, []);
+  const { offset, dragging, swipeHint } = useSwipeGesture({ elRef: cardRef, client: c, onSwipeBuilder, onSwipeAgent });
 
   const clientWithSub = { ...c, sub_status: localSubStatus };
   const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
@@ -142,16 +50,7 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   const nextStatus  = NEXT_STATUS[c.status];
   const nextLabel   = NEXT_LABEL[c.status];
 
-  const contractSum = Number(c.contract_sum) || 0;
-  const prepayment  = Number(c.prepayment) || 0;
-  const extraPay    = Number(c.extra_payment) || 0;
-  const income      = contractSum;
-  const paidPre     = c.prepayment_confirmed ? (Number(c.prepayment_fact) || prepayment) : 0;
-  const paidExtra   = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
-  const paid        = paidPre + paidExtra;
-  const costs       = (Number(c.material_cost)||0) + (Number(c.measure_cost)||0) + (Number(c.install_cost)||0);
-  const debt        = contractSum - paid;
-  const profit      = income - costs;
+  const { contractSum, income, debt, costs, profit } = useOrderMetrics(c);
   const ordersCount = allClients ? getClientOrders(c, allClients).length : 1;
 
   const handleNext = async (e: React.MouseEvent) => {
