@@ -48,10 +48,10 @@ export function TagsBlockEditor({ tags, onSave, onClose }: {
       {inactiveDefs.length > 0 && (
         <div className="px-3 py-2" style={{ borderTop: `1px solid #06b6d420` }}>
           <span className="block text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "#a3a3a3" }}>Быстро добавить:</span>
-          <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="flex items-center gap-1 flex-wrap">
             {inactiveDefs.map(tg => (
               <button key={tg.label} onClick={() => setLocal(prev => [...prev, tg.label])}
-                className="px-2 py-0.5 rounded-lg text-xs font-semibold transition flex-shrink-0 whitespace-nowrap"
+                className="px-1.5 py-0.5 rounded-md text-[10px] leading-tight font-semibold transition flex-shrink-0 whitespace-nowrap"
                 style={{ background: tg.color + "20", color: "#fff", border: `1px solid ${tg.color}40` }}>
                 + {tg.label}
               </button>
