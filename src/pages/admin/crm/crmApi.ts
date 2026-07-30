@@ -118,9 +118,11 @@ export const PRIORITY_COLORS: Record<string, string> = {
 
 // Метки (теги) — предустановленные + пользовательские
 export const DEFAULT_TAGS = [
-  { label: "Новый",   color: "#3b82f6" },
-  { label: "Срочно",  color: "#ef4444" },
-  { label: "Важно",   color: "#f59e0b" },
+  { label: "Недозвон",     color: "#ef4444" },
+  { label: "Перезвонить",  color: "#f59e0b" },
+  { label: "Ждёт ответа",  color: "#3b82f6" },
+  { label: "Думает",       color: "#a855f7" },
+  { label: "Договорились", color: "#22c55e" },
 ];
 
 export interface ClientStatus {
