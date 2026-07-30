@@ -3238,6 +3238,46 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"updated": True})
 
+        # ── TOUCH-HIDDEN: список скрытых диалогов (для возврата из корзины) ──
+        # Тот же формат, что touch-inbox, но только hidden = TRUE.
+        if resource == "touch-hidden" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"""
+                SELECT tc.id, tc.name, tc.phone, tc.crm_contact_id,
+                       le.channel, le.direction, le.text, le.created_at,
+                       lc.source, lc.avito_chat_url
+                FROM {SCHEMA}.touch_clients tc
+                JOIN LATERAL (
+                    SELECT channel, direction, text, created_at
+                    FROM {SCHEMA}.touch_events te
+                    WHERE te.client_id = tc.id
+                    ORDER BY te.created_at DESC, te.id DESC
+                    LIMIT 1
+                ) le ON TRUE
+                LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = tc.crm_contact_id
+                WHERE tc.company_id = %s AND tc.hidden = TRUE
+                ORDER BY le.created_at DESC
+                LIMIT 200
+            """, (owner_id,))
+            hidden = [{
+                "client_id": r[0],
+                "name": r[1],
+                "phone": r[2],
+                "contact_id": r[3],
+                "last_channel": r[4],
+                "last_direction": r[5],
+                "last_text": (r[6] or "")[:120],
+                "last_at": r[7],
+                "source": r[8],
+                "avito_chat_url": r[9],
+            } for r in cur.fetchall()]
+            return ok({"dialogs": hidden})
+
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.
         if resource == "touch-badges" and method == "GET":

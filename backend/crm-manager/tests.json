@@ -30,6 +30,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "GET touch-hidden without auth is rejected",
+      "method": "GET",
+      "path": "/?r=touch-hidden",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET kanban columns",
       "method": "GET",
       "path": "/?r=kanban-columns",

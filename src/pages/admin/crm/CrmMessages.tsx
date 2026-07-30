@@ -5,6 +5,7 @@ import { useTheme } from "./themeContext";
 import DrawerTouchesTab from "./DrawerTouchesTab";
 import { Dialog, channelMeta } from "./messagesChannels";
 import { MessagesDialogRow } from "./MessagesDialogRow";
+import { MessagesHiddenModal } from "./MessagesHiddenModal";
 
 const seenKey = (contactId: number) => `touches_seen_${contactId}`;
 
@@ -17,6 +18,15 @@ export default function CrmMessages() {
   const [selected, setSelected] = useState<Dialog | null>(null);
   const [search, setSearch] = useState("");
   const [showFavOnly, setShowFavOnly] = useState(false);
+  const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
+
+  const refreshHiddenCount = useCallback(async () => {
+    try {
+      const d = await crmFetch("touch-hidden") as { dialogs?: Dialog[] };
+      setHiddenCount((d?.dialogs ?? []).length);
+    } catch { /* тихо */ }
+  }, []);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -27,7 +37,7 @@ export default function CrmMessages() {
     if (!silent) setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); refreshHiddenCount(); }, [load, refreshHiddenCount]);
   // Тихий поллинг списка — новые сообщения появляются сверху сами
   useEffect(() => {
     const timer = setInterval(() => load(true), 5000);
@@ -62,7 +72,7 @@ export default function CrmMessages() {
 
   const togglePin = (d: Dialog) => setFlag(d, { pinned: !d.pinned });
   const toggleFav = (d: Dialog) => setFlag(d, { favorite: !d.favorite });
-  const hideChat  = (d: Dialog) => { if (selected?.client_id === d.client_id) setSelected(null); setFlag(d, { hidden: true }); };
+  const hideChat  = (d: Dialog) => { if (selected?.client_id === d.client_id) setSelected(null); setFlag(d, { hidden: true }); setHiddenCount(c => c + 1); };
 
   const filtered = dialogs.filter(d => {
     if (showFavOnly && !d.favorite) return false;
@@ -104,6 +114,17 @@ export default function CrmMessages() {
               color: showFavOnly ? "#f59e0b" : t.textMute,
             }}>
             <Icon name="Star" size={15} style={showFavOnly ? { fill: "#f59e0b" } : undefined} />
+          </button>
+          <button onClick={() => { setHiddenOpen(true); refreshHiddenCount(); }} title="Скрытые чаты"
+            className="relative flex-shrink-0 p-2 rounded-xl transition"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textMute }}>
+            <Icon name="EyeOff" size={15} />
+            {hiddenCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-extrabold text-white"
+                style={{ background: t.accent, lineHeight: 1 }}>
+                {hiddenCount > 99 ? "99+" : hiddenCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -201,6 +222,13 @@ export default function CrmMessages() {
           </div>
         )}
       </div>
+
+      {hiddenOpen && (
+        <MessagesHiddenModal
+          onClose={() => setHiddenOpen(false)}
+          onRestored={() => { setHiddenCount(c => Math.max(0, c - 1)); load(true); }}
+        />
+      )}
     </div>
   );
 }
