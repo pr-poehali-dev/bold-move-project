@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Dialog, channelMeta } from "./messagesChannels";
@@ -13,6 +13,8 @@ const fmtWhen = (iso: string) => {
     : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 };
 
+const isAvito = (d: Dialog) => d.last_channel === "avito" || d.source === "avito" || !!d.avito_chat_url;
+
 interface Props {
   d: Dialog;
   isActive: boolean;
@@ -26,13 +28,30 @@ interface Props {
 export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, onToggleFav, onHide }: Props) {
   const t = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const meta = channelMeta(d.last_channel);
   const title = d.name || d.phone || "Без имени";
+  const avito = isAvito(d);
 
   const act = (fn: (d: Dialog) => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenuOpen(false);
     fn(d);
+  };
+
+  const openMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const btn = menuBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const MENU_H = 132; // примерная высота меню (3 пункта)
+    const MENU_W = 190;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow >= MENU_H ? rect.bottom + 4 : rect.top - MENU_H - 4;
+    const left = Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8);
+    setMenuPos({ top: Math.max(8, top), left: Math.max(8, left) });
+    setMenuOpen(o => !o);
   };
 
   return (
@@ -44,12 +63,20 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
         borderBottom: `1px solid ${t.border2}`,
       }}>
 
-      {/* Аватар = иконка канала */}
+      {/* Аватар: для Avito — фирменный оранжевый ярлык, для остальных — иконка канала */}
       <div className="relative flex-shrink-0">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: meta.color + "22", color: meta.color }}>
-          <Icon name={meta.icon} size={18} />
-        </div>
+        {avito ? (
+          <div className="h-10 min-w-[44px] px-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5"
+            style={{ background: "#f9731622", border: "1px solid #f9731650" }}>
+            <Icon name="MessagesSquare" size={13} style={{ color: "#f97316" }} />
+            <span className="text-[9px] font-extrabold tracking-wide leading-none" style={{ color: "#f97316" }}>Avito</span>
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: meta.color + "22", color: meta.color }}>
+            <Icon name={meta.icon} size={18} />
+          </div>
+        )}
         {d.pinned && (
           <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full flex items-center justify-center"
             style={{ background: t.surface, border: `1px solid ${t.border}` }}>
@@ -83,19 +110,21 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
 
       {/* Кнопка меню действий */}
       <button
-        onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
+        ref={menuBtnRef}
+        onClick={openMenu}
         className="flex-shrink-0 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition"
         style={{ color: t.textMute, background: menuOpen ? t.surface2 : "transparent", opacity: menuOpen ? 1 : undefined }}
         title="Действия">
         <Icon name="EllipsisVertical" size={16} />
       </button>
 
-      {/* Меню */}
-      {menuOpen && (
+      {/* Меню — fixed относительно viewport, не обрезается скроллом списка */}
+      {menuOpen && menuPos && (
         <>
           <div className="fixed inset-0 z-40" onClick={e => { e.stopPropagation(); setMenuOpen(false); }} />
-          <div className="absolute right-2 top-11 z-50 rounded-xl overflow-hidden shadow-xl py-1 min-w-[180px]"
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+          <div className="fixed z-50 rounded-xl overflow-hidden shadow-xl py-1 w-[190px]"
+            style={{ top: menuPos.top, left: menuPos.left, background: t.surface, border: `1px solid ${t.border}` }}
+            onClick={e => e.stopPropagation()}>
             <button onClick={act(onTogglePin)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition hover:opacity-80"
               style={{ color: t.text }}>
               <Icon name="Pin" size={14} style={{ color: t.accent }} />
