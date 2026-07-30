@@ -3173,7 +3173,9 @@ def handler(event: dict, context) -> dict:
                        tc.interest, tc.stage,
                        le.channel, le.direction, le.text, le.created_at,
                        (SELECT COUNT(*) FROM {SCHEMA}.touch_events te2
-                        WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count
+                        WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count,
+                       tc.pinned, tc.favorite,
+                       lc.source, lc.avito_chat_url
                 FROM {SCHEMA}.touch_clients tc
                 JOIN LATERAL (
                     SELECT channel, direction, text, created_at
@@ -3182,8 +3184,9 @@ def handler(event: dict, context) -> dict:
                     ORDER BY te.created_at DESC, te.id DESC
                     LIMIT 1
                 ) le ON TRUE
-                WHERE tc.company_id = %s
-                ORDER BY le.created_at DESC
+                LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = tc.crm_contact_id
+                WHERE tc.company_id = %s AND tc.hidden = FALSE
+                ORDER BY tc.pinned DESC, le.created_at DESC
                 LIMIT 200
             """, (owner_id,))
             dialogs = [{
@@ -3199,8 +3202,41 @@ def handler(event: dict, context) -> dict:
                 "last_at": r[9],
                 "unread": r[7] == "in",
                 "in_count": r[10],
+                "pinned": bool(r[11]),
+                "favorite": bool(r[12]),
+                "source": r[13],
+                "avito_chat_url": r[14],
             } for r in cur.fetchall()]
             return ok({"dialogs": dialogs})
+
+        # ── TOUCH-FLAGS: изменить пометки диалога (закрепить / избранное / скрыть) ──
+        # PUT ?r=touch-flags&client_id=123  body: {"pinned": true} / {"favorite": true} / {"hidden": true}
+        # Меняем только переданные поля — остальные не трогаем.
+        if resource == "touch-flags" and method == "PUT":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            client_id = (qs.get("client_id") or "").strip()
+            if not client_id.isdigit():
+                return err("client_id required", 400)
+            allowed = {"pinned", "favorite", "hidden"}
+            sets, vals = [], []
+            for key in allowed:
+                if key in body:
+                    sets.append(f"{key} = %s")
+                    vals.append(bool(body[key]))
+            if not sets:
+                return err("no fields to update", 400)
+            vals.extend([int(client_id), owner_id])
+            cur.execute(
+                f"UPDATE {SCHEMA}.touch_clients SET {', '.join(sets)} "
+                f"WHERE id = %s AND company_id = %s",
+                vals,
+            )
+            conn.commit()
+            return ok({"updated": True})
 
         # ── TOUCH-BADGES: срез (интерес/стадия/непрочитано) по всем клиентам компании ──
         # для бейджей в списке контактов. Один запрос вместо похода в каждую карточку.

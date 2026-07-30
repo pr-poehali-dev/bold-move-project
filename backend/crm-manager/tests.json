@@ -21,6 +21,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "PUT touch-flags without auth is rejected",
+      "method": "PUT",
+      "path": "/?r=touch-flags&client_id=1",
+      "body": {"pinned": true},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET kanban columns",
       "method": "GET",
       "path": "/?r=kanban-columns",
