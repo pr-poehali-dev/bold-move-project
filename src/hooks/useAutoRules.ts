@@ -3,6 +3,11 @@ import { useState, useEffect, useCallback } from "react";
 const API_URL = "https://functions.poehali.dev/5e79f038-550c-41c6-8064-443681d7f8b4";
 const CACHE_KEY = "auto_rules_cache_v1";
 
+// Если несколько компонентов одновременно вызывают useAutoRules() (напр. блоки
+// "Доходы" и "Расходы" в одной карточке клиента) — не шлём дублирующий запрос,
+// а дожидаемся уже летящего.
+let inflightLoad: Promise<CachedAutoRules> | null = null;
+
 interface CachedAutoRules {
   rules: RuleEntry[];
   auto_mode: boolean;
@@ -64,17 +69,21 @@ export function useAutoRules(): AutoRulesState {
   const load = useCallback(async () => {
     if (!loadCache()) setLoading(true);
     try {
-      const res = await fetch(API_URL, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      const data = await res.json();
-      const next: CachedAutoRules = {
-        rules: data.rules || [],
-        auto_mode: data.auto_mode ?? false,
-        use_installation_price: data.use_installation_price ?? false,
-        use_measure_price: data.use_measure_price ?? false,
-        use_management_price: data.use_management_price ?? false,
-      };
+      if (!inflightLoad) {
+        inflightLoad = fetch(API_URL, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        })
+          .then(res => res.json())
+          .then((data): CachedAutoRules => ({
+            rules: data.rules || [],
+            auto_mode: data.auto_mode ?? false,
+            use_installation_price: data.use_installation_price ?? false,
+            use_measure_price: data.use_measure_price ?? false,
+            use_management_price: data.use_management_price ?? false,
+          }))
+          .finally(() => { inflightLoad = null; });
+      }
+      const next = await inflightLoad;
       setRules(next.rules);
       setAutoMode(next.auto_mode);
       setUseInstallationPrice(next.use_installation_price);

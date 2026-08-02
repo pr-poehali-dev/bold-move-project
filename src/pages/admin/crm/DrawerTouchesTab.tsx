@@ -99,7 +99,7 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   // отправленных («отправляется» → «отправлено») без перезахода на страницу.
   useEffect(() => {
     if (!phone && !contactId) return;
-    const timer = setInterval(() => { load(true); }, 4000);
+    const timer = setInterval(() => { load(true); }, 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, contactId]);

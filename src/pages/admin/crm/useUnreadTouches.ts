@@ -41,7 +41,7 @@ export function useUnreadTouches(contactId: number | undefined, phone: string | 
       } catch { /* тихо */ }
     };
     check();
-    const timer = setInterval(check, 5000);
+    const timer = setInterval(check, 30000);
     return () => { alive = false; clearInterval(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId, phone, active]);

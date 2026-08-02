@@ -40,7 +40,7 @@ export default function CrmMessages() {
   useEffect(() => { load(); refreshHiddenCount(); }, [load, refreshHiddenCount]);
   // Тихий поллинг списка — новые сообщения появляются сверху сами
   useEffect(() => {
-    const timer = setInterval(() => load(true), 5000);
+    const timer = setInterval(() => load(true), 30000);
     return () => clearInterval(timer);
   }, [load]);
 

@@ -33,7 +33,7 @@ export function useInboxUnread(enabled: boolean): number {
       } catch { /* тихо */ }
     };
     check();
-    const timer = setInterval(check, 8000);
+    const timer = setInterval(check, 30000);
     return () => { alive = false; clearInterval(timer); };
   }, [enabled]);
 
