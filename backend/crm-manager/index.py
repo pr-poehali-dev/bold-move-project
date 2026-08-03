@@ -444,11 +444,16 @@ def handler(event: dict, context) -> dict:
             file_data = body.get("data", "")
             filename = body.get("filename", "file")
             content_type = body.get("content_type", "application/octet-stream")
+            # Необязательная папка в Хранилище (по умолчанию — "crm", как раньше).
+            # Разрешаем только буквы/цифры/дефис/подчёркивание — защита от path traversal.
+            folder = (body.get("folder") or "crm").strip("/")
+            if not re.fullmatch(r"[A-Za-z0-9_\-]+", folder):
+                folder = "crm"
             if not file_data:
                 return err("no data")
             raw = base64.b64decode(file_data)
             ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
-            key = f"crm/{uuid.uuid4()}.{ext}"
+            key = f"{folder}/{uuid.uuid4()}.{ext}"
             s3 = get_s3()
             s3.put_object(Bucket="files", Key=key, Body=raw, ContentType=content_type)
             cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
