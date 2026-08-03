@@ -51,10 +51,18 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Загрузка ──
+  // Поиск дебаунсим на 400мс — запрос уходит один раз, когда человек закончил печатать,
+  // а не на каждую введённую букву.
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(filters.search), 400);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
   const load = () => {
     setLoading(true);
     const extra: Record<string, string> = {};
-    if (filters.search)       extra.search = filters.search;
+    if (debouncedSearch)       extra.search = debouncedSearch;
     if (filters.statusFilter) extra.status = filters.statusFilter;
     crmFetch("clients", undefined, extra).then(d => {
       setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
@@ -62,7 +70,7 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
     });
   };
 
-  useEffect(() => { load(); }, [filters.search, filters.statusFilter]); // eslint-disable-line
+  useEffect(() => { load(); }, [debouncedSearch, filters.statusFilter]); // eslint-disable-line
 
   // ── Клиентская фильтрация ──
   const filteredClients = (() => {

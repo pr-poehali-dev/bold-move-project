@@ -218,6 +218,17 @@ CORS = {
 LEAD_STATUSES = ["new", "call", "measure", "measured"]
 # Статусы заказов (после договора)
 ORDER_STATUSES = ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid", "done", "cancelled"]
+# Не пересобираем авто-AI-анализ клиента чаще этого интервала (сек) —
+# если клиент пишет несколько сообщений подряд, анализ не дублируем.
+ANALYSIS_THROTTLE_SEC = 600
+
+# Кэш аналитики (resource=="stats") в памяти "тёплого" контейнера функции.
+# Живёт, пока функция переиспользуется между вызовами (не гарантирован между
+# холодными стартами) — просто снимает повторный тяжёлый пересчёт при частых
+# заходах на вкладку "Аналитика". TTL 3 минуты — данные не обязаны быть
+# секундной точности.
+_STATS_CACHE: dict = {}
+STATS_CACHE_TTL_SEC = 180
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
@@ -295,7 +306,7 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
         "https://api.polza.ai/api/v1/chat/completions", data=payload,
         headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
     try:
-        with _ureq.urlopen(req, timeout=45) as r:
+        with _ureq.urlopen(req, timeout=30) as r:
             ai_resp = json.loads(r.read().decode())
         content = ai_resp["choices"][0]["message"]["content"]
         m = re.search(r'\{[\s\S]*\}', content)
@@ -1016,6 +1027,11 @@ def handler(event: dict, context) -> dict:
 
         # ── STATS ─────────────────────────────────────────────────────────────
         if resource == "stats":
+            cache_key = company_id if company_id is not None else "__master__"
+            cached = _STATS_CACHE.get(cache_key)
+            if cached and (datetime.now() - cached["at"]).total_seconds() < STATS_CACHE_TTL_SEC:
+                return ok(cached["data"])
+
             S = SCHEMA
             W = "WHERE status != 'deleted'"
             if company_id is not None:
@@ -1161,7 +1177,7 @@ def handler(event: dict, context) -> dict:
                 {"label": "Завершённые",      "count": total_done,     "status": "done"},
             ]
 
-            return ok({
+            stats_data = {
                 # Счётчики
                 "total_all": total_all,
                 "total_leads": total_leads,
@@ -1198,7 +1214,9 @@ def handler(event: dict, context) -> dict:
                 "monthly_revenue": monthly_revenue,
                 "monthly_costs": monthly_costs,
                 "monthly_profit": monthly_profit,
-            })
+            }
+            _STATS_CACHE[cache_key] = {"data": stats_data, "at": datetime.now()}
+            return ok(stats_data)
 
         # ── KANBAN COLUMNS ────────────────────────────────────────────────────
         if resource == "kanban-columns":
@@ -2702,7 +2720,7 @@ def handler(event: dict, context) -> dict:
                 "https://api.polza.ai/api/v1/chat/completions", data=payload,
                 headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
             try:
-                with _ureq.urlopen(req, timeout=45) as r:
+                with _ureq.urlopen(req, timeout=30) as r:
                     ai_resp = json.loads(r.read().decode())
                 content = ai_resp["choices"][0]["message"]["content"]
                 m = re.search(r'\{[\s\S]*\}', content)
@@ -2876,12 +2894,19 @@ def handler(event: dict, context) -> dict:
                 conn.rollback()
                 return ok({"duplicate": True, "client_id": client_id})
 
-            # Автоматический пересбор ИИ-анализа при входящем (решение владельца: дороже, но всегда свежо)
+            # Автоматический пересбор ИИ-анализа при входящем — но не чаще раза в 10 минут
+            # на клиента (если пишет несколько сообщений подряд, анализ не дублируем).
             analysis = None
             if direction == "in":
-                analysis, analysis_err = run_client_analysis(cur, conn, client_id, phone, name)
-                if analysis_err:
-                    print(f"[channel-webhook] analysis skipped: {analysis_err}")
+                cur.execute(
+                    f"SELECT analysis_updated_at FROM {SCHEMA}.touch_clients WHERE id=%s",
+                    (client_id,))
+                au_row = cur.fetchone()
+                au = au_row[0] if au_row else None
+                if au is None or (datetime.now() - au).total_seconds() >= ANALYSIS_THROTTLE_SEC:
+                    analysis, analysis_err = run_client_analysis(cur, conn, client_id, phone, name)
+                    if analysis_err:
+                        print(f"[channel-webhook] analysis skipped: {analysis_err}")
 
             return ok({"client_id": client_id, "saved": True, "analysis": analysis})
 
