@@ -115,6 +115,15 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // Перезагружаем клиентов когда появляется токен (важно для iframe/WL режима)
   useEffect(() => { if (token) loadClients(); }, [token]);
 
+  // Тихий поллинг списка заказов — новые карточки (напр. из Avito) появляются
+  // сами, без ручного обновления страницы. Только пока открыта вкладка "Заказы".
+  useEffect(() => {
+    if (!token || tab !== "orders") return;
+    const timer = setInterval(loadClients, 30000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, tab]);
+
   const saveKanbanFlag = (enabled: boolean) => {
     if (!token) return;
     fetch(`${AUTH_URL}?action=set-kanban`, {

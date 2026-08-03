@@ -72,6 +72,14 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
 
   useEffect(() => { load(); }, [debouncedSearch, filters.statusFilter]); // eslint-disable-line
 
+  // Тихий поллинг списка — новые клиенты (напр. из Avito) появляются сами,
+  // без ручного обновления страницы.
+  useEffect(() => {
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, filters.statusFilter]);
+
   // ── Клиентская фильтрация ──
   const filteredClients = (() => {
     const phoneMap = new Map<string, Client>();
