@@ -12,7 +12,7 @@ const isImage = (u: string) => /\.(jpg|jpeg|png|webp|gif|bmp|svg)/i.test(u);
 interface FileEntry { id: number; url: string; name: string; }
 interface FileCategory { label: string; files: FileEntry[]; }
 
-const DEFAULT_LABELS = ["Смета", "Договор", "Фото до", "Фото после"];
+const DEFAULT_LABELS = ["Смета", "Чертежи", "Договор", "Фото до", "Фото после"];
 
 // Список меток категорий (не сами файлы — они теперь в базе данных) —
 // хранится локально только чтобы помнить порядок и добавленные пользователем
@@ -22,7 +22,22 @@ const LABELS_KEY = (id: number) => `crm_files_labels_${id}`;
 function loadLabels(clientId: number): string[] {
   try {
     const stored = localStorage.getItem(LABELS_KEY(clientId));
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        // Донастройка для уже существующих карточек: если новая общая категория
+        // "Чертежи" ещё не сохранена локально — подставляем её сразу после "Сметы",
+        // не трогая остальные категории (в том числе добавленные пользователем).
+        if (!parsed.includes("Чертежи")) {
+          const idx = parsed.indexOf("Смета");
+          const insertAt = idx >= 0 ? idx + 1 : 0;
+          const next = [...parsed.slice(0, insertAt), "Чертежи", ...parsed.slice(insertAt)];
+          saveLabels(clientId, next);
+          return next;
+        }
+        return parsed;
+      }
+    }
   } catch { /* */ }
   return [...DEFAULT_LABELS];
 }
