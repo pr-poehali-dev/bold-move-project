@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-const OFFLINE_IMAGE = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f33dcab0-df81-49d9-9322-cc3ee7ee448c.png";
+// Картинка лежит локально в проекте — иначе без интернета её не загрузить
+const OFFLINE_IMAGE = "/offline.png";
 
 // Полноэкранная заглушка при пропаже интернета: вместо английской ошибки браузера
 // показываем свою картинку и кнопку «Перезагрузить».

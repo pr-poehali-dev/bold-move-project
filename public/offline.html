@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Нет подключения к интернету</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #07070f; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap {
+    min-height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px; padding: 24px; text-align: center;
+    box-sizing: border-box;
+  }
+  img { max-width: min(420px, 85vw); width: 100%; height: auto; }
+  button {
+    padding: 14px 32px;
+    background: #7c3aed; color: #fff;
+    border: none; border-radius: 14px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(124,58,237,0.35);
+  }
+  button:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="/offline.png" alt="Нет подключения к интернету"/>
+    <button onclick="location.reload()">Перезагрузить</button>
+  </div>
+  <script>
+    // Как только связь вернулась — сами уходим на главную
+    window.addEventListener("online", function () { location.reload(); });
+  </script>
+</body>
+</html>
