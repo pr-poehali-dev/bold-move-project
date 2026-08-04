@@ -10,7 +10,8 @@ export function useOrderMetrics(c: Client) {
   const paidExtra   = c.extra_payment_confirmed ? (Number(c.extra_payment_fact) || extraPay) : 0;
   const paid        = paidPre + paidExtra;
   const debt        = contractSum - paid;
-  const costs       = (Number(c.material_cost) || 0) + (Number(c.measure_cost) || 0) + (Number(c.install_cost) || 0);
+  const costs       = (Number(c.material_cost) || 0) + (Number(c.measure_cost) || 0) + (Number(c.install_cost) || 0)
+                     + (Number(c.management_cost) || 0) + (Number(c.custom_costs_total) || 0);
   const profit      = income - costs;
 
   return { contractSum, income, debt, costs, profit };

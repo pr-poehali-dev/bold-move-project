@@ -3,6 +3,15 @@ import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
 import { BlockId, CustomFinRow } from "./drawerTypes";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
+import { useAutoRules } from "@/hooks/useAutoRules";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
+
+// Статьи затрат, у которых есть собственная колонка в live_chats — их значения
+// уже добавлены в costRows напрямую из data. Остальные статьи (Менеджер, Технолог,
+// Логистика и т.д., добавленные через "+ Добавить строку" в блоке "Затраты")
+// хранятся в БД (client_custom_fin_values) — читаем их оттуда же, откуда их
+// сохраняет сама форма затрат, а не из устаревшего localStorage.
+const BUILTIN_COST_KEYS = new Set(["material_cost", "measure_cost", "install_cost"]);
 
 export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook }: {
   data: Client;
@@ -16,9 +25,14 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
   const ownHook = useDiscountHistory(data.id);
   const { history: discountHistory } = discountHistoryHook ?? ownHook;
 
-  const customCostRows = customFinRows
-    .filter(r => r.block === "costs")
-    .map(r => ({ label: r.label, value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }))
+  // Кастомные статьи затрат (Менеджер, Технолог, Логистика и т.п., добавленные
+  // через "+ Добавить строку" в блоке "Затраты") — читаем из того же источника
+  // (БД client_custom_fin_values), куда их сохраняет сама форма затрат.
+  const { rules: autoRules } = useAutoRules();
+  const { values: customCostValues } = useCustomFinValues(data.id);
+  const customCostRows = autoRules
+    .filter(r => r.row_type === "cost" && r.visible !== false && !BUILTIN_COST_KEYS.has(r.key))
+    .map(r => ({ label: r.label, value: Number(customCostValues[r.key]) || 0 }))
     .filter(r => r.value > 0);
 
   const customIncomeRows = customFinRows

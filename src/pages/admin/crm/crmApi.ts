@@ -169,6 +169,7 @@ export interface Client {
   measure_cost: number | null;
   install_cost: number | null;
   management_cost: number | null;
+  custom_costs_total?: number | null;
   cancel_reason: string | null;
   sub_status: string | null;
   updated_at: string | null;

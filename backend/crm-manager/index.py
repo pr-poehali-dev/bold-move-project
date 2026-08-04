@@ -631,11 +631,17 @@ def handler(event: dict, context) -> dict:
                            lc.extra_payment_confirmed, lc.extra_payment_confirmed_at, lc.extra_payment_fact,
                            lc.responsible_phone, lc.map_link, lc.tags,
                            lc.photo_before_url, lc.photo_after_url, lc.document_url,
-                           lc.material_cost, lc.measure_cost, lc.install_cost, lc.cancel_reason,
+                           lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
                            lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
-                           COALESCE(u.is_demo, FALSE) AS is_demo
+                           COALESCE(u.is_demo, FALSE) AS is_demo,
+                           COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
+                    LEFT JOIN (
+                        SELECT client_id, SUM(value) AS custom_costs_total
+                        FROM {SCHEMA}.client_custom_fin_values
+                        GROUP BY client_id
+                    ) cfv ON cfv.client_id = lc.id
                     WHERE (lc.status != 'deleted' OR lc.status = %s)
                 """
                 # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.
