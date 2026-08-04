@@ -281,7 +281,24 @@ def handle(action, method, params, body, token, event, conn, cur):
         except psycopg2.IntegrityError:
             conn.rollback()
             return err("Пользователь с таким email уже зарегистрирован", 409)
-        return ok({"ok": True, "member_id": new_id, "email": invitee_email})
+
+        # Возвращаем полный объект сотрудника — фронтенд ждёт тот же формат, что и в team-list
+        cur.execute(f"""
+            SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
+                   u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
+                   u.team_role_id, c.name AS company_name, u.active
+            FROM {SCHEMA}.users u
+            LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
+            WHERE u.id = %s
+        """, (new_id,))
+        r = cur.fetchone()
+        member = {
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
+            "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
+            "team_role_id": r[10], "company_name": r[11], "active": r[12],
+        }
+        return ok({"ok": True, "member": member})
 
     if action == "team-update-permissions" and method == "POST":
         owner, e = get_owner_or_err()
