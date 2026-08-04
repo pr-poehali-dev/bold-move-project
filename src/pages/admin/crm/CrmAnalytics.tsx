@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { crmFetch, STATUS_LABELS, STATUS_COLORS, Client, getClientOrders } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
-import { Stats, AnalyticsTab, ANALYTICS_TABS, EMPTY_STATS } from "./analyticsTypes";
+import { Stats, AnalyticsTab, ANALYTICS_TABS } from "./analyticsTypes";
 import { loadCustomFinRows } from "./drawerTypes";
+import { computeStats } from "./computeAnalytics";
+import { useOrderSources } from "@/hooks/useOrderSources";
 
 // Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
 function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
@@ -27,37 +29,45 @@ import TouchDashboard from "./TouchDashboard";
 
 export default function CrmAnalytics() {
   const t = useTheme();
-  const [stats, setStats]         = useState<Stats | null>(null);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<AnalyticsTab>("overview");
   const [allClients,    setAllClients]    = useState<Client[]>([]);
   const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
+  const [sourceFilter,  setSourceFilter]  = useState<string>(""); // "" = все источники
+  const { sources } = useOrderSources();
 
   useEffect(() => {
-    crmFetch("stats").then(d => { setStats(d as Stats); setLoading(false); }).catch(() => setLoading(false));
     crmFetch("clients").then((d: unknown) => {
       if (Array.isArray(d)) setAllClients((d as Client[]).filter((c: Client) => c.status !== "deleted"));
-    }).catch(() => {});
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  const recentClients = allClients.slice(0, 10);
+  // Заявки выбранного источника ("" = все). Считаем всё в браузере — мгновенно.
+  const filteredClients = useMemo(
+    () => sourceFilter ? allClients.filter(c => (c.source || "") === sourceFilter) : allClients,
+    [allClients, sourceFilter],
+  );
+
+  const recentClients = filteredClients.slice(0, 10);
+
+  const s: Stats = useMemo(() => {
+    const base = computeStats(filteredClients);
+    // Кастомные строки доходов/затрат из localStorage — по отфильтрованным заявкам
+    const { extraIncome, extraCosts } = calcCustomFinTotals(filteredClients.map(c => c.id));
+    return {
+      ...base,
+      total_received: base.total_received + extraIncome,
+      total_costs:    base.total_costs    + extraCosts,
+      total_profit:   base.total_profit   + extraIncome - extraCosts,
+    };
+  }, [filteredClients]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
-
-  const baseStats = stats ?? EMPTY_STATS;
-
-  // Добавляем кастомные строки из localStorage
-  const { extraIncome, extraCosts } = calcCustomFinTotals(allClients.map(c => c.id));
-  const s: Stats = {
-    ...baseStats,
-    total_received: baseStats.total_received + extraIncome,
-    total_costs:    baseStats.total_costs    + extraCosts,
-    total_profit:   baseStats.total_profit   + extraIncome - extraCosts,
-  };
 
   // Конверсии
   const convMeasure  = s.total_all     > 0 ? Math.round((s.went_measure  / s.total_all)     * 100) : 0;
@@ -102,20 +112,38 @@ export default function CrmAnalytics() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold" style={{ color: t.text }}>Аналитика</h2>
-          <p className="text-xs mt-0.5" style={{ color: t.textMute }}>Всего заявок: {s.total_all}</p>
+          <p className="text-xs mt-0.5" style={{ color: t.textMute }}>
+            {sourceFilter ? `Источник «${sourceFilter}»: ${s.total_all} заявок` : `Всего заявок: ${s.total_all}`}
+          </p>
         </div>
-        <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-          {ANALYTICS_TABS.map((tb, i) => (
-            <button key={tb.id} onClick={() => setTab(tb.id)}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition"
-              style={{
-                background: tab === tb.id ? "#7c3aed22" : "transparent",
-                color: tab === tb.id ? "#a78bfa" : t.textMute,
-                borderRight: i !== ANALYTICS_TABS.length - 1 ? `1px solid ${t.border}` : undefined,
-              }}>
-              <Icon name={tb.icon} size={13} /> {tb.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Фильтр по источнику заявок */}
+          <div className="relative">
+            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+              style={sourceFilter
+                ? { background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed40" }
+                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+              <option value="">Все источники</option>
+              {sources.map(src => <option key={src.id} value={src.name}>{src.name}</option>)}
+            </select>
+            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: sourceFilter ? "#a78bfa" : t.textMute }} />
+          </div>
+
+          <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
+            {ANALYTICS_TABS.map((tb, i) => (
+              <button key={tb.id} onClick={() => setTab(tb.id)}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition"
+                style={{
+                  background: tab === tb.id ? "#7c3aed22" : "transparent",
+                  color: tab === tb.id ? "#a78bfa" : t.textMute,
+                  borderRight: i !== ANALYTICS_TABS.length - 1 ? `1px solid ${t.border}` : undefined,
+                }}>
+                <Icon name={tb.icon} size={13} /> {tb.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -142,7 +170,7 @@ export default function CrmAnalytics() {
       )}
 
       {tab === "touches" && (
-        <TouchDashboard clients={allClients} onSelectClient={setDrawerClient} />
+        <TouchDashboard clients={filteredClients} sourceFilter={sourceFilter} onSelectClient={setDrawerClient} />
       )}
 
       {/* Drawer клиента */}

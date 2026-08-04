@@ -37,24 +37,27 @@ const INTEREST_META: Record<string, { label: string; color: string }> = {
 
 interface Props {
   clients: Client[];
+  sourceFilter?: string;
   onSelectClient: (c: Client) => void;
 }
 
-export default function TouchDashboard({ clients, onSelectClient }: Props) {
+export default function TouchDashboard({ clients, sourceFilter = "", onSelectClient }: Props) {
   const t = useTheme();
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<TouchDashboardData | null>(null);
 
-  const load = (d: number) => {
+  const load = (d: number, src: string) => {
     setLoading(true);
-    crmFetch("touch-dashboard", undefined, { days: String(d) })
+    const params: Record<string, string> = { days: String(d) };
+    if (src) params.source = src;
+    crmFetch("touch-dashboard", undefined, params)
       .then(r => setData(r as TouchDashboardData))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(days); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [days]);
+  useEffect(() => { load(days, sourceFilter); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [days, sourceFilter]);
 
   const findClient = (phone: string | null): Client | null => {
     if (!phone) return null;

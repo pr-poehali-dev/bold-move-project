@@ -3358,28 +3358,40 @@ def handler(event: dict, context) -> dict:
             except (TypeError, ValueError):
                 days = 30
 
+            # Опциональный фильтр по источнику заявки. Касание связано с заявкой
+            # через touch_clients.crm_contact_id -> live_chats.id, где хранится source.
+            src = (qs.get("source") or "").strip()
+            # SQL-фрагмент (JOIN + условие) и доп. параметр для каждого запроса.
+            src_join = ""
+            src_cond = ""
+            if src:
+                src_join = f" JOIN {SCHEMA}.live_chats slc ON slc.id = tc.crm_contact_id"
+                src_cond = " AND slc.source = %s"
+
             # Всего касаний за период + распределение по каналам
+            params = [owner_id, str(days)] + ([src] if src else [])
             cur.execute(f"""
                 SELECT te.channel, COUNT(*) AS cnt
                 FROM {SCHEMA}.touch_events te
-                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
-                WHERE tc.company_id = %s AND te.created_at >= NOW() - (%s || ' days')::interval
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id{src_join}
+                WHERE tc.company_id = %s AND te.created_at >= NOW() - (%s || ' days')::interval{src_cond}
                 GROUP BY te.channel ORDER BY cnt DESC
-            """, (owner_id, str(days)))
+            """, tuple(params))
             by_channel = [{"channel": r[0], "count": r[1]} for r in cur.fetchall()]
             total_touches = sum(x["count"] for x in by_channel)
 
             # Конверсия по итогам последнего анализа каждого клиента (за всё время)
+            params = [owner_id] + ([src] if src else [])
             cur.execute(f"""
-                SELECT tc.outcome, COUNT(*) FROM (
+                SELECT last.outcome, COUNT(*) FROM (
                     SELECT DISTINCT ON (client_id) client_id, outcome
                     FROM {SCHEMA}.touch_client_analyses
                     ORDER BY client_id, created_at DESC, id DESC
-                ) tc
-                JOIN {SCHEMA}.touch_clients c ON c.id = tc.client_id
-                WHERE c.company_id = %s
-                GROUP BY tc.outcome
-            """, (owner_id,))
+                ) last
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = last.client_id{src_join}
+                WHERE tc.company_id = %s{src_cond}
+                GROUP BY last.outcome
+            """, tuple(params))
             outcome_rows = cur.fetchall()
             outcome_dist = {o or "pending": c for o, c in outcome_rows}
             analyzed_total = sum(outcome_dist.values())
@@ -3387,29 +3399,31 @@ def handler(event: dict, context) -> dict:
             conversion_pct = round(success_count / analyzed_total * 100) if analyzed_total else 0
 
             # Топ клиентов «требуют внимания»: высокий интерес или последнее касание — входящее (непрочитано)
+            params = [owner_id] + ([src] if src else [])
             cur.execute(f"""
                 SELECT tc.id, tc.name, tc.phone, tc.interest, tc.stage, tc.next_action,
                        (SELECT te.direction FROM {SCHEMA}.touch_events te
                         WHERE te.client_id = tc.id ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction
-                FROM {SCHEMA}.touch_clients tc
-                WHERE tc.company_id = %s AND (tc.interest = 'high' OR tc.next_action IS NOT NULL)
+                FROM {SCHEMA}.touch_clients tc{src_join}
+                WHERE tc.company_id = %s AND (tc.interest = 'high' OR tc.next_action IS NOT NULL){src_cond}
                 ORDER BY tc.analysis_updated_at DESC NULLS LAST
                 LIMIT 8
-            """, (owner_id,))
+            """, tuple(params))
             attention = [{
                 "id": r[0], "name": r[1], "phone": r[2], "interest": r[3],
                 "stage": r[4], "next_action": r[5], "unread": r[6] == "in",
             } for r in cur.fetchall()]
 
             # Средняя оценка звонков за период (только реально проанализированные ИИ)
+            params = [owner_id, str(days)] + ([src] if src else [])
             cur.execute(f"""
                 SELECT AVG(t.operator_score)::float, COUNT(*)
                 FROM {SCHEMA}.touch_call_transcripts t
                 JOIN {SCHEMA}.touch_events te ON te.id = t.touch_id
-                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id{src_join}
                 WHERE tc.company_id = %s AND t.operator_score IS NOT NULL
-                  AND te.created_at >= NOW() - (%s || ' days')::interval
-            """, (owner_id, str(days)))
+                  AND te.created_at >= NOW() - (%s || ' days')::interval{src_cond}
+            """, tuple(params))
             score_row = cur.fetchone()
             avg_operator_score = round(score_row[0], 1) if score_row and score_row[0] is not None else None
             scored_calls_count = score_row[1] if score_row else 0
