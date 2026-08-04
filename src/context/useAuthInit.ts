@@ -19,20 +19,37 @@ export function useAuthInitNormal({ setUser, setToken, setLoading }: Setters) {
     if (window.parent !== window) { setLoading(false); return; }
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setLoading(false); return; }
-    fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } })
-      .then(async r => {
-        // Удаляем токен только при явном 401 (токен недействителен)
-        // При сетевой ошибке или 5xx — оставляем токен, попробуем потом
+
+    // Мобильная сеть нестабильна: разовый обрыв не должен выкидывать из системы.
+    // Пробуем проверить токен до 3 раз с нарастающей паузой. Токен удаляем ТОЛЬКО
+    // при явном 401 (сервер сказал "токен недействителен"), не при сетевых сбоях/5xx.
+    let cancelled = false;
+
+    const attempt = async (tries: number): Promise<void> => {
+      try {
+        const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${saved}` } });
+        if (cancelled) return;
         if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); setLoading(false); return; }
+        if (r.status >= 500) throw new Error("server " + r.status); // временная ошибка сервера → повтор
         const d = await r.json();
+        if (cancelled) return;
         if (d.user) { setUser(d.user); setToken(saved); setCrmToken(saved); }
-        // Если d.error но не 401 — не удаляем токен (возможно временная ошибка)
         setLoading(false);
-      })
-      .catch(() => {
-        // Сетевая ошибка — НЕ удаляем токен, пользователь останется залогиненным
-        setLoading(false);
-      });
+      } catch {
+        if (cancelled) return;
+        if (tries > 0) {
+          // Пауза перед повтором: 600мс, затем 1500мс
+          const delay = tries === 2 ? 600 : 1500;
+          setTimeout(() => { if (!cancelled) attempt(tries - 1); }, delay);
+        } else {
+          // Все попытки исчерпаны — НЕ удаляем токен, пользователь останется залогиненным
+          setLoading(false);
+        }
+      }
+    };
+
+    attempt(2);
+    return () => { cancelled = true; };
   }, []);
 }
 

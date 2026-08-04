@@ -239,6 +239,17 @@ def handle(action, method, params, body, token, event, conn, cur):
             if expires < now_utc:
                 return err("Демо-сессия истекла", 401)
 
+        # Скользящая сессия: активный пользователь никогда не вылетает.
+        # Продлеваем срок жизни сессии на 30 дней вперёд, но только если до истечения
+        # осталось меньше 25 дней — чтобы не делать лишний UPDATE при каждом запросе.
+        cur.execute(f"""
+            UPDATE {SCHEMA}.user_sessions
+            SET expires_at = NOW() + INTERVAL '30 days'
+            WHERE token = %s AND expires_at < NOW() + INTERVAL '25 days'
+        """, (token,))
+        if cur.rowcount:
+            conn.commit()
+
         user_data = {
             "id": uid, "email": email, "name": name, "phone": phone,
             "role": role, "approved": approved, "discount": discount or 0,

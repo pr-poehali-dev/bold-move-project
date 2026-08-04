@@ -19,6 +19,8 @@ function waitForToken(ms = 3000): Promise<void> {
   });
 }
 
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export async function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
   await waitForToken();
   let url = `${BASE}?r=${resource}`;
@@ -26,10 +28,34 @@ export async function crmFetch(resource: string, opts?: RequestInit, extra?: Rec
     Object.entries(extra).forEach(([k, v]) => { url += `&${k}=${encodeURIComponent(v)}`; });
   }
   const authHeader = _authToken ? { "X-Authorization": `Bearer ${_authToken}` } : {};
-  return fetch(url, {
+  const doFetch = () => fetch(url, {
     ...opts,
     headers: { "Content-Type": "application/json", ...authHeader, ...(opts?.headers || {}) },
-  }).then(r => r.json());
+  });
+
+  // Мобильная сеть нестабильна: разовый обрыв связи или временный сбой (401/5xx на
+  // GET-запросе) не должен выглядеть как "вылет из системы". Делаем до 2 тихих
+  // повторов с паузой. Повторяем только безопасные GET-запросы (без body/метода POST),
+  // чтобы не задублировать создание/изменение данных.
+  const method = (opts?.method || "GET").toUpperCase();
+  const retriable = method === "GET";
+  const maxRetries = retriable ? 2 : 0;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r = await doFetch();
+      // 401/5xx на GET — возможно, токен ещё не подхватился или сервер моргнул: повторяем
+      if (retriable && (r.status === 401 || r.status >= 500) && attempt < maxRetries) {
+        await sleep(attempt === 0 ? 500 : 1200);
+        continue;
+      }
+      return await r.json();
+    } catch (e) {
+      // Сетевая ошибка — повторяем, если ещё есть попытки
+      if (attempt < maxRetries) { await sleep(attempt === 0 ? 500 : 1200); continue; }
+      throw e;
+    }
+  }
 }
 
 export async function uploadFile(file: File): Promise<string> {
