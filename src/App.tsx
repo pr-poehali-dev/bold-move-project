@@ -31,6 +31,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
 import RoleSelectModal from "@/components/RoleSelectModal";
+import OfflineScreen from "@/components/OfflineScreen";
 
 // Показывает модалку выбора роли новому соц-пользователю (role_selected === false),
 // поверх любой страницы — модалка не закрывается без выбора.
@@ -65,6 +66,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <OfflineScreen />
         <RoleGate />
         <BrowserRouter>
           <BrandProvider>
