@@ -1,50 +1,57 @@
-import { useState } from "react";
-import { Client } from "./crmApi";
+import { useState, useEffect } from "react";
+import { Client, crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { fmtMoscowDateTime } from "./timeMoscow";
 
 export interface ActivityEvent {
   icon: string; color: string; text: string; date: string;
+  author?: string | null; // имя сотрудника, выполнившего действие
 }
 
-// ── Хранилище лога активности в localStorage per client ───────────────────────
-function logKey(clientId: number) { return `activity_log_${clientId}`; }
-
-export function loadActivityLog(clientId: number): ActivityEvent[] {
-  try { return JSON.parse(localStorage.getItem(logKey(clientId)) || "[]"); } catch { return []; }
+interface ServerLogRow {
+  id: number; author: string | null; icon: string; color: string; text: string; created_at: string | null;
 }
 
-export function appendActivityLog(clientId: number, event: ActivityEvent) {
-  const current = loadActivityLog(clientId);
-  const updated = [...current, event];
-  localStorage.setItem(logKey(clientId), JSON.stringify(updated));
-  return updated;
-}
-
-export function ActivityFeed({ client, extraEvents = [], onAddComment }: {
+export function ActivityFeed({ client, extraEvents = [], reloadKey = 0, onAddComment }: {
   client: Client;
   extraEvents?: ActivityEvent[];
+  reloadKey?: number; // инкремент → перезагрузить журнал из БД
   onAddComment: (text: string) => void;
 }) {
   const t = useTheme();
   const [comment, setComment] = useState("");
 
+  // Журнал действий из БД — общий на компанию, с автором (кто выполнил действие)
+  const [serverLog, setServerLog] = useState<ActivityEvent[]>([]);
+  useEffect(() => {
+    let alive = true;
+    crmFetch("activity-log", undefined, { client_id: String(client.id) })
+      .then(d => {
+        if (!alive || !Array.isArray(d)) return;
+        setServerLog((d as ServerLogRow[]).map(r => ({
+          icon: r.icon || "Circle", color: r.color || "#8b5cf6", text: r.text,
+          date: fmtMoscowDateTime(r.created_at), author: r.author,
+        })));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [client.id, reloadKey]);
+
   // Базовые события из полей клиента
   const baseEvents: ActivityEvent[] = [];
-  if (client.created_at)    baseEvents.push({ icon: "Plus",     color: "#8b5cf6", text: "Заявка создана",                                                       date: new Date(client.created_at).toLocaleString("ru-RU",   { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
-  if (client.measure_date)  baseEvents.push({ icon: "Ruler",    color: "#f59e0b", text: "Замер назначен",                                                       date: new Date(client.measure_date).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
-  if (client.install_date)  baseEvents.push({ icon: "Wrench",   color: "#f97316", text: "Монтаж назначен",                                                      date: new Date(client.install_date).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
+  if (client.created_at)    baseEvents.push({ icon: "Plus",     color: "#8b5cf6", text: "Заявка создана",                                                       date: fmtMoscowDateTime(client.created_at) });
+  if (client.measure_date)  baseEvents.push({ icon: "Ruler",    color: "#f59e0b", text: "Замер назначен",                                                       date: fmtMoscowDateTime(client.measure_date) });
+  if (client.install_date)  baseEvents.push({ icon: "Wrench",   color: "#f97316", text: "Монтаж назначен",                                                      date: fmtMoscowDateTime(client.install_date) });
   if (client.contract_sum)  baseEvents.push({ icon: "FileText", color: "#06b6d4", text: `Договор: ${Number(client.contract_sum).toLocaleString("ru-RU")} ₽`,   date: "" });
   if (client.prepayment)    baseEvents.push({ icon: "Wallet",   color: "#10b981", text: `Предоплата: +${Number(client.prepayment).toLocaleString("ru-RU")} ₽`, date: "" });
   if (client.extra_payment) baseEvents.push({ icon: "Wallet",   color: "#10b981", text: `Доплата: +${Number(client.extra_payment).toLocaleString("ru-RU")} ₽`, date: "" });
 
-  // Сохранённые события из localStorage
-  const savedEvents = loadActivityLog(client.id);
-
-  // Объединяем: базовые + сохранённые + текущей сессии (без дублей)
-  const sessionTexts = new Set(extraEvents.map(e => e.text + e.date));
-  const savedFiltered = savedEvents.filter(e => !sessionTexts.has(e.text + e.date));
-  const allEvents = [...baseEvents, ...savedFiltered, ...extraEvents];
+  // Объединяем: базовые события клиента + серверный журнал + несохранённые события
+  // текущей сессии (оптимистичный показ до подтверждения сервером, без дублей).
+  const serverTexts = new Set(serverLog.map(e => e.text));
+  const pending = extraEvents.filter(e => !serverTexts.has(e.text));
+  const allEvents = [...baseEvents, ...serverLog, ...pending];
 
   const handleSend = () => {
     if (!comment.trim()) return;
@@ -90,7 +97,17 @@ export function ActivityFeed({ client, extraEvents = [], onAddComment }: {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs leading-relaxed" style={{ color: "#fff" }}>{ev.text}</div>
-              {ev.date && <div className="text-[10px] mt-0.5" style={{ color: "#a3a3a3" }}>{ev.date}</div>}
+              {(ev.date || ev.author) && (
+                <div className="text-[10px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: "#a3a3a3" }}>
+                  {ev.date && <span>{ev.date}</span>}
+                  {ev.author && (
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="User" size={9} style={{ color: "#8b5cf6" }} />
+                      {ev.author}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}

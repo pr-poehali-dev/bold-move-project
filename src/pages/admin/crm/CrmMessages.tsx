@@ -7,8 +7,6 @@ import { Dialog, channelMeta } from "./messagesChannels";
 import { MessagesDialogRow } from "./MessagesDialogRow";
 import { MessagesHiddenModal } from "./MessagesHiddenModal";
 
-const seenKey = (contactId: number) => `touches_seen_${contactId}`;
-
 const isAvito = (d: Dialog) => d.last_channel === "avito" || d.source === "avito" || !!d.avito_chat_url;
 
 export default function CrmMessages() {
@@ -44,18 +42,16 @@ export default function CrmMessages() {
     return () => clearInterval(timer);
   }, [load]);
 
-  const unreadFor = (d: Dialog): number => {
-    if (d.last_direction !== "in") return 0;
-    if (d.contact_id == null) return 1;
-    const lastSeen = Number(localStorage.getItem(seenKey(d.contact_id)) || 0);
-    return new Date(d.last_at).getTime() > lastSeen ? 1 : 0;
-  };
+  // Признак непрочитанного — ОБЩИЙ на компанию, приходит с сервера (touch_clients.last_read_at)
+  const unreadFor = (d: Dialog): number => (d.unread ? 1 : 0);
 
   const openDialog = (d: Dialog) => {
     setSelected(d);
-    if (d.contact_id != null) {
-      localStorage.setItem(seenKey(d.contact_id), String(Date.now()));
-    }
+    // Оптимистично снимаем непрочитанность локально
+    setDialogs(prev => prev.map(x => x.client_id === d.client_id ? { ...x, unread: false } : x));
+    // Отмечаем прочитанным на сервере (общая отметка — у всех сотрудников станет прочитано)
+    const payload: Record<string, unknown> = { client_id: d.client_id };
+    crmFetch("touch-read", { method: "POST", body: JSON.stringify(payload) }).catch(() => {});
   };
 
   // Изменение пометок: оптимистично обновляем локально, потом шлём на бэкенд

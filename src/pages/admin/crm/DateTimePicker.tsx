@@ -2,21 +2,29 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { toMoscowIso } from "./timeMoscow";
 
 const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const DAYS_RU   = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
+// Возвращает Date, у которой ЛОКАЛЬНЫЕ компоненты (getHours/getDate…) равны
+// МОСКОВСКИМ компонентам исходного момента. Так пикер показывает и редактирует
+// именно московское время, независимо от часового пояса устройства.
 function parseValue(v: string | null | undefined): Date {
-  if (!v) return new Date();
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? new Date() : d;
+  const src = v ? new Date(v) : new Date();
+  const base = isNaN(src.getTime()) ? new Date() : src;
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Moscow", hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+  const p = dtf.formatToParts(base);
+  const g = (t: string) => Number(p.find(x => x.type === t)?.value);
+  return new Date(g("year"), g("month") - 1, g("day"), g("hour") === 24 ? 0 : g("hour"), g("minute"));
 }
 
-function toIso(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 // Кнопка прокрутки для скролл-столбца времени
 function ScrollColumn({ items, selected, onSelect }: {
@@ -118,8 +126,9 @@ export function DateTimePickerPopup({ value, onChange, onClose, anchorRect }: Pr
   };
 
   const handleSave = () => {
-    const result = new Date(selDate.getFullYear(), selDate.getMonth(), selDate.getDate(), hour, minute);
-    onChange(toIso(result));
+    // Сохраняем выбранное время как МОСКОВСКОЕ (с явной меткой +03:00),
+    // чтобы сервер и другие устройства поняли момент одинаково.
+    onChange(toMoscowIso(selDate.getFullYear(), selDate.getMonth(), selDate.getDate(), hour, minute));
     onClose();
   };
 

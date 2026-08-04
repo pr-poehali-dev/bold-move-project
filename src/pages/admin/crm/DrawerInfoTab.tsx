@@ -6,7 +6,8 @@ import { Section } from "./drawerComponents";
 import { StatusSelector } from "./StatusSelector";
 import { DrawerPLBlock } from "./DrawerPLBlock";
 import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
-import { ActivityFeed, ActivityEvent, appendActivityLog } from "./ActivityFeed";
+import { ActivityFeed, ActivityEvent } from "./ActivityFeed";
+import { useAuth } from "@/context/AuthContext";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
@@ -42,12 +43,14 @@ interface Props {
 
 export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload }: Props) {
   const t = useTheme();
+  const { user } = useAuth();
 
   // ── state ────────────────────────────────────────────────────────────────────
   const [blocks, setBlocks]               = useState<BlockDef[]>(loadBlocks);
   const [hiddenBlocks, setHiddenBlocks]   = useState<Set<BlockId>>(loadHidden);
   const [editingBlock, setEditingBlock]   = useState<BlockId | null>(null);
   const [activityLog, setActivityLog]     = useState<ActivityEvent[]>([]);
+  const [activityReload, setActivityReload] = useState(0);
   const [customBlocks, setCustomBlocks]   = useState<CustomBlockData[]>(loadCustomBlocks);
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
   const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
@@ -146,12 +149,17 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
   // (финансовые расчёты перенесены в DrawerPLBlock)
 
   // ── логирование ──────────────────────────────────────────────────────────────
-  const now = () => new Date().toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const now = () => new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+  // Пишем действие в общий журнал БД (виден всем сотрудникам, автор проставляется
+  // на сервере). Оптимистично показываем событие сразу, автор — текущий пользователь.
   const logAction = (icon: string, color: string, text: string) => {
-    const event: ActivityEvent = { icon, color, text, date: now() };
+    const event: ActivityEvent = { icon, color, text, date: now(), author: user?.name || undefined };
     setActivityLog(prev => [...prev, event]);
-    appendActivityLog(data.id, event); // сохраняем в localStorage
+    crmFetch("activity-log", {
+      method: "POST",
+      body: JSON.stringify({ client_id: data.id, icon, color, text }),
+    }).then(() => setActivityReload(k => k + 1)).catch(() => {});
   };
 
   const saveWithLog = (patch: Partial<Client>, logText: string, icon = "Edit3", color = "#8b5cf6") => {
@@ -346,6 +354,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
       <ActivityFeed
         client={data}
         extraEvents={activityLog}
+        reloadKey={activityReload}
         onAddComment={text => {
           const ts = now();
           setComments(prev => [...prev, { text, date: ts }]);

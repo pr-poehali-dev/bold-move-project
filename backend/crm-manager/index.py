@@ -407,9 +407,10 @@ def handler(event: dict, context) -> dict:
     # Отсутствие токена НЕ должно трактоваться как доступ мастера (см. resource=="clients" ниже).
     authenticated = False
 
+    current_user_name = None  # имя текущего сотрудника (для автора в журнале активности)
     if raw_token:
         cur.execute(f"""
-            SELECT u.id, u.email, u.role, u.company_id, u.permissions
+            SELECT u.id, u.email, u.role, u.company_id, u.permissions, u.name
             FROM {SCHEMA}.user_sessions s
             JOIN {SCHEMA}.users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
@@ -417,7 +418,7 @@ def handler(event: dict, context) -> dict:
         sess = cur.fetchone()
         if sess:
             authenticated = True
-            uid, uemail, urole, ucompany_id, upermissions = sess
+            uid, uemail, urole, ucompany_id, upermissions, current_user_name = sess
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
@@ -2582,11 +2583,16 @@ def handler(event: dict, context) -> dict:
                     return err("client_id or phone required")
 
                 client_id = cli[0]
+                # Общая на компанию отметка прочтения диалога (для счётчика непрочитанных)
+                cur.execute(f"SELECT last_read_at FROM {SCHEMA}.touch_clients WHERE id=%s", (client_id,))
+                _lr = cur.fetchone()
+                last_read_at = _lr[0].isoformat() if _lr and _lr[0] else None
                 client = {
                     "id": cli[0], "phone": cli[1], "name": cli[2],
                     "state_summary": cli[3], "next_action": cli[4],
                     "interest": cli[5], "stage": cli[6],
                     "analysis_updated_at": cli[7],
+                    "last_read_at": last_read_at,
                 }
                 # Лента касаний по времени
                 cur.execute(f"""
@@ -3211,7 +3217,7 @@ def handler(event: dict, context) -> dict:
                        (SELECT COUNT(*) FROM {SCHEMA}.touch_events te2
                         WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count,
                        tc.pinned, tc.favorite,
-                       lc.source, lc.avito_chat_url
+                       lc.source, lc.avito_chat_url, tc.last_read_at
                 FROM {SCHEMA}.touch_clients tc
                 JOIN LATERAL (
                     SELECT channel, direction, text, created_at
@@ -3225,24 +3231,29 @@ def handler(event: dict, context) -> dict:
                 ORDER BY tc.pinned DESC, le.created_at DESC
                 LIMIT 200
             """, (owner_id,))
-            dialogs = [{
-                "client_id": r[0],
-                "name": r[1],
-                "phone": r[2],
-                "contact_id": r[3],
-                "interest": r[4],
-                "stage": r[5],
-                "last_channel": r[6],
-                "last_direction": r[7],
-                "last_text": (r[8] or "")[:120],
-                "last_at": r[9],
-                "unread": r[7] == "in",
-                "in_count": r[10],
-                "pinned": bool(r[11]),
-                "favorite": bool(r[12]),
-                "source": r[13],
-                "avito_chat_url": r[14],
-            } for r in cur.fetchall()]
+            dialogs = []
+            for r in cur.fetchall():
+                last_dir, last_at, last_read_at = r[7], r[9], r[15]
+                # unread — ОБЩЕЕ на компанию: последнее событие входящее и новее last_read_at
+                is_unread = (last_dir == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
+                dialogs.append({
+                    "client_id": r[0],
+                    "name": r[1],
+                    "phone": r[2],
+                    "contact_id": r[3],
+                    "interest": r[4],
+                    "stage": r[5],
+                    "last_channel": r[6],
+                    "last_direction": r[7],
+                    "last_text": (r[8] or "")[:120],
+                    "last_at": r[9],
+                    "unread": is_unread,
+                    "in_count": r[10],
+                    "pinned": bool(r[11]),
+                    "favorite": bool(r[12]),
+                    "source": r[13],
+                    "avito_chat_url": r[14],
+                })
             return ok({"dialogs": dialogs})
 
         # ── TOUCH-FLAGS: изменить пометки диалога (закрепить / избранное / скрыть) ──
@@ -3327,20 +3338,26 @@ def handler(event: dict, context) -> dict:
                 SELECT tc.phone, tc.interest, tc.stage, tc.next_action,
                        (SELECT te.direction FROM {SCHEMA}.touch_events te
                         WHERE te.client_id = tc.id
-                        ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction
+                        ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction,
+                       (SELECT te.created_at FROM {SCHEMA}.touch_events te
+                        WHERE te.client_id = tc.id
+                        ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_at,
+                       tc.last_read_at
                 FROM {SCHEMA}.touch_clients tc
                 WHERE tc.company_id = %s AND tc.phone IS NOT NULL
             """, (owner_id,))
             badges = {}
-            for phone, interest, stage, next_action, last_direction in cur.fetchall():
+            for phone, interest, stage, next_action, last_direction, last_at, last_read_at in cur.fetchall():
                 digits = re.sub(r"\D", "", phone or "")[-10:]
                 if not digits:
                     continue
+                # unread — ОБЩЕЕ на компанию: последнее входящее событие новее last_read_at
+                is_unread = (last_direction == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
                 badges[digits] = {
                     "interest": interest,
                     "stage": stage,
                     "next_action": next_action,
-                    "unread": last_direction == "in",
+                    "unread": is_unread,
                 }
             return ok({"badges": badges})
 
@@ -3398,21 +3415,30 @@ def handler(event: dict, context) -> dict:
             success_count = outcome_dist.get("success", 0)
             conversion_pct = round(success_count / analyzed_total * 100) if analyzed_total else 0
 
-            # Топ клиентов «требуют внимания»: высокий интерес или последнее касание — входящее (непрочитано)
+            # Топ клиентов «требуют внимания»: высокий интерес или последнее касание — входящее.
+            # unread (непрочитано) — ОБЩЕЕ на компанию: последнее входящее событие новее,
+            # чем last_read_at (момент, когда любой сотрудник открыл диалог).
             params = [owner_id] + ([src] if src else [])
             cur.execute(f"""
                 SELECT tc.id, tc.name, tc.phone, tc.interest, tc.stage, tc.next_action,
                        (SELECT te.direction FROM {SCHEMA}.touch_events te
-                        WHERE te.client_id = tc.id ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction
+                        WHERE te.client_id = tc.id ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_direction,
+                       (SELECT te.created_at FROM {SCHEMA}.touch_events te
+                        WHERE te.client_id = tc.id ORDER BY te.created_at DESC, te.id DESC LIMIT 1) AS last_at,
+                       tc.last_read_at
                 FROM {SCHEMA}.touch_clients tc{src_join}
                 WHERE tc.company_id = %s AND (tc.interest = 'high' OR tc.next_action IS NOT NULL){src_cond}
                 ORDER BY tc.analysis_updated_at DESC NULLS LAST
                 LIMIT 8
             """, tuple(params))
-            attention = [{
-                "id": r[0], "name": r[1], "phone": r[2], "interest": r[3],
-                "stage": r[4], "next_action": r[5], "unread": r[6] == "in",
-            } for r in cur.fetchall()]
+            attention = []
+            for r in cur.fetchall():
+                last_direction, last_at, last_read_at = r[6], r[7], r[8]
+                is_unread = (last_direction == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
+                attention.append({
+                    "id": r[0], "name": r[1], "phone": r[2], "interest": r[3],
+                    "stage": r[4], "next_action": r[5], "unread": is_unread,
+                })
 
             # Средняя оценка звонков за период (только реально проанализированные ИИ)
             params = [owner_id, str(days)] + ([src] if src else [])
@@ -3438,6 +3464,89 @@ def handler(event: dict, context) -> dict:
                 "avg_operator_score": avg_operator_score,
                 "scored_calls_count": scored_calls_count,
             })
+
+        # ── ЖУРНАЛ АКТИВНОСТИ ПО КЛИЕНТУ (общий на компанию, с автором) ────────
+        if resource == "activity-log":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+
+            if method == "GET":
+                cid = qs.get("client_id")
+                if not cid:
+                    return err("client_id required")
+                cur.execute(f"""
+                    SELECT id, user_name, icon, color, text, created_at
+                    FROM {SCHEMA}.activity_log
+                    WHERE client_id = %s
+                    ORDER BY created_at ASC, id ASC
+                """, (int(cid),))
+                rows = cur.fetchall()
+                return ok([{
+                    "id": r[0], "author": r[1], "icon": r[2], "color": r[3],
+                    "text": r[4], "created_at": r[5].isoformat() if r[5] else None,
+                } for r in rows])
+
+            if method == "POST":
+                cid = body.get("client_id")
+                text = (body.get("text") or "").strip()
+                if not cid or not text:
+                    return err("client_id and text required")
+                icon = (body.get("icon") or "Circle")[:64]
+                color = (body.get("color") or "#8b5cf6")[:16]
+                owner_cmp = company_id if company_id is not None else master_uid
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.activity_log
+                        (client_id, company_id, user_id, user_name, icon, color, text)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at
+                """, (int(cid), owner_cmp, master_uid, current_user_name, icon, color, text))
+                new_id, created = cur.fetchone()
+                conn.commit()
+                return ok({
+                    "id": new_id, "author": current_user_name, "icon": icon,
+                    "color": color, "text": text,
+                    "created_at": created.isoformat() if created else None,
+                })
+
+        # ── ОТМЕТКА ПРОЧТЕНИЯ КАСАНИЙ (общая на компанию) ─────────────────────
+        if resource == "touch-read" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            # Отмечаем прочитанным диалог по одному из идентификаторов:
+            #  client_id  — id записи touch_clients
+            #  contact_id — id заявки live_chats (touch_clients.crm_contact_id)
+            #  phone      — номер телефона клиента
+            # Либо все сразу, если ничего не передано.
+            tc_id      = body.get("client_id")
+            contact_id = body.get("contact_id")
+            phone      = body.get("phone")
+            if tc_id:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients SET last_read_at = NOW()
+                    WHERE id = %s AND company_id = %s
+                """, (int(tc_id), owner_id))
+            elif contact_id:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients SET last_read_at = NOW()
+                    WHERE crm_contact_id = %s AND company_id = %s
+                """, (int(contact_id), owner_id))
+            elif phone:
+                norm = normalize_phone(phone)
+                if norm:
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.touch_clients SET last_read_at = NOW()
+                        WHERE phone = %s AND company_id = %s
+                    """, (norm, owner_id))
+            else:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients SET last_read_at = NOW()
+                    WHERE company_id = %s
+                """, (owner_id,))
+            conn.commit()
+            return ok({"ok": True})
 
         return err("unknown resource", 404)
 

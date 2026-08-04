@@ -4,6 +4,7 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, EVENT_COLORS } from "./calendarTypes";
 import { DateTimePickerPopup } from "./DateTimePicker";
+import { fmtMoscowDateTime } from "./timeMoscow";
 
 export function CalendarEventModal({
   mode, event, onClose, onSave, onDelete,
@@ -60,7 +61,7 @@ export function CalendarEventModal({
                   className="w-full text-xs rounded-xl px-3 py-2 text-left transition border"
                   style={{ background: t.surface2, color: form[field] ? t.text : t.textMute, borderColor: openPicker === field ? "#7c3aed80" : t.border }}>
                   {form[field]
-                    ? new Date(form[field]).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                    ? fmtMoscowDateTime(form[field])
                     : "Выбрать..."}
                 </button>
                 {openPicker === field && (

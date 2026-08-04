@@ -3,6 +3,7 @@ import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, MONTH_NAMES, EVENT_COLORS } from "./calendarTypes";
 import { resolveEventColor } from "./syncedCols";
+import { fmtMoscowTime } from "./timeMoscow";
 
 const EVENT_TYPE_ICONS: Record<string, string> = {
   measure: "Ruler",
@@ -14,7 +15,7 @@ const EVENT_TYPE_ICONS: Record<string, string> = {
 
 // ── Бейдж события в месячной сетке ──────────────────────────────────────────
 export function EventBadge({ e, onClick }: { e: CalEvent; onClick: (e: CalEvent) => void }) {
-  const time  = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const time  = fmtMoscowTime(e.start_time);
   const icon  = EVENT_TYPE_ICONS[e.event_type] || "Circle";
   const color = resolveEventColor(e.event_type);
   const sub   = e.address || e.client_name;
@@ -177,8 +178,8 @@ export function CalendarDaySidebar({
           {selectedEvents.map(e => {
             const icon      = EVENT_TYPE_ICONS[e.event_type] || "Circle";
             const color     = resolveEventColor(e.event_type);
-            const startTime = new Date(e.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-            const endTime   = e.end_time ? new Date(e.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : null;
+            const startTime = fmtMoscowTime(e.start_time);
+            const endTime   = e.end_time ? fmtMoscowTime(e.end_time) : null;
             const sub       = e.address || e.client_name;
             return (
               <div key={e.id}

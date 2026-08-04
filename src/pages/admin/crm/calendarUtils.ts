@@ -1,5 +1,6 @@
 // ── Calendar grid utilities ───────────────────────────────────────────────────
 import { CalEvent } from "./calendarTypes";
+import { moscowDateParts } from "./timeMoscow";
 
 export interface GridCell { day: number; cur: boolean; }
 
@@ -20,8 +21,10 @@ export function buildMonthGrid(year: number, month: number): GridCell[] {
 export function eventsForDay(events: CalEvent[], day: number, month: number, year: number, cur = true): CalEvent[] {
   if (!cur) return [];
   return events.filter(e => {
-    const d = new Date(e.start_time);
-    return d.getDate() === day && d.getMonth() + 1 === month && d.getFullYear() === year;
+    // Определяем день события в МОСКОВСКОМ поясе, чтобы событие попадало на верный
+    // день независимо от часового пояса устройства пользователя.
+    const p = moscowDateParts(e.start_time);
+    return !!p && p.day === day && p.month === month && p.year === year;
   });
 }
 

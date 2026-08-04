@@ -66,6 +66,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
   const [remoteFiles, setRemoteFiles] = useState<RemoteFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<number | null>(null); // индекс категории
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ catIdx: number; fileIdx: number } | null>(null);
   const [newRowVal, setNewRowVal] = useState("");
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
@@ -112,30 +113,62 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     updateLabels(labels.map((l, j) => j === i ? label.trim() : l));
   };
 
-  // Загрузить файл в категорию
+  // Загрузить файл в категорию.
+  // Оптимистично добавляем файл в список СРАЗУ после успешного сохранения (по ответу
+  // сервера с готовым id) — на мобильной сети список больше не «схлопывается» и файл
+  // не исчезает на время перезагрузки. При сбое показываем понятную ошибку.
   const handleUpload = async (catIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files || []);
     if (!picked.length) return;
     setUploading(catIdx);
+    setUploadError(null);
     const category = labels[catIdx];
+    let anyFailed = false;
     for (const file of picked) {
-      const url = await uploadFile(file);
-      await crmFetch("client_files", {
-        method: "POST",
-        body: JSON.stringify({ client_id: clientId, url, name: file.name, type: file.type, category }),
-      });
-      logAction("Paperclip", "#06b6d4", `${category}: ${file.name}`);
+      try {
+        const url = await uploadFile(file);
+        const saved = await crmFetch("client_files", {
+          method: "POST",
+          body: JSON.stringify({ client_id: clientId, url, name: file.name, type: file.type, category }),
+        }) as Partial<RemoteFile> & { error?: string };
+        if (!saved || saved.error || !saved.id) {
+          anyFailed = true;
+          continue;
+        }
+        // Оптимистично показываем файл сразу
+        setRemoteFiles(prev => {
+          if (prev.some(f => f.id === saved.id)) return prev;
+          return [...prev, {
+            id: saved.id as number, url: saved.url || url, name: saved.name || file.name,
+            type: saved.type || file.type, category: saved.category || category,
+          }];
+        });
+        logAction("Paperclip", "#06b6d4", `${category}: ${file.name}`);
+      } catch {
+        anyFailed = true;
+      }
     }
-    await load();
+    if (anyFailed) {
+      setUploadError("Не удалось загрузить часть файлов. Проверьте соединение и попробуйте снова.");
+    }
     setUploading(null);
     if (inputRefs.current[catIdx]) inputRefs.current[catIdx]!.value = "";
+    // Тихо сверяемся с сервером в фоне (не блокирует показ уже добавленных файлов)
+    load();
   };
 
-  // Удалить файл из категории
+  // Удалить файл из категории — оптимистично убираем из списка, при ошибке возвращаем.
   const deleteFile = async (fileId: number) => {
     if (!window.confirm("Точно удалить файл?")) return;
-    await crmFetch("client_files", { method: "DELETE", body: JSON.stringify({ id: fileId }) });
+    const backup = remoteFiles;
     setRemoteFiles(prev => prev.filter(f => f.id !== fileId));
+    try {
+      const res = await crmFetch("client_files", { method: "DELETE", body: JSON.stringify({ id: fileId }) }) as { error?: string };
+      if (res && res.error) throw new Error(res.error);
+    } catch {
+      setRemoteFiles(backup); // откат — файл не удалился
+      setUploadError("Не удалось удалить файл. Проверьте соединение и попробуйте снова.");
+    }
   };
 
   const [copied, setCopied] = useState<string | null>(null);
@@ -225,6 +258,18 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
         </div>
       )}
 
+      {/* Тост ошибки загрузки/удаления */}
+      {uploadError && (
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 mb-1 text-xs font-medium"
+          style={{ background: "#ef444420", border: "1px solid #ef444440", color: "#fca5a5" }}>
+          <Icon name="AlertTriangle" size={12} />
+          <span className="flex-1">{uploadError}</span>
+          <button onClick={() => setUploadError(null)} className="p-0.5 rounded hover:bg-white/10">
+            <Icon name="X" size={11} />
+          </button>
+        </div>
+      )}
+
       {loading && (
         <div className="flex items-center gap-2 py-2 text-xs" style={{ color: t.textMute }}>
           <Icon name="Loader2" size={12} className="animate-spin" /> Загрузка файлов...
@@ -308,12 +353,13 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                           style={{ border: `1px solid ${t.border}` }}>
                           <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
                         </button>
-                        {editMode && (
-                          <button onClick={() => deleteFile(f.id)}
-                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition">
-                            <Icon name="X" size={8} className="text-white" />
-                          </button>
-                        )}
+                        {/* Кнопка удаления видна всегда (на телефоне режима редактирования не видно) */}
+                        <button onClick={(e) => { e.stopPropagation(); deleteFile(f.id); }}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition shadow-md"
+                          style={{ border: "1.5px solid #07070f" }}
+                          title="Удалить файл">
+                          <Icon name="X" size={11} className="text-white" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -328,12 +374,13 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                       onClick={() => window.open(f.url, "_blank")}>
                       {f.name}
                     </span>
-                    {editMode && (
-                      <button onClick={() => deleteFile(f.id)}
-                        className="p-0.5 rounded hover:text-red-400 flex-shrink-0" style={{ color: "#ef4444" }}>
-                        <Icon name="X" size={10} />
-                      </button>
-                    )}
+                    {/* Кнопка удаления видна всегда */}
+                    <button onClick={() => deleteFile(f.id)}
+                      className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition hover:bg-red-500/15"
+                      style={{ color: "#ef4444" }}
+                      title="Удалить файл">
+                      <Icon name="Trash2" size={13} />
+                    </button>
                   </div>
                 ))}
               </div>

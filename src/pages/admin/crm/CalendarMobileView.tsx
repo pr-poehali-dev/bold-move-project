@@ -5,6 +5,7 @@ import { CalEvent, MONTH_NAMES, DAY_NAMES } from "./calendarTypes";
 import { EVENT_TYPE_LABELS } from "./crmApi";
 import { loadSyncedColors } from "./syncedCols";
 import { KANBAN_COLS } from "./kanbanTypes";
+import { fmtMoscowTime, moscowDateParts } from "./timeMoscow";
 
 // Получаем цвет для типа события из цветов канбана/воронки
 function getEventColor(event: CalEvent): string {
@@ -69,8 +70,8 @@ export function CalendarMobileView({
   const eventsForDay = (day: number, cur: boolean) => {
     if (!cur) return [];
     return events.filter(e => {
-      const d = new Date(e.start_time);
-      return d.getFullYear() === year && d.getMonth() + 1 === month && d.getDate() === day;
+      const p = moscowDateParts(e.start_time);
+      return !!p && p.year === year && p.month === month && p.day === day;
     });
   };
 
@@ -79,8 +80,7 @@ export function CalendarMobileView({
   const dayEvents    = eventsForDay(displayDay, true);
   const isToday      = (d: number) => today.getFullYear() === year && today.getMonth() + 1 === month && today.getDate() === d;
 
-  const fmtTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const fmtTime = (iso: string) => fmtMoscowTime(iso);
 
   const fmtDayHeader = (day: number) => {
     const d = new Date(year, month - 1, day);
@@ -95,17 +95,19 @@ export function CalendarMobileView({
     .filter(e => new Date(e.start_time) >= new Date(year, month - 1, 1))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-  // Группировка по дням для списка
+  // Группировка по дням для списка (день определяем в московском поясе)
   const groupedEvents: { date: string; day: number; dow: string; items: CalEvent[] }[] = [];
   for (const e of upcomingEvents) {
-    const d = new Date(e.start_time);
-    const key = d.toDateString();
+    const p = moscowDateParts(e.start_time);
+    if (!p) continue;
+    const key = `${p.year}-${p.month}-${p.day}`;
     const existing = groupedEvents.find(g => g.date === key);
     if (existing) {
       existing.items.push(e);
     } else {
       const dayNames = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
-      groupedEvents.push({ date: key, day: d.getDate(), dow: dayNames[d.getDay()], items: [e] });
+      const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+      groupedEvents.push({ date: key, day: p.day, dow: dayNames[dow], items: [e] });
     }
   }
 
