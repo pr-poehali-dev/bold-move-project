@@ -2964,11 +2964,25 @@ def handler(event: dict, context) -> dict:
             text       = content.get("text")
             msg_id     = value.get("id")
 
-            # Игнорируем свои же исходящие (author == наш аккаунт) и служебные без текста
+            # Служебные события без чата/текста пропускаем
             if not av_chat_id or not text:
                 return ok({"skipped": True})
-            if av_author and av_user_id and str(av_author) == str(av_user_id):
-                return ok({"skipped_own": True})
+
+            # Определяем направление: если автор — наш аккаунт Avito, значит сообщение
+            # написал менеджер (в кабинете Avito или из нашей системы) → это исходящее.
+            # Раньше такие события просто отбрасывались, поэтому переписка была неполной:
+            # ответы менеджера, набранные в самом Avito, в систему не попадали.
+            is_own = bool(av_author and av_user_id and str(av_author) == str(av_user_id))
+            av_direction = "out" if is_own else "in"
+
+            # Защита от дублей: если это сообщение мы сами отправили из системы,
+            # оно уже сохранено (external_id записан при отправке) — второй раз не пишем.
+            if is_own and msg_id:
+                cur.execute(
+                    f"SELECT 1 FROM {SCHEMA}.touch_events WHERE channel='avito' AND external_id=%s",
+                    (f"avito_{msg_id}",))
+                if cur.fetchone():
+                    return ok({"duplicate_own": True})
 
             # Прямая ссылка на диалог в веб-версии Avito (для кнопки «Открыть в Avito»)
             avito_chat_url = f"https://www.avito.ru/profile/messenger/channel/{av_chat_id}"
@@ -3013,7 +3027,8 @@ def handler(event: dict, context) -> dict:
                     VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s, NOW())
                     RETURNING id
                 """, (f"avito_{av_chat_id}", client_name, "",
-                      f"Первое сообщение: {text[:200]}", final_company_id, avito_chat_url))
+                      (f"Первое сообщение менеджера: {text[:200]}" if av_direction == "out"
+                       else f"Первое сообщение: {text[:200]}"), final_company_id, avito_chat_url))
                 new_order_id = cur.fetchone()[0]
                 cur.execute(
                     f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s, name=%s WHERE id=%s",
@@ -3044,10 +3059,13 @@ def handler(event: dict, context) -> dict:
                             conn.commit()
 
             try:
+                # direction: 'in' — написал клиент, 'out' — ответил менеджер
+                # (в том числе прямо в кабинете Avito — такие сообщения теперь тоже видны).
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, status)
-                    VALUES (%s, 'avito', 'in', %s, %s, 'received')
-                """, (client_id, f"avito_{msg_id}" if msg_id else None, text))
+                    VALUES (%s, 'avito', %s, %s, %s, %s)
+                """, (client_id, av_direction, f"avito_{msg_id}" if msg_id else None, text,
+                      "sent" if av_direction == "out" else "received"))
                 conn.commit()
             except psycopg2.errors.UniqueViolation:
                 conn.rollback()
@@ -3103,6 +3121,7 @@ def handler(event: dict, context) -> dict:
             # Avito отправляется СРАЗУ через API (без воркера), Telegram/MAX — через
             # очередь pending (их заберёт воркер на VPS).
             initial_status = "pending"
+            out_external_id = None  # id сообщения в канале (заполняем для Avito — защита от дублей)
             if channel == "avito":
                 cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
                 arow = cur.fetchone()
@@ -3111,14 +3130,18 @@ def handler(event: dict, context) -> dict:
                 avito_user_id = acfg.get("_avito_user_id")
                 if terr or not avito_user_id:
                     return err(terr or "Avito не настроен — нажмите «Подключить Avito» в Интеграциях", 400)
-                _, serr = avito_send_message(token, avito_user_id, external_chat_id, text)
+                sent_msg_id, serr = avito_send_message(token, avito_user_id, external_chat_id, text)
                 initial_status = "error" if serr else "sent"
+                # Запоминаем id сообщения от Avito — по нему вебхук поймёт, что это
+                # НАШЕ отправленное сообщение, и не создаст дубль в переписке.
+                if sent_msg_id:
+                    out_external_id = f"avito_{sent_msg_id}"
 
             cur.execute(f"""
-                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, text, status)
-                VALUES (%s, %s, 'out', %s, %s)
+                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, status)
+                VALUES (%s, %s, 'out', %s, %s, %s)
                 RETURNING id, created_at
-            """, (client_id, channel, text, initial_status))
+            """, (client_id, channel, out_external_id, text, initial_status))
             new_row = cur.fetchone()
             conn.commit()
 
