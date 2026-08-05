@@ -2976,8 +2976,42 @@ def handler(event: dict, context) -> dict:
             content    = value.get("content") or {}
             text       = content.get("text")
             msg_id     = value.get("id")
+            msg_type   = (value.get("type") or "").lower()
 
-            # Служебные события без чата/текста пропускаем
+            # ── Не-текстовые сообщения: картинки и звонки ────────────────────────
+            # Раньше сюда попадал только текст, поэтому фото от клиента и звонки
+            # (входящие / исходящие / пропущенные) в переписку не сохранялись вообще.
+            av_attachments = None
+            if msg_type == "image":
+                # Avito отдаёт несколько размеров — берём самый крупный доступный
+                img = content.get("image") or {}
+                sizes = img.get("sizes") or {}
+                img_url = None
+                if isinstance(sizes, dict) and sizes:
+                    def _px(k):
+                        try:
+                            return int(str(k).split("x")[0])
+                        except Exception:
+                            return 0
+                    img_url = sizes[max(sizes.keys(), key=_px)]
+                img_url = img_url or img.get("url")
+                if img_url:
+                    av_attachments = [{"type": "image", "url": img_url}]
+                    text = text or "Фото"
+
+            elif msg_type == "call":
+                # Звонок: показываем понятную строку прямо в ленте переписки
+                call = content.get("call") or {}
+                st = (call.get("status") or "").lower()
+                secs = call.get("duration") or call.get("duration_sec") or 0
+                if st in ("missed", "no-answer", "noanswer", "busy", "declined"):
+                    text = "Пропущенный звонок"
+                else:
+                    mm, ss = divmod(int(secs or 0), 60)
+                    dur = f"{mm} мин {ss} сек" if mm else f"{ss} сек"
+                    text = f"Звонок · {dur}" if secs else "Звонок"
+
+            # Служебные события без чата/содержимого пропускаем
             if not av_chat_id or not text:
                 return ok({"skipped": True})
 
@@ -3075,10 +3109,12 @@ def handler(event: dict, context) -> dict:
                 # direction: 'in' — написал клиент, 'out' — ответил менеджер
                 # (в том числе прямо в кабинете Avito — такие сообщения теперь тоже видны).
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, status)
-                    VALUES (%s, 'avito', %s, %s, %s, %s)
+                    INSERT INTO {SCHEMA}.touch_events
+                        (client_id, channel, direction, external_id, text, status, attachments)
+                    VALUES (%s, 'avito', %s, %s, %s, %s, %s::jsonb)
                 """, (client_id, av_direction, f"avito_{msg_id}" if msg_id else None, text,
-                      "sent" if av_direction == "out" else "received"))
+                      "sent" if av_direction == "out" else "received",
+                      json.dumps(av_attachments) if av_attachments else None))
                 conn.commit()
             except psycopg2.errors.UniqueViolation:
                 conn.rollback()

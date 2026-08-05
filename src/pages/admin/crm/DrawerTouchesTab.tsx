@@ -16,6 +16,16 @@ interface Touch {
   created_at: string;
 }
 
+// Достаёт ссылки на картинки из вложений сообщения.
+// Формат приходит из разных каналов, поэтому проверяем аккуратно.
+function imagesOf(attachments: unknown): string[] {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .filter((a): a is { type?: string; url?: string } => !!a && typeof a === "object")
+    .filter(a => a.type === "image" && typeof a.url === "string" && a.url.length > 0)
+    .map(a => a.url as string);
+}
+
 interface TouchClient {
   id: number;
   phone: string | null;
@@ -262,6 +272,14 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
                     </div>
                   ) : (
                     <div>
+                      {/* Картинки из переписки (например, фото объекта от клиента) */}
+                      {imagesOf(tt.attachments).map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noreferrer" className="block mb-1.5">
+                          <img src={src} alt="Вложение" loading="lazy"
+                            className="rounded-lg max-w-full object-cover"
+                            style={{ maxHeight: 260, border: `1px solid ${t.border}` }} />
+                        </a>
+                      ))}
                       <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
                         {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
                       </div>
