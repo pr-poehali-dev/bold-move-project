@@ -60,39 +60,45 @@ export function useAuthInitIframe({ setUser, setToken, setLoading }: Setters) {
 
     const WL_TOKEN_KEY = "wl_iframe_token";
 
-    const applyToken = async (tok: string) => {
-      console.log("[iframe] applying token from localStorage:", tok.slice(0, 8) + "...");
+    // Признак «рабочий ключ уже найден». Нужен, чтобы просроченный ключ,
+    // ответ по которому пришёл позже, не затирал уже применённый рабочий —
+    // именно из-за этой гонки список диалогов мог оказаться пустым.
+    let authorized = false;
+    let cancelled = false;
+
+    // force=true — ключ пришёл от платформы уже после входа (свежий), его принимаем всегда
+    const applyToken = async (tok: string, force = false): Promise<boolean> => {
+      if (cancelled || (authorized && !force)) return false;
       try {
         const r = await fetch(`${AUTH_URL}?action=me`, { headers: { "X-Authorization": `Bearer ${tok}` } });
         const d = await r.json();
-        console.log("[iframe] /me response:", d.user?.email || d.error);
-        if (d.user) { setUser(d.user); setToken(tok); setCrmToken(tok); setLoading(false); }
-      } catch (err) { console.log("[iframe] /me error:", err); }
+        if (cancelled || (authorized && !force)) return false;
+        if (d.user) {
+          authorized = true;
+          setUser(d.user); setToken(tok); setCrmToken(tok); setLoading(false);
+          return true;
+        }
+      } catch { /* сеть моргнула — просто пробуем следующий ключ */ }
+      return false;
     };
 
-    // Сначала проверяем собственный токен приложения (mp_user_token).
-    // Он может быть записан при возврате из построителя плана в CRM.
-    const ownToken = localStorage.getItem(TOKEN_KEY);
-    if (ownToken) {
-      applyToken(ownToken);
-    }
+    // Проверяем ключи ПО ОЧЕРЕДИ и останавливаемся на первом действующем:
+    // сначала свой (mp_user_token), затем ключ платформы (wl_iframe_token).
+    (async () => {
+      const ownToken = localStorage.getItem(TOKEN_KEY);
+      if (ownToken && await applyToken(ownToken)) return;
 
-    // Затем читаем wl_iframe_token (токен платформы)
-    const wlTok = localStorage.getItem(WL_TOKEN_KEY);
-    if (wlTok && wlTok !== ownToken) {
-      applyToken(wlTok);
-    }
+      const wlTok = localStorage.getItem(WL_TOKEN_KEY);
+      if (wlTok && wlTok !== ownToken) await applyToken(wlTok);
+    })();
 
     // Слушаем storage-событие на случай если родитель запишет токен после загрузки
     const onStorage = (e: StorageEvent) => {
-      if (e.key === WL_TOKEN_KEY && e.newValue) {
-        applyToken(e.newValue);
-      }
-      if (e.key === TOKEN_KEY && e.newValue) {
-        applyToken(e.newValue);
+      if ((e.key === WL_TOKEN_KEY || e.key === TOKEN_KEY) && e.newValue) {
+        applyToken(e.newValue, true);
       }
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => { cancelled = true; window.removeEventListener("storage", onStorage); };
   }, []);
 }
