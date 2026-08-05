@@ -3421,6 +3421,9 @@ def handler(event: dict, context) -> dict:
             virtual_number = cfg.get("uis_virtual_phone_number")
             if not api_key or not virtual_number:
                 return err("Заполните API-ключ и виртуальный номер в настройках телефонии", 400)
+            # ── ВРЕМЕННАЯ ДИАГНОСТИКА (убрать после проверки) ──────────────────
+            print(f"[uis-diag] key_len={len(api_key)} key_head={api_key[:4]} key_tail={api_key[-4:]} "
+                  f"virtual={virtual_number!r} operator_raw_pending=True")
 
             cur.execute(f"SELECT uis_phone FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
             urow = cur.fetchone()
