@@ -41,9 +41,8 @@ export function useAutoSummary(
     (async () => {
       try {
         // 1. Узнаём клиента касаний и когда сводка обновлялась
-        const extra: Record<string, string> = {};
+        const extra: Record<string, string> = { contact_id: String(orderId) };
         if (phone) extra.phone = phone;
-        else extra.crm_contact_id = String(orderId);
 
         const d = await crmFetch("touches", undefined, extra) as TouchesResp;
         if (cancelled || !d || d.error || !d.client?.id) return;
