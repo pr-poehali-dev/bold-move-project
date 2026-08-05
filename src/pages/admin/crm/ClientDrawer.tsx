@@ -14,6 +14,7 @@ import { DrawerOrdersPanel } from "./DrawerOrdersPanel";
 import { DrawerDeleteConfirm } from "./DrawerDeleteConfirm";
 import { useUnreadTouches } from "./useUnreadTouches";
 import { useClientDrawerState } from "./useClientDrawerState";
+import { useAutoSummary } from "./useAutoSummary";
 
 interface Props {
   client: Client;
@@ -57,6 +58,10 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   } = useClientDrawerState(client, allClientOrders, isLocalCard, defaultTab, defaultOrderId, contactMode, onUpdated, onDeleted);
 
   const unreadTouches = useUnreadTouches(data.id, data.phone || undefined, drawerTab === "touches");
+
+  // Комментарий заявки = краткая ИИ-сводка по общению. Обновляем при открытии
+  // карточки (не чаще раза в час), результат подтягиваем в поля формы.
+  useAutoSummary(data.id, data.phone || undefined, !isLocalCard, onUpdated);
   const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
 
   return (

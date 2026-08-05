@@ -296,7 +296,7 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
         "(звонки и переписки из разных каналов) по порядку времени.\n"
         "Верни ТОЛЬКО валидный JSON без markdown:\n"
         '{\n'
-        '  "state_summary": "2-4 предложения: где сейчас клиент, чего хочет, возражения/риски, уровень интереса",\n'
+        '  "state_summary": "КРАТКО, 1-3 предложения (до 300 знаков): что нужно клиенту, на чём остановились, что мешает сделке. Без воды и вступлений.",\n'
         '  "next_action": "конкретная рекомендация к следующему касанию: что сказать/написать, когда и по какому каналу",\n'
         '  "interest": "high|medium|low",\n'
         '  "interest_label": "Высокий|Средний|Низкий",\n'
@@ -351,6 +351,16 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
         SET state_summary=%s, next_action=%s, interest=%s, stage=%s, analysis_updated_at=NOW()
         WHERE id=%s
     """, (state_summary, next_action, interest, stage, client_id))
+
+    # Комментарий в карточке заявки = краткая сводка по общению с клиентом.
+    # Обновляем при каждом пересчёте анализа, чтобы менеджер видел суть,
+    # не перечитывая всю переписку.
+    if state_summary:
+        cur.execute(f"""
+            UPDATE {SCHEMA}.live_chats SET notes=%s
+            WHERE id = (SELECT crm_contact_id FROM {SCHEMA}.touch_clients WHERE id=%s)
+        """, (state_summary, client_id))
+
     conn.commit()
 
     return {
