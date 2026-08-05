@@ -35,8 +35,8 @@ export const GROUPS: { id: string; title: string; desc: string }[] = [
     desc: "Avito и веб-чат на сайте — сообщения попадают в ленту «Касания»." },
   { id: "ai", title: "ИИ и обработка",
     desc: "Распознавание звонков и модель, которая анализирует историю клиента." },
-  { id: "telephony", title: "Телефония (АТС)",
-    desc: "Входящие звонки для транскрибации и анализа." },
+  { id: "telephony", title: "Телефония (UIS)",
+    desc: "Звонки, кнопка «Позвонить», расшифровка и ИИ-анализ разговоров." },
 ];
 
 export const SECTIONS: SectionDef[] = [
@@ -146,12 +146,13 @@ export const SECTIONS: SectionDef[] = [
   // ── Телефония ──
   {
     id: "telephony", group: "telephony",
-    title: "Телефония (АТС)",
-    desc: "Входящие звонки приходят на этот вебхук.",
+    title: "Телефония (UIS)",
+    desc: "Входящие и исходящие звонки, кнопка «Позвонить», расшифровка и ИИ-анализ разговоров.",
     icon: "PhoneCall",
     providers: [
-      { id: "webhook", label: "Вебхук АТС", fields: [
-        { key: "telephony_webhook", label: "URL вебхука", placeholder: "https://..." },
+      { id: "uis", label: "UIS", fields: [
+        { key: "uis_api_key", label: "API-ключ (Data/Call API)", placeholder: "...", type: "password" },
+        { key: "uis_virtual_phone_number", label: "Виртуальный номер UIS", placeholder: "+7..." },
       ]},
     ],
   },

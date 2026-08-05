@@ -218,6 +218,125 @@ def urllib_urlencode(d):
     from urllib.parse import urlencode
     return urlencode(d)
 
+
+# ── UIS телефония ─────────────────────────────────────────────────────────────
+# UIS шлёт вебхук с полями то вложенно, то плоско, а иногда вместо значения
+# подставляет имя поля (если шаблон в личном кабинете настроен неверно) —
+# такие «значения» нужно распознавать и считать пустыми.
+UIS_FIELD_NAMES = {
+    "contact_phone_number", "contact_phone", "phone", "call_session_id", "id",
+    "external_id", "record_url", "wav_call_record_link", "record_link",
+    "call_records", "file_link", "duration", "call_duration", "talk_duration",
+    "is_lost", "employee_full_name", "virtual_phone_number",
+}
+
+
+def _uis_flatten(d, out=None):
+    """Разворачивает вложенные словари UIS в один плоский словарь (последний
+    встреченный ключ побеждает — вебхуки UIS редко дублируют имена полей)."""
+    if out is None:
+        out = {}
+    if not isinstance(d, dict):
+        return out
+    for k, v in d.items():
+        if isinstance(v, dict):
+            _uis_flatten(v, out)
+        else:
+            out[k] = v
+    return out
+
+
+def _uis_clean(val):
+    """UIS иногда вместо значения подставляет служебное имя поля. Такие
+    'значения' считаем пустыми."""
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s in UIS_FIELD_NAMES:
+        return None
+    return s
+
+
+def _uis_pick(flat, keys):
+    for k in keys:
+        v = _uis_clean(flat.get(k))
+        if v:
+            return v
+    return None
+
+
+def uis_extract_call(body):
+    """Извлекает нормализованные поля звонка из сырого тела вебхука UIS."""
+    flat = _uis_flatten(body or {})
+
+    phone = _uis_pick(flat, ["contact_phone_number", "contact_phone", "phone"])
+    session_id = _uis_pick(flat, ["call_session_id", "id", "external_id"])
+
+    record_url = flat.get("record_url") or flat.get("wav_call_record_link") \
+        or flat.get("record_link") or flat.get("call_records") or flat.get("file_link")
+    if isinstance(record_url, list) and record_url:
+        record_url = record_url[0]
+    record_url = _uis_clean(record_url)
+    if record_url and not str(record_url).startswith("http"):
+        record_url = f"https://app.uiscom.ru/system/media/talk/{record_url}/"
+
+    duration = 0
+    for k in ("duration", "call_duration", "talk_duration", "billsec"):
+        v = _uis_clean(flat.get(k))
+        if v is not None:
+            try:
+                duration = int(float(v))
+                break
+            except (TypeError, ValueError):
+                continue
+
+    is_lost = str(flat.get("is_lost") or "").strip().lower() in ("1", "true")
+    status = "missed" if is_lost else (_uis_clean(flat.get("status")) or "completed")
+
+    direction = (_uis_clean(flat.get("direction")) or "in").lower()
+    direction = "out" if direction in ("out", "outbound", "outgoing") else "in"
+
+    employee_name = _uis_clean(flat.get("employee_full_name") or flat.get("employee_name"))
+
+    return {
+        "phone": normalize_phone(phone) if phone else None,
+        "session_id": session_id,
+        "record_url": record_url,
+        "duration": duration,
+        "status": status,
+        "direction": direction,
+        "employee_name": employee_name,
+    }
+
+
+def uis_start_call(api_key, virtual_phone_number, operator_phone, contact_phone):
+    """Инициирует звонок через UIS Call API (не Data API!). Возвращает (session_id, error)."""
+    payload = json.dumps({
+        "jsonrpc": "2.0", "id": "1", "method": "start.simple_call",
+        "params": {
+            "access_token": api_key,
+            "virtual_phone_number": virtual_phone_number,
+            "operator": operator_phone,
+            "contact": contact_phone,
+            "direction": "out",
+            "first_call": "operator",
+        },
+    }).encode()
+    req = _ureq.Request(
+        "https://callapi.uiscom.ru/v4.0", data=payload,
+        headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with _ureq.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read().decode())
+    except Exception as e:
+        return None, f"UIS: {str(e)[:200]}"
+    if resp.get("error"):
+        return None, resp["error"].get("message", "UIS: неизвестная ошибка")
+    result = resp.get("result") or {}
+    session_id = result.get("call_session_id") or result.get("session_id")
+    return session_id, None
+
+
 SCHEMA = "t_p45929761_bold_move_project"
 # Публичный URL этой же функции — нужен для регистрации внешних вебхуков (Avito и т.п.)
 SELF_FUNCTION_URL = "https://functions.poehali.dev/37f12dd8-c3c7-4bc9-9451-27dd60d66a3b"
@@ -2240,7 +2359,8 @@ def handler(event: dict, context) -> dict:
 
             # Секретные поля (шифруются в БД, наружу отдаются маской "••••")
             SECRET_KEYS = ("avito_client_secret", "whatsapp_token", "mistral_key",
-                           "openai_key", "assemblyai_key", "whisper_key", "other_key")
+                           "openai_key", "assemblyai_key", "whisper_key", "other_key",
+                           "uis_api_key")
             SECRET_MASK = "••••••••"
 
             # GET — прочитать config компании (секреты маскируем, не отдаём открыто)
@@ -3135,6 +3255,328 @@ def handler(event: dict, context) -> dict:
             # если сервер отвечает медленно. Анализ пересобирается отдельно — при открытии
             # карточки клиента в CRM (см. resource == "touches" analyze).
             return ok({"client_id": client_id, "saved": True})
+
+        # ── UIS-WEBHOOK-CONFIG: секретный ключ + URL вебхука для ЛК UIS (аналог channel-config) ──
+        if resource == "uis-webhook-config":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            if method == "GET":
+                wh_key = cfg.get("_uis_webhook_key")
+                webhook_url = (f"{SELF_FUNCTION_URL}?r=uis-webhook&company_id={owner_id}&key={wh_key}"
+                               if wh_key else None)
+                cur.execute(f"""
+                    SELECT COUNT(*) FROM {SCHEMA}.touch_events te
+                    JOIN {SCHEMA}.touch_clients tc ON tc.id=te.client_id
+                    WHERE te.channel='call' AND tc.company_id=%s
+                """, (owner_id,))
+                calls_count = cur.fetchone()[0]
+                return ok({
+                    "webhook_url": webhook_url,
+                    "calls_count": calls_count,
+                    "last_event_at": cfg.get("_uis_last_event_at"),
+                })
+
+            if method == "POST" and body.get("regenerate"):
+                new_key = uuid.uuid4().hex
+                cfg["_uis_webhook_key"] = new_key
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+                conn.commit()
+                webhook_url = f"{SELF_FUNCTION_URL}?r=uis-webhook&company_id={owner_id}&key={new_key}"
+                return ok({"webhook_url": webhook_url})
+
+            return err("unknown action")
+
+        # ── UIS-WEBHOOK: приём событий звонков от АТС UIS (шлёт сама UIS) ──────────
+        # URL регистрируется в личном кабинете UIS. Защита — company_id+key в query,
+        # как у avito-webhook. Отвечаем максимально быстро — БЕЗ расшифровки и ИИ
+        # (тот же принцип, что и у avito-webhook: внешний сервис ждёт быстрый ответ).
+        if resource == "uis-webhook" and method == "POST":
+            company_id_q = qs.get("company_id")
+            webhook_key  = qs.get("key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_uis_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            call = uis_extract_call(body)
+            if not call["phone"] and not call["session_id"]:
+                return ok({"skipped": True})  # служебное событие без полезных данных
+
+            # Ищем клиента по последним 10 цифрам номера — UIS иногда присылает
+            # номер в разных форматах (с +7/8/без кода и т.п.).
+            client_row = None
+            if call["phone"]:
+                last10 = call["phone"][-10:]
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.touch_clients
+                    WHERE company_id=%s AND phone IS NOT NULL
+                      AND right(regexp_replace(phone,'\\D','','g'),10)=%s
+                    LIMIT 1
+                """, (owner_id, last10))
+                client_row = cur.fetchone()
+
+            is_new_client = False
+            if not client_row and call["phone"]:
+                is_new_client = True
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id",
+                    (owner_id, call["phone"]))
+                client_row = cur.fetchone()
+                conn.commit()
+
+            if not client_row:
+                return ok({"skipped": True})  # нет ни номера, ни известного клиента — нечего привязать
+
+            client_id = client_row[0]
+
+            # Новый клиент по звонку — сразу создаём заявку в CRM (как и для Avito),
+            # чтобы звонок не терялся без карточки.
+            if is_new_client:
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+                master_row = cur.fetchone()
+                master_id = master_row[0] if master_row else None
+                final_company_id = owner_id or master_id
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, 'Телефония', 'call', %s, NOW())
+                    RETURNING id
+                """, (f"uis_{call['session_id'] or uuid.uuid4().hex}", "Клиент по звонку", call["phone"],
+                      "Первый звонок через АТС UIS", final_company_id))
+                new_order_id = cur.fetchone()[0]
+                cur.execute(
+                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
+                    (new_order_id, client_id))
+                conn.commit()
+
+            # Дедупликация: если запись уже создана кнопкой click-to-call (черновик
+            # status='initiated' с тем же external_id=session_id) — дополняем её,
+            # а не плодим дубль (см. UNIQUE(channel, external_id) в touch_events).
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.touch_events
+                    (client_id, channel, direction, external_id, audio_url, duration_sec, status)
+                VALUES (%s, 'call', %s, %s, %s, %s, %s)
+                ON CONFLICT (channel, external_id) WHERE external_id IS NOT NULL
+                DO UPDATE SET
+                    audio_url=COALESCE(EXCLUDED.audio_url, {SCHEMA}.touch_events.audio_url),
+                    duration_sec=EXCLUDED.duration_sec,
+                    status=EXCLUDED.status
+                RETURNING id
+            """, (client_id, call["direction"], call["session_id"], call["record_url"],
+                  call["duration"], call["status"]))
+            touch_id = cur.fetchone()[0]
+
+            cfg["_uis_last_event_at"] = datetime.now().isoformat()
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+
+            return ok({"client_id": client_id, "touch_id": touch_id, "saved": True})
+
+        # ── CLICK-TO-CALL: кнопка «Позвонить» инициирует реальный звонок через UIS ──
+        if resource == "click-to-call" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            phone_q = body.get("phone")
+            client_id_q = body.get("client_id")
+            if not phone_q:
+                return err("phone required")
+            contact_phone = normalize_phone(phone_q)
+            if not contact_phone:
+                return err("phone invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            if not cfg.get("uis_enabled"):
+                return err("Телефония UIS отключена в настройках", 400)
+            api_key = decrypt_secret(cfg.get("uis_api_key"))
+            virtual_number = cfg.get("uis_virtual_phone_number")
+            if not api_key or not virtual_number:
+                return err("Заполните API-ключ и виртуальный номер в настройках телефонии", 400)
+
+            cur.execute(f"SELECT uis_phone FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
+            urow = cur.fetchone()
+            operator_phone = urow[0] if urow else None
+            if not operator_phone:
+                return err("У вас не указан номер в АТС — заполните его в настройках телефонии", 400)
+
+            # Клиент в модуле «Касания»: находим по id (если передан) или по телефону, иначе создаём
+            client_row = None
+            if client_id_q:
+                cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                            (client_id_q, owner_id))
+                client_row = cur.fetchone()
+            if not client_row:
+                cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND phone=%s",
+                            (owner_id, contact_phone))
+                client_row = cur.fetchone()
+                if not client_row:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id",
+                        (owner_id, contact_phone))
+                    client_row = cur.fetchone()
+                    conn.commit()
+            client_id = client_row[0]
+
+            session_id, call_err = uis_start_call(api_key, virtual_number, operator_phone, contact_phone)
+            if call_err:
+                return err(call_err, 502)
+
+            # Черновая запись — звонок появится в карточке сразу, не дожидаясь вебхука.
+            # Вебхук о завершении найдёт её по session_id (external_id) и дополнит.
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, status)
+                VALUES (%s, 'call', 'out', %s, 'initiated')
+                ON CONFLICT (channel, external_id) WHERE external_id IS NOT NULL DO NOTHING
+                RETURNING id
+            """, (client_id, session_id))
+            trow = cur.fetchone()
+            conn.commit()
+
+            return ok({"ok": True, "client_id": client_id, "session_id": session_id,
+                       "touch_id": trow[0] if trow else None})
+
+        # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
+        if resource == "uis-employees":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT id, name, phone, uis_phone FROM {SCHEMA}.users
+                    WHERE removed_at IS NULL AND (id=%s OR (company_id=%s AND role='manager'))
+                    ORDER BY (id=%s) DESC, name
+                """, (owner_id, owner_id, owner_id))
+                rows = cur.fetchall()
+                return ok({"employees": [
+                    {"id": r[0], "name": r[1], "phone": r[2], "uis_phone": r[3]} for r in rows
+                ]})
+
+            if method == "POST":
+                user_id = body.get("user_id")
+                uis_phone_val = (body.get("uis_phone") or "").strip() or None
+                if not user_id:
+                    return err("user_id required")
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.users SET uis_phone=%s
+                    WHERE id=%s AND (id=%s OR company_id=%s)
+                    RETURNING id
+                """, (uis_phone_val, int(user_id), owner_id, owner_id))
+                updated = cur.fetchone()
+                if not updated:
+                    return err("Сотрудник не найден", 404)
+                conn.commit()
+                return ok({"ok": True})
+
+            return err("unknown method")
+
+        # ── TRANSCRIBE-CALL: расшифровка записи звонка по требованию ───────────────
+        # Не делаем это внутри uis-webhook — вебхук должен отвечать быстро (см.
+        # комментарий там же), а скачивание + распознавание могут занять больше
+        # времени, чем таймаут функции. Вызывается фронтом при открытии ленты
+        # касаний (см. useAutoTranscribe.ts).
+        if resource == "transcribe-call" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            touch_id = body.get("touch_id")
+            if not touch_id:
+                return err("touch_id required")
+
+            cur.execute(f"""
+                SELECT te.id, te.audio_url, te.text, te.channel
+                FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id=te.client_id
+                WHERE te.id=%s AND tc.company_id=%s
+            """, (touch_id, owner_id))
+            row = cur.fetchone()
+            if not row:
+                return err("звонок не найден", 404)
+            _, audio_url, existing_text, channel = row
+            if channel != "call":
+                return err("это касание не звонок", 400)
+            if existing_text:
+                return ok({"touch_id": touch_id, "text": existing_text, "cached": True})
+            if not audio_url:
+                return err("нет записи звонка", 400)
+
+            deepgram_key = os.environ.get("DEEPGRAM_API_KEY", "")
+            if not deepgram_key:
+                return err("Транскрибация недоступна — нет ключа", 500)
+
+            cur.execute(f"UPDATE {SCHEMA}.touch_events SET status='transcribing' WHERE id=%s", (touch_id,))
+            conn.commit()
+
+            try:
+                areq = _ureq.Request(audio_url, method="GET")
+                with _ureq.urlopen(areq, timeout=20) as r:
+                    audio_bytes = r.read()
+            except Exception as e:
+                cur.execute(f"UPDATE {SCHEMA}.touch_events SET status='received' WHERE id=%s", (touch_id,))
+                conn.commit()
+                return err(f"Не удалось скачать запись: {str(e)[:150]}", 502)
+
+            try:
+                dreq = _ureq.Request(
+                    "https://api.deepgram.com/v1/listen?model=nova-2&language=ru&punctuate=true",
+                    data=audio_bytes,
+                    headers={"Authorization": f"Token {deepgram_key}", "Content-Type": "audio/mpeg"},
+                    method="POST")
+                with _ureq.urlopen(dreq, timeout=25) as r:
+                    dg_resp = json.loads(r.read().decode())
+                text = dg_resp.get("results", {}).get("channels", [{}])[0] \
+                    .get("alternatives", [{}])[0].get("transcript", "")
+            except Exception as e:
+                cur.execute(f"UPDATE {SCHEMA}.touch_events SET status='received' WHERE id=%s", (touch_id,))
+                conn.commit()
+                return err(f"Ошибка транскрибации: {str(e)[:150]}", 502)
+
+            cur.execute(f"UPDATE {SCHEMA}.touch_events SET text=%s, status='received' WHERE id=%s", (text, touch_id))
+            cur.execute(f"SELECT id FROM {SCHEMA}.touch_call_transcripts WHERE touch_id=%s", (touch_id,))
+            trow = cur.fetchone()
+            if trow:
+                cur.execute(f"UPDATE {SCHEMA}.touch_call_transcripts SET full_text=%s WHERE touch_id=%s",
+                            (text, touch_id))
+            else:
+                cur.execute(f"INSERT INTO {SCHEMA}.touch_call_transcripts (touch_id, full_text) VALUES (%s, %s)",
+                            (touch_id, text))
+            conn.commit()
+
+            return ok({"touch_id": touch_id, "text": text})
 
         # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
         # Кладёт сообщение в ленту со статусом 'pending' — воркер на VPS заберёт его

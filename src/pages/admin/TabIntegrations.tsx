@@ -6,6 +6,7 @@ import { crmFetch } from "./crm/crmApi";
 import { GROUPS, SECTIONS, type SectionDef, type ProviderOption } from "./integrations/integrationsConfig";
 import NotifyIntegrationCard from "./integrations/NotifyIntegrationCard";
 import ProviderSection from "./integrations/ProviderSection";
+import TelephonyUisCard from "./integrations/TelephonyUisCard";
 
 interface Props {
   isDark: boolean;
@@ -34,20 +35,27 @@ export default function TabIntegrations({ isDark }: Props) {
   const [avitoConnected, setAvitoConnected] = useState(false);
   const [avitoConnecting, setAvitoConnecting] = useState(false);
 
+  // Сохраняет config интеграций (merge с текущим на сервере, чтобы не затереть
+  // другие поля, если сейчас правим только одну секцию, напр. UIS).
+  const saveIntegrationsConfig = async (patch: Record<string, string | boolean>) => {
+    let prevCfg: Record<string, unknown> = {};
+    try {
+      const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
+      if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
+    } catch { /* тихо */ }
+    await crmFetch("integrations", {
+      method: "POST",
+      body: JSON.stringify({ config: { ...prevCfg, ...patch, _providers: JSON.stringify(activeProvider) } }),
+    });
+    return true;
+  };
+
   // Подключить Avito: сначала сохраняем Client ID/Secret, затем ведём владельца
   // на страницу входа Avito — только так выдаются права messenger:read/write.
   const connectAvito = async () => {
     setAvitoConnecting(true);
     try {
-      let prevCfg: Record<string, unknown> = {};
-      try {
-        const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
-        if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
-      } catch { /* тихо */ }
-      await crmFetch("integrations", {
-        method: "POST",
-        body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
-      });
+      await saveIntegrationsConfig(values);
       const res = await crmFetch("avito-auth-url") as { auth_url?: string; error?: string };
       if (!res?.auth_url) { setSectionCheck(s => ({ ...s, avito: "err" })); return; }
       window.location.href = res.auth_url;
@@ -68,15 +76,7 @@ export default function TabIntegrations({ isDark }: Props) {
       if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
       try {
         // Сначала сохраняем введённые ключи в БД компании
-        let prevCfg: Record<string, unknown> = {};
-        try {
-          const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
-          if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
-        } catch { /* тихо */ }
-        await crmFetch("integrations", {
-          method: "POST",
-          body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
-        });
+        await saveIntegrationsConfig(values);
         // Затем реальная проверка связи с Avito
         const res = await crmFetch("avito-check", { method: "POST" }) as { ok?: boolean; error?: string };
         setSectionCheck(s => ({ ...s, [section.id]: res?.ok ? "ok" : "err" }));
@@ -163,17 +163,7 @@ export default function TabIntegrations({ isDark }: Props) {
   const save = async () => {
     setSaved(false); setSaving(true);
     try {
-      // Новые сервисы (ключи + выбранные провайдеры) → таблица integrations.
-      // Мержим с текущим config, чтобы не затереть флаги notify_* из «Своего агента».
-      let prevCfg: Record<string, unknown> = {};
-      try {
-        const cur = await crmFetch("integrations") as { config?: Record<string, unknown> };
-        if (cur?.config && typeof cur.config === "object") prevCfg = cur.config;
-      } catch { /* тихо */ }
-      await crmFetch("integrations", {
-        method: "POST",
-        body: JSON.stringify({ config: { ...prevCfg, ...values, _providers: JSON.stringify(activeProvider) } }),
-      });
+      await saveIntegrationsConfig(values);
       // Telegram / MAX → бренд (как раньше)
       await updateBrand(token, {
         ...user?.brand,
@@ -262,18 +252,29 @@ export default function TabIntegrations({ isDark }: Props) {
               </div>
 
               {groupSections.map(section => (
-                <ProviderSection
-                  key={section.id}
-                  section={section}
-                  isDark={isDark}
-                  txt={txt} txtSub={txtSub}
-                  cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
-                  activeProvider={activeProvider} setActiveProvider={setActiveProvider}
-                  values={values} setValues={setValues}
-                  revealed={revealed} setRevealed={setRevealed}
-                  sectionCheck={sectionCheck} checkSection={checkSection}
-                  avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
-                />
+                section.id === "telephony" ? (
+                  <TelephonyUisCard
+                    key={section.id}
+                    isDark={isDark}
+                    cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+                    txt={txt} txtSub={txtSub}
+                    values={values} setValues={setValues}
+                    saveConfig={saveIntegrationsConfig}
+                  />
+                ) : (
+                  <ProviderSection
+                    key={section.id}
+                    section={section}
+                    isDark={isDark}
+                    txt={txt} txtSub={txtSub}
+                    cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+                    activeProvider={activeProvider} setActiveProvider={setActiveProvider}
+                    values={values} setValues={setValues}
+                    revealed={revealed} setRevealed={setRevealed}
+                    sectionCheck={sectionCheck} checkSection={checkSection}
+                    avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
+                  />
+                )
               ))}
             </div>
           );

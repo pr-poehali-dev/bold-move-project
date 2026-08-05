@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
+import { useCallClient } from "./useCallClient";
+import { useAutoTranscribe } from "./useAutoTranscribe";
 
 interface Touch {
   id: number;
@@ -68,6 +70,7 @@ const fmtDuration = (sec: number | null) => {
 
 export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   const t = useTheme();
+  const { call: callViaUis, calling: callingUis } = useCallClient();
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<TouchClient | null>(null);
   const [touches, setTouches] = useState<Touch[]>([]);
@@ -104,6 +107,10 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
+
+  // Звонки без расшифровки (запись есть, текста ещё нет) — расшифровываем
+  // по одному, пока лента открыта, и подтягиваем текст в неё же.
+  useAutoTranscribe(touches, () => load(true));
 
   // Тихий поллинг ленты — подхватывает новые сообщения от клиента и статус
   // отправленных («отправляется» → «отправлено») без перезахода на страницу.
@@ -174,11 +181,12 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
             <Icon name="Phone" size={12} style={{ color: t.textMute }} />
             {phone}
           </div>
-          <a href={`tel:${phone}`}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97]"
+          <button onClick={() => callViaUis(phone, client?.id)}
+            disabled={callingUis}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97] disabled:opacity-60"
             style={{ background: "#22c55e22", color: "#22c55e" }}>
-            <Icon name="PhoneCall" size={13} /> Позвонить
-          </a>
+            <Icon name={callingUis ? "Loader2" : "PhoneCall"} size={13} className={callingUis ? "animate-spin" : ""} /> Позвонить
+          </button>
         </div>
       ) : (
         <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center gap-1.5 text-xs font-medium"

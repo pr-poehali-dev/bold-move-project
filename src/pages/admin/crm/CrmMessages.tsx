@@ -6,11 +6,13 @@ import DrawerTouchesTab from "./DrawerTouchesTab";
 import { Dialog, channelMeta } from "./messagesChannels";
 import { MessagesDialogRow } from "./MessagesDialogRow";
 import { MessagesHiddenModal } from "./MessagesHiddenModal";
+import { useCallClient } from "./useCallClient";
 
 const isAvito = (d: Dialog) => d.last_channel === "avito" || d.source === "avito" || !!d.avito_chat_url;
 
 export default function CrmMessages() {
   const t = useTheme();
+  const { call: callViaUis, calling: callingUis } = useCallClient();
   const [dialogs, setDialogs] = useState<Dialog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Dialog | null>(null);
@@ -188,11 +190,12 @@ export default function CrmMessages() {
                   </button>
                 )}
                 {selected.phone && (
-                  <a href={`tel:${selected.phone}`} title="Позвонить"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-80"
+                  <button onClick={() => callViaUis(selected.phone!, selected.client_id)}
+                    disabled={callingUis} title="Позвонить"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-80 disabled:opacity-60"
                     style={{ background: "#22c55e20", color: "#22c55e" }}>
-                    <Icon name="Phone" size={13} /> <span className="hidden md:inline">Позвонить</span>
-                  </a>
+                    <Icon name={callingUis ? "Loader2" : "Phone"} size={13} className={callingUis ? "animate-spin" : ""} /> <span className="hidden md:inline">Позвонить</span>
+                  </button>
                 )}
                 {selected.contact_id != null && (
                   <button onClick={() => goToOrder(selected)}

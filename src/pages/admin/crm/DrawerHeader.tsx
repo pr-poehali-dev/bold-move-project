@@ -1,6 +1,7 @@
 import { STATUS_LABELS, Client, ClientStatus } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
+import { useCallClient } from "./useCallClient";
 
 interface Props {
   t: ThemeCtx;
@@ -31,6 +32,7 @@ export function DrawerHeader({
   statuses, canEdit, canFinance, saving, copied, hideHidden, setHideHidden, setConfirmDelete, onClose,
   onOpenAgent, onOpenBuilder,
 }: Props) {
+  const { call: callViaUis, calling } = useCallClient();
   return (
     <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${t.border}` }}>
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
@@ -111,17 +113,18 @@ export function DrawerHeader({
         {saving && <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
         {copied && <span className="hidden sm:inline text-xs text-violet-300 whitespace-nowrap">Скопировано!</span>}
 
-        {/* Позвонить клиенту */}
+        {/* Позвонить клиенту — через АТС UIS, если настроена, иначе обычный tel: */}
         {ord.phone && (
-          <a
-            href={`tel:${ord.phone}`}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90"
+          <button
+            onClick={() => callViaUis(ord.phone)}
+            disabled={calling}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition hover:opacity-90 disabled:opacity-60"
             style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
             title={`Позвонить: ${ord.phone}`}
           >
-            <Icon name="PhoneCall" size={13} />
+            <Icon name={calling ? "Loader2" : "PhoneCall"} size={13} className={calling ? "animate-spin" : ""} />
             <span className="hidden sm:inline">Позвонить</span>
-          </a>
+          </button>
         )}
 
         {/* Открыть диалог в Avito */}
