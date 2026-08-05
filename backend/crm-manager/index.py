@@ -151,6 +151,19 @@ def avito_get_messenger_token(cur, conn, owner_id, cfg):
     return avito_get_token(client_id_a, client_secret_a)
 
 
+def calc_unread(last_direction, last_at, last_read_at):
+    """Есть ли непрочитанное: последнее событие входящее и новее момента прочтения.
+    Даты в БД разного типа (одна с часовым поясом, другая без) — прямое сравнение
+    вызывает ошибку и роняет весь список диалогов, поэтому приводим их к общему виду."""
+    if last_direction != "in":
+        return False
+    if last_read_at is None:
+        return True
+    if last_at is None:
+        return False
+    return last_at.replace(tzinfo=None) > last_read_at.replace(tzinfo=None)
+
+
 def avito_api_get(token, path):
     req = _ureq.Request(f"https://api.avito.ru{path}",
                         headers={"Authorization": f"Bearer {token}"}, method="GET")
@@ -3257,8 +3270,10 @@ def handler(event: dict, context) -> dict:
             dialogs = []
             for r in cur.fetchall():
                 last_dir, last_at, last_read_at = r[7], r[9], r[15]
-                # unread — ОБЩЕЕ на компанию: последнее событие входящее и новее last_read_at
-                is_unread = (last_dir == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
+                # unread — ОБЩЕЕ на компанию: последнее событие входящее и новее last_read_at.
+                # ВАЖНО: created_at хранится без часового пояса, а last_read_at — с поясом.
+                # Их прямое сравнение роняло весь список диалогов, поэтому приводим к общему виду.
+                is_unread = calc_unread(last_dir, last_at, last_read_at)
                 dialogs.append({
                     "client_id": r[0],
                     "name": r[1],
@@ -3375,7 +3390,7 @@ def handler(event: dict, context) -> dict:
                 if not digits:
                     continue
                 # unread — ОБЩЕЕ на компанию: последнее входящее событие новее last_read_at
-                is_unread = (last_direction == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
+                is_unread = calc_unread(last_direction, last_at, last_read_at)
                 badges[digits] = {
                     "interest": interest,
                     "stage": stage,
@@ -3457,7 +3472,7 @@ def handler(event: dict, context) -> dict:
             attention = []
             for r in cur.fetchall():
                 last_direction, last_at, last_read_at = r[6], r[7], r[8]
-                is_unread = (last_direction == "in") and (last_read_at is None or (last_at is not None and last_at > last_read_at))
+                is_unread = calc_unread(last_direction, last_at, last_read_at)
                 attention.append({
                     "id": r[0], "name": r[1], "phone": r[2], "interest": r[3],
                     "stage": r[4], "next_action": r[5], "unread": is_unread,
