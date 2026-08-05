@@ -331,7 +331,9 @@ def uis_start_call(api_key, virtual_phone_number, operator_phone, contact_phone)
     except Exception as e:
         return None, f"UIS: {str(e)[:200]}"
     if resp.get("error"):
-        return None, resp["error"].get("message", "UIS: неизвестная ошибка")
+        _err = resp["error"]
+        print(f"[uis-diag] full_error={json.dumps(_err, ensure_ascii=False)}")
+        return None, _err.get("message", "UIS: неизвестная ошибка")
     result = resp.get("result") or {}
     session_id = result.get("call_session_id") or result.get("session_id")
     return session_id, None
@@ -3422,8 +3424,13 @@ def handler(event: dict, context) -> dict:
             if not api_key or not virtual_number:
                 return err("Заполните API-ключ и виртуальный номер в настройках телефонии", 400)
             # ── ВРЕМЕННАЯ ДИАГНОСТИКА (убрать после проверки) ──────────────────
+            try:
+                with _ureq.urlopen("https://api.ipify.org?format=json", timeout=5) as _r:
+                    _my_ip = json.loads(_r.read().decode()).get("ip")
+            except Exception as _e:
+                _my_ip = f"unknown ({_e})"
             print(f"[uis-diag] key_len={len(api_key)} key_head={api_key[:4]} key_tail={api_key[-4:]} "
-                  f"virtual={virtual_number!r} operator_raw_pending=True")
+                  f"virtual={virtual_number!r} outbound_ip={_my_ip}")
 
             cur.execute(f"SELECT uis_phone FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
             urow = cur.fetchone()
