@@ -1177,8 +1177,25 @@ def handler(event: dict, context) -> dict:
                     sets.append("sort_order=%s"); vals.append(body["sort_order"])
                 if not sets:
                     return err("nothing to update")
+
+                # Поле source у заказов (live_chats) хранит НАЗВАНИЕ источника (текст, не FK).
+                # При переименовании источника нужно каскадно переименовать его и во всех
+                # заказах, у которых стоит старое название — иначе они отвяжутся от источника.
+                old_name = None
+                if "name" in body:
+                    cur.execute(f"SELECT name FROM {SCHEMA}.order_sources WHERE id=%s AND company_id=%s", (int(sid), cid_filter))
+                    row = cur.fetchone()
+                    old_name = row[0] if row else None
+
                 vals.extend([int(sid), cid_filter])
                 cur.execute(f"UPDATE {SCHEMA}.order_sources SET {', '.join(sets)} WHERE id=%s AND company_id=%s", vals)
+
+                if old_name and old_name != body["name"]:
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.live_chats SET source=%s WHERE source=%s AND company_id=%s",
+                        (body["name"], old_name, cid_filter)
+                    )
+
                 conn.commit()
                 return ok({"ok": True})
 
