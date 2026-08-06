@@ -971,6 +971,15 @@ def handler(event: dict, context) -> dict:
                 sets.append("updated_at = NOW()")
                 # Момент входа на этап — обновляем только при реальной смене статуса,
                 # чтобы таймер «сколько на этапе» не сбрасывался при любой правке карточки.
+                # Метка (tags) сбрасывается при реальном переходе на другой этап — метки
+                # "Недозвон"/"Перезвонить" относятся к текущему этапу и не должны переезжать
+                # вместе с заказом дальше по воронке. Если tags передан явно этим же запросом —
+                # уважаем явное значение и не перетираем его.
+                if "status" in body and "tags" not in body:
+                    cur.execute(f"SELECT status FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    st_row = cur.fetchone()
+                    if st_row and st_row[0] != body["status"]:
+                        sets.append("tags = '{}'")
                 if "status" in body:
                     sets.append("status_changed_at = NOW()")
                 vals.append(int(cid))

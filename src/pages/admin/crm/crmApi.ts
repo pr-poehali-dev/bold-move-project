@@ -142,13 +142,11 @@ export const PRIORITY_COLORS: Record<string, string> = {
   high:   "#ef4444",
 };
 
-// Метки (теги) — предустановленные + пользовательские
+// Метки (теги) — только 2 варианта, ставится максимум одна метка сразу.
+// Метка сбрасывается автоматически при смене этапа/статуса заказа (см. backend/crm-manager).
 export const DEFAULT_TAGS = [
-  { label: "Недозвон",     color: "#ef4444" },
-  { label: "Перезвонить",  color: "#f59e0b" },
-  { label: "Ждёт ответа",  color: "#3b82f6" },
-  { label: "Думает",       color: "#a855f7" },
-  { label: "Договорились", color: "#22c55e" },
+  { label: "Недозвон",    color: "#ef4444" },
+  { label: "Перезвонить", color: "#f59e0b" },
 ];
 
 export interface ClientStatus {

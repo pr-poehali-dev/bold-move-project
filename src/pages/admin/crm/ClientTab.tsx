@@ -3,12 +3,9 @@ import { Client, DEFAULT_TAGS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import {
-  CustomTag, CustomClientField,
-  loadCustomTags, saveCustomTags,
+  CustomClientField,
   loadClientFields, saveClientFields,
   loadClientExtraValues, saveClientExtraValues,
-  loadHiddenBuiltinTags, saveHiddenBuiltinTags,
-  PRESET_TAG_COLORS,
 } from "./clientFieldsStore";
 
 interface Props {
@@ -105,66 +102,11 @@ export default function ClientTab({ data, save }: Props) {
   const getBuiltinValue = (clientKey: string): string =>
     (data[clientKey as keyof Client] as string) || "";
 
-  // ── Метки ───────────────────────────────────────────────────────────────
-  const [customTags, setCustomTags]       = useState<CustomTag[]>(loadCustomTags);
-  const [hiddenBuiltin, setHiddenBuiltin] = useState<Set<string>>(loadHiddenBuiltinTags);
-  const [editTagsMode, setEditTagsMode]   = useState(false);
-  const [newTagLabel, setNewTagLabel]     = useState("");
-  const [newTagColor, setNewTagColor]     = useState(PRESET_TAG_COLORS[0]);
-  const [editingTagId, setEditingTagId]   = useState<string | null>(null);
-  const editTagRef = useRef<string>("");
-
-  const builtinTags = DEFAULT_TAGS.filter(tg => !hiddenBuiltin.has(tg.label))
-    .map(tg => ({ id: tg.label, label: tg.label, color: tg.color, builtin: true as const }));
-  const customTagsMapped = customTags.map(tg => ({ ...tg, builtin: false as const }));
-  const allVisibleTags = [...builtinTags, ...customTagsMapped];
-
+  // ── Метки: ровно 2 варианта (Недозвон / Перезвонить), максимум одна активна.
+  // Клик по неактивной — ставит её (снимая прошлую). Клик по активной — снимает.
   const toggleTag = (label: string) => {
-    if (editTagsMode) return;
-    const cur = data.tags || [];
-    save({ tags: cur.includes(label) ? cur.filter(l => l !== label) : [...cur, label] });
-  };
-
-  const hideBuiltinTag = (label: string) => {
-    const next = new Set(hiddenBuiltin).add(label);
-    setHiddenBuiltin(next);
-    saveHiddenBuiltinTags(next);
-    if ((data.tags || []).includes(label))
-      save({ tags: (data.tags || []).filter(l => l !== label) });
-  };
-
-  const addCustomTag = () => {
-    const label = newTagLabel.trim();
-    if (!label) return;
-    const tag: CustomTag = { id: `tag_${Date.now()}`, label, color: newTagColor };
-    const updated = [...customTags, tag];
-    setCustomTags(updated);
-    saveCustomTags(updated);
-    setNewTagLabel("");
-  };
-
-  const deleteCustomTag = (id: string) => {
-    const tag = customTags.find(tg => tg.id === id);
-    const updated = customTags.filter(tg => tg.id !== id);
-    setCustomTags(updated);
-    saveCustomTags(updated);
-    if (tag && (data.tags || []).includes(tag.label))
-      save({ tags: (data.tags || []).filter(l => l !== tag.label) });
-  };
-
-  const renameCustomTag = (id: string, newLabel: string) => {
-    const tag = customTags.find(tg => tg.id === id);
-    const updated = customTags.map(tg => tg.id === id ? { ...tg, label: newLabel } : tg);
-    setCustomTags(updated);
-    saveCustomTags(updated);
-    if (tag && (data.tags || []).includes(tag.label))
-      save({ tags: (data.tags || []).map(l => l === tag.label ? newLabel : l) });
-  };
-
-  const changeTagColor = (id: string, color: string) => {
-    const updated = customTags.map(tg => tg.id === id ? { ...tg, color } : tg);
-    setCustomTags(updated);
-    saveCustomTags(updated);
+    const cur = (data.tags || [])[0];
+    save({ tags: cur === label ? [] : [label] });
   };
 
   return (
@@ -325,131 +267,37 @@ export default function ClientTab({ data, save }: Props) {
       {/* ── Разделитель ───────────────────────────────────────────────── */}
       <div style={{ borderTop: `1px solid ${t.border2}` }} />
 
-      {/* ── Метки ─────────────────────────────────────────────────────── */}
+      {/* ── Метки: только 2 варианта, максимум одна активна одновременно.
+           Метка сбрасывается автоматически при смене этапа заказа. ── */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-medium" style={{ color: t.textMute }}>Метки</label>
-          <button
-            onClick={() => { setEditTagsMode(v => !v); setEditingTagId(null); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition"
-            style={{
-              background: editTagsMode ? "#7c3aed20" : "transparent",
-              color: editTagsMode ? "#a78bfa" : t.textMute,
-            }}>
-            <Icon name={editTagsMode ? "Check" : "Settings2"} size={11} />
-            {editTagsMode ? "Готово" : "Настроить"}
-          </button>
-        </div>
-
+        <label className="text-xs font-medium mb-2 block" style={{ color: t.textMute }}>Метки</label>
         <div className="flex flex-wrap gap-2">
-          {allVisibleTags.map(tag => {
-            const active       = (data.tags || []).includes(tag.label);
-            const isEditingThis = editTagsMode && !tag.builtin && editingTagId === tag.id;
-
+          {DEFAULT_TAGS.map(tag => {
+            const active = (data.tags || [])[0] === tag.label;
             return (
-              <div key={tag.id} className="flex items-center gap-1">
+              <div key={tag.label} className="flex items-center gap-1">
                 <button
                   onClick={() => toggleTag(tag.label)}
+                  title={active ? "Нажмите, чтобы снять метку" : `Поставить метку «${tag.label}»`}
                   className="px-3 py-1 rounded-lg text-xs font-semibold transition"
                   style={{
                     background: active ? tag.color + "30" : t.surface2,
                     color: active ? tag.color : t.textMute,
                     border: `1px solid ${active ? tag.color + "60" : t.border}`,
-                    cursor: editTagsMode ? "default" : "pointer",
-                    opacity: editTagsMode ? 0.7 : 1,
                   }}>
-                  {isEditingThis ? (
-                    <input
-                      autoFocus
-                      defaultValue={tag.label}
-                      onChange={e => { editTagRef.current = e.target.value; }}
-                      onBlur={() => { renameCustomTag(tag.id, editTagRef.current || tag.label); setEditingTagId(null); }}
-                      onKeyDown={e => { if (e.key === "Enter") { renameCustomTag(tag.id, editTagRef.current || tag.label); setEditingTagId(null); } }}
-                      className="bg-transparent focus:outline-none w-16 text-xs"
-                      style={{ color: tag.color }}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  ) : tag.label}
+                  {tag.label}
                 </button>
-
-                {editTagsMode && (
-                  <div className="flex items-center gap-0.5">
-                    {!tag.builtin && (
-                      <>
-                        <button onClick={() => { editTagRef.current = tag.label; setEditingTagId(tag.id); }}
-                          className="p-0.5 rounded hover:bg-white/5" style={{ color: "#a78bfa" }}>
-                          <Icon name="Pencil" size={10} />
-                        </button>
-                        <input type="color" value={tag.color}
-                          onChange={e => changeTagColor(tag.id, e.target.value)}
-                          className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
-                        <button onClick={() => deleteCustomTag(tag.id)}
-                          className="p-0.5 rounded hover:bg-red-500/10" style={{ color: "#ef4444" }}>
-                          <Icon name="X" size={10} />
-                        </button>
-                      </>
-                    )}
-                    {tag.builtin && (
-                      <button onClick={() => hideBuiltinTag(tag.label)}
-                        className="p-0.5 rounded hover:bg-red-500/10" style={{ color: "#ef4444" }}>
-                        <Icon name="X" size={10} />
-                      </button>
-                    )}
-                  </div>
+                {active && (
+                  <button onClick={() => toggleTag(tag.label === "Недозвон" ? "Перезвонить" : "Недозвон")}
+                    title="Сменить метку"
+                    className="p-1 rounded-md transition hover:bg-white/10" style={{ color: tag.color }}>
+                    <Icon name="RefreshCw" size={11} />
+                  </button>
                 )}
               </div>
             );
           })}
-
-          {editTagsMode && hiddenBuiltin.size > 0 && (
-            <div className="w-full mt-2 flex flex-wrap gap-2">
-              <span className="text-[10px] w-full" style={{ color: t.textMute }}>Скрытые встроенные:</span>
-              {DEFAULT_TAGS.filter(tg => hiddenBuiltin.has(tg.label)).map(tag => (
-                <button key={tag.label}
-                  onClick={() => { const next = new Set(hiddenBuiltin); next.delete(tag.label); setHiddenBuiltin(next); saveHiddenBuiltinTags(next); }}
-                  className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold transition opacity-50 hover:opacity-100"
-                  style={{ background: tag.color + "20", color: tag.color, border: `1px solid ${tag.color}40` }}>
-                  + {tag.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
-
-        {editTagsMode && (
-          <div className="flex items-center gap-1.5 mt-3 w-full">
-            <input
-              value={newTagLabel}
-              onChange={e => setNewTagLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") addCustomTag(); }}
-              className="rounded-lg px-2.5 py-1 text-xs focus:outline-none w-32"
-              style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}
-              placeholder="Новая метка..."
-            />
-            <div className="flex gap-1">
-              {PRESET_TAG_COLORS.map(c => (
-                <button key={c} onClick={() => setNewTagColor(c)}
-                  className="w-4 h-4 rounded-full transition"
-                  style={{
-                    background: c,
-                    outline: newTagColor === c ? `2px solid ${c}` : "none",
-                    outlineOffset: 2,
-                  }} />
-              ))}
-            </div>
-            <button onClick={addCustomTag} disabled={!newTagLabel.trim()}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-40"
-              style={{ background: newTagColor + "25", color: newTagColor, border: `1px solid ${newTagColor}50` }}>
-              + Добавить
-            </button>
-          </div>
-        )}
-
-        {!editTagsMode && allVisibleTags.length > 0 && (
-          <div className="mt-2 text-[10px]" style={{ color: t.textMute }}>
-            Нажмите на метку чтобы включить / выключить
-          </div>
-        )}
       </div>
     </div>
   );
