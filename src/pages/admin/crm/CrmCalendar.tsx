@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { crmFetch } from "./crmApi";
+import { useEffect, useMemo, useState } from "react";
+import { crmFetch, EVENT_TYPE_LABELS } from "./crmApi";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, MONTH_NAMES } from "./calendarTypes";
@@ -8,8 +8,20 @@ import { CalendarWeekView } from "./CalendarWeekView";
 import { CalendarLeftSidebar, CalendarDaySidebar } from "./CalendarSidebar";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarMobileView } from "./CalendarMobileView";
+import CalendarColorSettings from "./CalendarColorSettings";
 import { buildMonthGrid, eventsForDay, mondayWeekStart } from "./calendarUtils";
 import { resolveEventColor } from "./syncedCols";
+
+const LS_CALENDAR_TYPE_FILTER = "crm_calendar_type_filter";
+function loadTypeFilter(): string[] {
+  try {
+    const raw = localStorage.getItem(LS_CALENDAR_TYPE_FILTER);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function saveTypeFilter(v: string[]) {
+  localStorage.setItem(LS_CALENDAR_TYPE_FILTER, JSON.stringify(v));
+}
 
 export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
   const t = useTheme();
@@ -23,6 +35,23 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
   const [addModal, setAddModal]   = useState<{ date: string } | null>(null);
   const [editModal, setEditModal] = useState<CalEvent | null>(null);
+  const [colorSettingsOpen, setColorSettingsOpen] = useState(false);
+  const [colorsVersion, setColorsVersion] = useState(0);
+  // Пустой список = показываем все типы. Непустой = показываем только выбранные.
+  const [typeFilter, setTypeFilter] = useState<string[]>(loadTypeFilter);
+
+  const toggleTypeFilter = (type: string) => {
+    setTypeFilter(prev => {
+      const next = prev.includes(type) ? prev.filter(x => x !== type) : [...prev, type];
+      saveTypeFilter(next);
+      return next;
+    });
+  };
+
+  const filteredEvents = useMemo(
+    () => typeFilter.length === 0 ? events : events.filter(e => typeFilter.includes(e.event_type)),
+    [events, typeFilter]
+  );
 
   const loadMonth = (m: number, y: number) =>
     crmFetch("calendar-events", undefined, { month: String(m), year: String(y) })
@@ -76,7 +105,7 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
   };
 
   const allCells       = buildMonthGrid(year, month);
-  const getDayEvents   = (day: number, cur: boolean) => eventsForDay(events, day, month, year, cur);
+  const getDayEvents   = (day: number, cur: boolean) => eventsForDay(filteredEvents, day, month, year, cur);
   const selectedEvents = selectedDay ? getDayEvents(selectedDay, true) : [];
 
   const weekEnd = new Date(weekStart);
@@ -84,13 +113,13 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
   const weekLabel = `${weekStart.getDate()} ${MONTH_NAMES[weekStart.getMonth()].slice(0,3)} — ${weekEnd.getDate()} ${MONTH_NAMES[weekEnd.getMonth()].slice(0,3)} ${weekEnd.getFullYear()}`;
 
   return (
-    <div>
+    <div key={colorsVersion}>
       {/* ── МОБИЛЕ: Google-like календарь ── */}
       <div className="sm:hidden">
         <CalendarMobileView
           year={year}
           month={month}
-          events={events}
+          events={filteredEvents}
           selectedDay={selectedDay}
           onSelectDay={setSelectedDay}
           onPrevMonth={prevMonth}
@@ -115,7 +144,7 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Шапка */}
-          <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${t.border}` }}>
+          <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderBottom: `1px solid ${t.border}` }}>
             <div className="flex items-center gap-2">
               <button onClick={view === "month" ? prevMonth : prevWeek}
                 className="w-8 h-8 flex items-center justify-center rounded-xl transition"
@@ -131,7 +160,13 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
                 {view === "month" ? `${MONTH_NAMES[month-1]} ${year}` : weekLabel}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => setColorSettingsOpen(true)}
+                title="Цвета типов событий"
+                className="w-8 h-8 flex items-center justify-center rounded-xl transition"
+                style={{ color: t.textSub, background: t.surface2, border: `1px solid ${t.border}` }}>
+                <Icon name="Palette" size={14} />
+              </button>
               <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
                 {(["month","week"] as const).map(v => (
                   <button key={v} onClick={() => setView(v)}
@@ -149,16 +184,46 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
             </div>
           </div>
 
+          {/* Фильтр по типу события */}
+          <div className="flex items-center gap-1.5 flex-wrap px-5 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
+            <span className="text-[10px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Тип</span>
+            {Object.entries(EVENT_TYPE_LABELS).map(([k, label]) => {
+              const color = resolveEventColor(k);
+              const isSel = typeFilter.includes(k);
+              const isAllSelected = typeFilter.length === 0;
+              return (
+                <button key={k} onClick={() => toggleTypeFilter(k)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition"
+                  style={{
+                    background: (isSel || isAllSelected) ? color + "20" : "transparent",
+                    borderColor: (isSel || isAllSelected) ? color + "50" : t.border,
+                    color: (isSel || isAllSelected) ? color : t.textMute,
+                    opacity: isAllSelected || isSel ? 1 : 0.5,
+                  }}>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                  {label}
+                </button>
+              );
+            })}
+            {typeFilter.length > 0 && (
+              <button onClick={() => { setTypeFilter([]); saveTypeFilter([]); }}
+                className="text-[11px] font-medium px-2 py-1 rounded-lg transition"
+                style={{ color: t.textMute }}>
+                Сбросить
+              </button>
+            )}
+          </div>
+
           {view === "month" && (
             <CalendarMonthGrid
               allCells={allCells} year={year} month={month}
-              selectedDay={selectedDay} events={events}
+              selectedDay={selectedDay} events={filteredEvents}
               onSelectDay={setSelectedDay} onDoubleClickDay={openAdd}
-              onSelectClient={onSelectClient}
+              onSelectClient={onSelectClient} onEditEvent={setEditModal}
             />
           )}
           {view === "week" && (
-            <CalendarWeekView weekStart={weekStart} events={events} onAddAt={openAdd} onEdit={setEditModal} onSelectClient={onSelectClient} />
+            <CalendarWeekView weekStart={weekStart} events={filteredEvents} onAddAt={openAdd} onEdit={setEditModal} onSelectClient={onSelectClient} />
           )}
         </div>
 
@@ -178,6 +243,12 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
       {editModal && (
         <CalendarEventModal mode="edit" event={editModal}
           onClose={() => setEditModal(null)} onSave={saveEdit} onDelete={deleteEvent} />
+      )}
+      {colorSettingsOpen && (
+        <CalendarColorSettings
+          onClose={() => setColorSettingsOpen(false)}
+          onChanged={() => setColorsVersion(v => v + 1)}
+        />
       )}
     </div>
   );

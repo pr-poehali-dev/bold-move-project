@@ -56,7 +56,7 @@ export function saveSyncedColors(v: Record<string, string>) {
 }
 
 // ── Цвет события по типу (из цветов канбана) ──────────────────────────────────
-const TYPE_TO_COL: Record<string, string> = {
+export const TYPE_TO_COL: Record<string, string> = {
   measure: "measures",
   install: "installs",
   call:    "working",

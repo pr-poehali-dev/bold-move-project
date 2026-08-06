@@ -12,10 +12,11 @@ interface CalendarMonthGridProps {
   onSelectDay: (day: number | null) => void;
   onDoubleClickDay: (iso: string) => void;
   onSelectClient?: (id: number) => void;
+  onEditEvent: (e: CalEvent) => void;
 }
 
 export function CalendarMonthGrid({
-  allCells, year, month, selectedDay, events, onSelectDay, onDoubleClickDay, onSelectClient,
+  allCells, year, month, selectedDay, events, onSelectDay, onDoubleClickDay, onSelectClient, onEditEvent,
 }: CalendarMonthGridProps) {
   const t = useTheme();
   const today = new Date();
@@ -53,18 +54,16 @@ export function CalendarMonthGrid({
                   {c.day}
                 </span>
               </div>
-              <div className="space-y-0.5 px-1">
-                {dayEvents.slice(0, 3).map(ev => (
+              <div className="space-y-0.5 px-1 overflow-y-auto" style={{ maxHeight: "calc(100% - 28px)" }}
+                onClick={containerEv => containerEv.stopPropagation()}>
+                {dayEvents.map(ev => (
                   <EventBadge key={ev.id} e={ev} onClick={() => {
-                    // Клик на карточку — выбираем день (открываем в сайдбаре), не переходим сразу в заказ
-                    onSelectDay(c.day);
+                    // Клик на событие — сразу переходим в карточку заказа (если привязан клиент),
+                    // иначе открываем редактирование события
+                    if (ev.client_id && onSelectClient) onSelectClient(ev.client_id);
+                    else onEditEvent(ev);
                   }} />
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-[9px] font-semibold px-1" style={{ color: t.textMute }}>
-                    +{dayEvents.length - 3} ещё
-                  </div>
-                )}
               </div>
             </div>
           );
