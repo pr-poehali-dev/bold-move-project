@@ -68,6 +68,21 @@ const fmtDuration = (sec: number | null) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
+// Статус звонка → иконка/подпись/цвет. Пропущенный — красным (даже если карточка
+// сама «исходящая» по направлению записи — статус missed важнее направления).
+const MISSED_STATUSES = new Set(["missed", "no-answer", "noanswer", "busy", "declined"]);
+const callMeta = (status: string, out: boolean): { icon: string; label: string; color: string } => {
+  if (MISSED_STATUSES.has(status)) {
+    return { icon: "PhoneMissed", label: "Пропущенный", color: "#ef4444" };
+  }
+  if (status === "initiated") {
+    return { icon: "PhoneCall", label: "Звонок…", color: "#eab308" };
+  }
+  return out
+    ? { icon: "PhoneOutgoing", label: "Исходящий", color: "#22c55e" }
+    : { icon: "PhoneIncoming", label: "Входящий", color: "#3b82f6" };
+};
+
 export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   const t = useTheme();
   const { call: callViaUis, calling: callingUis } = useCallClient();
@@ -253,9 +268,10 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
                   {isCall ? (
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <Icon name="PhoneCall" size={13} style={{ color: t.textSub }} />
-                        <span className="text-xs font-medium" style={{ color: t.text }}>
-                          Звонок {fmtDuration(tt.duration_sec)}
+                        <Icon name={callMeta(tt.status, out).icon} size={13} style={{ color: callMeta(tt.status, out).color }} />
+                        <span className="text-xs font-medium" style={{ color: callMeta(tt.status, out).color }}>
+                          {callMeta(tt.status, out).label}
+                          {tt.duration_sec ? ` · ${fmtDuration(tt.duration_sec)}` : ""}
                         </span>
                         {tt.status === "transcribing" && (
                           <span className="text-[10px]" style={{ color: t.textMute }}>расшифровка…</span>
