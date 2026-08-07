@@ -2,7 +2,7 @@
 
 export type BuiltinBlockId =
   | "status" | "tags" | "contacts" | "object" | "dates" | "notes"
-  | "pl" | "income" | "costs" | "files" | "cancel";
+  | "pl" | "income" | "costs" | "files" | "cancel" | "call_dates";
 
 export type BlockId = BuiltinBlockId | string; // custom_TIMESTAMP
 
@@ -67,16 +67,17 @@ export const COLOR_OPTIONS = [
 ];
 
 export const DEFAULT_BLOCKS: BlockDef[] = [
-  { id: "status",   col: 0, order: 0 },
-  { id: "tags",     col: 0, order: 1 },
-  { id: "contacts", col: 0, order: 2 },
-  { id: "object",   col: 0, order: 3 },
-  { id: "dates",    col: 0, order: 4 },
-  { id: "notes",    col: 0, order: 5, wide: true },
-  { id: "income",   col: 1, order: 0 },
-  { id: "costs",    col: 1, order: 1 },
-  { id: "files",    col: 1, order: 2 },
-  { id: "cancel",   col: 1, order: 3 },
+  { id: "status",     col: 0, order: 0 },
+  { id: "tags",       col: 0, order: 1 },
+  { id: "contacts",   col: 0, order: 2 },
+  { id: "object",     col: 0, order: 3 },
+  { id: "dates",      col: 0, order: 4 },
+  { id: "call_dates", col: 0, order: 5 },
+  { id: "notes",      col: 0, order: 6, wide: true },
+  { id: "income",     col: 1, order: 0 },
+  { id: "costs",      col: 1, order: 1 },
+  { id: "files",      col: 1, order: 2 },
+  { id: "cancel",     col: 1, order: 3 },
 ];
 
 // Блоки у которых wide задан жёстко и не меняется пользователем

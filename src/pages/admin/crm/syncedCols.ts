@@ -56,19 +56,26 @@ export function saveSyncedColors(v: Record<string, string>) {
 }
 
 // ── Цвет события по типу (из цветов канбана) ──────────────────────────────────
+// next_call/last_call не привязаны ни к одной колонке канбана (это не этап
+// воронки, а метки звонков в блоке «Касания») — используют свой собственный
+// цвет по умолчанию, настраиваемый независимо через CalendarColorSettings.
 export const TYPE_TO_COL: Record<string, string> = {
-  measure: "measures",
-  install: "installs",
-  call:    "working",
-  payment: "done",
-  other:   "new",
+  measure:   "measures",
+  install:   "installs",
+  call:      "working",
+  payment:   "done",
+  next_call: "next_call",
+  last_call: "last_call",
+  other:     "new",
 };
 const COL_DEFAULTS: Record<string, string> = {
-  measures: "#f59e0b",
-  installs: "#f97316",
-  working:  "#a78bfa",
-  done:     "#10b981",
-  new:      "#8b5cf6",
+  measures:  "#f59e0b",
+  installs:  "#f97316",
+  working:   "#a78bfa",
+  done:      "#10b981",
+  next_call: "#3b82f6",
+  last_call: "#8b5cf6",
+  new:       "#8b5cf6",
 };
 export function resolveEventColor(eventType: string): string {
   const synced = loadSyncedColors();

@@ -507,6 +507,7 @@ def normalize_phone(raw):
 
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
+    "next_call_date",
     "notes", "address", "area", "budget", "source",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "discount_pct", "discount_amount",
@@ -778,6 +779,7 @@ def handler(event: dict, context) -> dict:
                            lc.photo_before_url, lc.photo_after_url, lc.document_url,
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
                            lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
+                           lc.next_call_date, lcall.last_call_at,
                            COALESCE(u.is_demo, FALSE) AS is_demo,
                            COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total
                     FROM {SCHEMA}.live_chats lc
@@ -787,6 +789,13 @@ def handler(event: dict, context) -> dict:
                         FROM {SCHEMA}.client_custom_fin_values
                         GROUP BY client_id
                     ) cfv ON cfv.client_id = lc.id
+                    LEFT JOIN (
+                        SELECT tc2.crm_contact_id AS contact_id, MAX(te.created_at) AS last_call_at
+                        FROM {SCHEMA}.touch_clients tc2
+                        JOIN {SCHEMA}.touch_events te ON te.client_id = tc2.id
+                        WHERE te.channel='call' AND te.direction='in' AND tc2.crm_contact_id IS NOT NULL
+                        GROUP BY tc2.crm_contact_id
+                    ) lcall ON lcall.contact_id = lc.id
                     WHERE (lc.status != 'deleted' OR lc.status = %s)
                 """
                 # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.
@@ -1019,6 +1028,25 @@ def handler(event: dict, context) -> dict:
                         else:
                             cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
                                 VALUES (%s,%s,'install',%s,'#f97316',%s)""", (int(cid), f"Монтаж: {name}", body["install_date"], company_id))
+                    else:
+                        if ex:
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
+
+                # Синхронизируем дату следующего звонка в календаре (блок «Касания»,
+                # заполняется вручную сотрудником — напоминание для повторного созвона).
+                if "next_call_date" in body:
+                    cur.execute(f"SELECT client_name FROM {SCHEMA}.live_chats WHERE id = %s", (int(cid),))
+                    nr = cur.fetchone()
+                    name = (nr[0] if nr else "") or "Клиент"
+                    cur.execute(f"SELECT id FROM {SCHEMA}.calendar_events WHERE client_id=%s AND event_type='next_call' LIMIT 1", (int(cid),))
+                    ex = cur.fetchone()
+                    if body["next_call_date"]:
+                        if ex:
+                            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s, company_id=COALESCE(company_id,%s) WHERE id=%s",
+                                        (body["next_call_date"], f"Следующий звонок: {name}", company_id, ex[0]))
+                        else:
+                            cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
+                                VALUES (%s,%s,'next_call',%s,'#3b82f6',%s)""", (int(cid), f"Следующий звонок: {name}", body["next_call_date"], company_id))
                     else:
                         if ex:
                             cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
@@ -3416,6 +3444,26 @@ def handler(event: dict, context) -> dict:
             """, (client_id, call["direction"], call["session_id"], call["record_url"],
                   call["duration"], call["status"]))
             touch_id = cur.fetchone()[0]
+
+            # Синхронизируем «Последний звонок» в календаре (виден в блоке «Касания»
+            # карточки клиента) — только для заявок, у которых уже есть привязанная
+            # заявка в CRM (crm_contact_id). Одно событие на клиента, дата обновляется.
+            cur.execute(f"SELECT crm_contact_id FROM {SCHEMA}.touch_clients WHERE id=%s", (client_id,))
+            crow = cur.fetchone()
+            crm_contact_id = crow[0] if crow else None
+            if crm_contact_id:
+                cur.execute(f"SELECT client_name FROM {SCHEMA}.live_chats WHERE id = %s", (crm_contact_id,))
+                nr = cur.fetchone()
+                name = (nr[0] if nr else "") or "Клиент"
+                cur.execute(f"SELECT id FROM {SCHEMA}.calendar_events WHERE client_id=%s AND event_type='last_call' LIMIT 1", (crm_contact_id,))
+                ex = cur.fetchone()
+                event_time = datetime.now().isoformat()
+                if ex:
+                    cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s, company_id=COALESCE(company_id,%s) WHERE id=%s",
+                                (event_time, f"Последний звонок: {name}", owner_id, ex[0]))
+                else:
+                    cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
+                        VALUES (%s,%s,'last_call',%s,'#8b5cf6',%s)""", (crm_contact_id, f"Последний звонок: {name}", event_time, owner_id))
 
             cfg["_uis_last_event_at"] = datetime.now().isoformat()
             cur.execute(f"""

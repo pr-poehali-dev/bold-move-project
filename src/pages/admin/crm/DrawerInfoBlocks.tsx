@@ -316,6 +316,48 @@ export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidde
   );
 }
 
+// ── Касания (даты звонков) ───────────────────────────────────────────────────
+// Дефолтный блок, виден у всех по умолчанию. Два поля:
+// - "Дата следующего звонка" — обычная дата, сотрудник выбирает вручную (напоминание).
+// - "Дата последнего звонка" — только для чтения, подтягивается автоматически
+//   из истории звонков телефонии (UIS), редактировать нельзя.
+export function DrawerCallDatesBlock({ data, hiddenBlocks, toggleHidden, saveWithLog }: InfoBlocksProps) {
+  const t = useTheme();
+  const id: BlockId = "call_dates";
+  const isHidden = hiddenBlocks.has(id);
+
+  const nextCallVal = data.next_call_date ? data.next_call_date.slice(0, 16) : "";
+  const lastCallVal = data.last_call_at
+    ? new Date(data.last_call_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  const saveNextCall = (v: string) => saveWithLog(
+    { next_call_date: v || null },
+    v ? `Следующий звонок: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата следующего звонка удалена",
+    "PhoneOutgoing", "#3b82f6"
+  );
+
+  return (
+    <Section icon="PhoneCall" title="Касания" color="#3b82f6" hidden={isHidden}
+      onToggleHidden={() => toggleHidden(id)}>
+      <div style={{ borderBottom: `1px solid ${t.border2}`, minHeight: 36 }}>
+        <div className="flex items-center justify-between group">
+          <div className="flex items-center gap-1.5 flex-shrink-0 w-36 py-2">
+            <span className="text-xs" style={{ color: "#d4d4d4" }}>Последний звонок</span>
+          </div>
+          <div className="flex-1 text-right text-sm py-2" title="Подтягивается автоматически из телефонии — не редактируется">
+            {lastCallVal
+              ? <span style={{ color: t.textSub }}>{lastCallVal}</span>
+              : <span className="text-xs" style={{ color: t.textMute }}>Ещё не звонили</span>}
+          </div>
+        </div>
+      </div>
+      <InlineField label="Следующий звонок" value={nextCallVal} onSave={saveNextCall}
+        type="datetime-local" placeholder="Выбрать дату" />
+    </Section>
+  );
+}
+
 // ── Notes ─────────────────────────────────────────────────────────────────────
 export function DrawerNotesBlock({ data, client, setData, save, hiddenBlocks, toggleHidden, logAction }: InfoBlocksProps) {
   const t = useTheme();
