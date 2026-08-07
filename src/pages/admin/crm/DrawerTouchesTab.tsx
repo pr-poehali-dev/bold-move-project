@@ -43,6 +43,8 @@ interface Props {
   name?: string;
   /** id заявки (live_chats). Нужен для каналов без телефона (Avito): история грузится по нему. */
   contactId?: number;
+  /** Увеличивать при каждом запросе «поставить курсор в поле ввода» (напр. переход с другой вкладки) */
+  focusSignal?: number;
 }
 
 // Канал → иконка + подпись
@@ -83,7 +85,7 @@ const callMeta = (status: string, out: boolean): { icon: string; label: string; 
     : { icon: "PhoneIncoming", label: "Входящий", color: "#3b82f6" };
 };
 
-export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
+export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }: Props) {
   const t = useTheme();
   const { call: callViaUis, calling: callingUis } = useCallClient();
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,19 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusDraft = () => {
+    textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    textareaRef.current?.focus();
+  };
+
+  // Запрос фокуса извне (напр. клик по иконке «написать» рядом с телефоном на
+  // другой вкладке) — увеличение focusSignal триггерит скролл + фокус сюда.
+  useEffect(() => {
+    if (focusSignal) focusDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSignal]);
 
   // silent=true — фоновое обновление (поллинг): не показываем спиннер загрузки,
   // чтобы лента не «мигала» каждые несколько секунд.
@@ -196,12 +211,19 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
             <Icon name="Phone" size={12} style={{ color: t.textMute }} />
             {phone}
           </div>
-          <button onClick={() => callViaUis(phone, client?.id)}
-            disabled={callingUis}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97] disabled:opacity-60"
-            style={{ background: "#22c55e22", color: "#22c55e" }}>
-            <Icon name={callingUis ? "Loader2" : "PhoneCall"} size={13} className={callingUis ? "animate-spin" : ""} /> Позвонить
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={focusDraft}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97]"
+              style={{ background: t.accent + "22", color: t.accentLight }}>
+              <Icon name="MessageCircle" size={13} /> Написать
+            </button>
+            <button onClick={() => callViaUis(phone, client?.id)}
+              disabled={callingUis}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-[0.97] disabled:opacity-60"
+              style={{ background: "#22c55e22", color: "#22c55e" }}>
+              <Icon name={callingUis ? "Loader2" : "PhoneCall"} size={13} className={callingUis ? "animate-spin" : ""} /> Позвонить
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center gap-1.5 text-xs font-medium"
@@ -336,7 +358,7 @@ export default function DrawerTouchesTab({ phone, name, contactId }: Props) {
           <option value="max">MAX</option>
           <option value="avito">Avito</option>
         </select>
-        <textarea value={draft} onChange={e => setDraft(e.target.value)}
+        <textarea ref={textareaRef} value={draft} onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
           }}

@@ -39,9 +39,11 @@ interface Props {
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
   onReload?: () => void;
+  /** Перейти на вкладку «Касания» и поставить курсор в поле ввода (иконка «написать» у телефона) */
+  onGoToTouches?: () => void;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload, onGoToTouches }: Props) {
   const t = useTheme();
   const { user } = useAuth();
 
@@ -335,6 +337,7 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         canFieldFiles={canFieldFiles}
         canFieldCancel={canFieldCancel}
         onReload={onReload}
+        onGoToTouches={onGoToTouches}
       />
 
       {/* Кнопка добавить блок — только на мобиле, над активностью */}

@@ -29,13 +29,15 @@ interface Props {
   canFieldFiles: boolean;
   canFieldCancel: boolean;
   onUpdated: () => void;
+  /** Перейти на вкладку «Касания» и поставить курсор в поле ввода (иконка «написать» у телефона) */
+  onGoToTouches?: () => void;
 }
 
 export function DrawerOrdersPanel({
   t, client, allClientOrders, selectedOrderId, setSelectedOrderId, orderData, setOrderData, setOrderInnerTab,
   ordersListOpen, setOrdersListOpen, saveOrder, setComments, hideHidden,
   canEdit, canOrdersEdit, canFinance, canFiles, canFieldContacts, canFieldAddress, canFieldDates,
-  canFieldFinance, canFieldFiles, canFieldCancel, onUpdated,
+  canFieldFinance, canFieldFiles, canFieldCancel, onUpdated, onGoToTouches,
 }: Props) {
   return (
     <div className="flex flex-col sm:flex-row h-full min-h-0">
@@ -187,6 +189,7 @@ export function DrawerOrdersPanel({
             canFieldFiles={canFieldFiles}
             canFieldCancel={canFieldCancel}
             onReload={onUpdated}
+            onGoToTouches={onGoToTouches}
           />
         </div>
       </div>

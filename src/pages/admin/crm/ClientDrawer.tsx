@@ -50,6 +50,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [touchesFocusSignal, setTouchesFocusSignal] = useState(0);
 
   const {
     data, saving, drawerTab, setDrawerTab,
@@ -124,7 +125,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
 
           {/* КАСАНИЯ */}
           {drawerTab === "touches" && (
-            <DrawerTouchesTab phone={data.phone} name={data.client_name} contactId={data.id} />
+            <DrawerTouchesTab phone={data.phone} name={data.client_name} contactId={data.id} focusSignal={touchesFocusSignal} />
           )}
 
           {/* АНАЛИТИКА */}
@@ -185,6 +186,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               canFieldFiles={canFieldFiles}
               canFieldCancel={canFieldCancel}
               onUpdated={onUpdated}
+              onGoToTouches={() => { setDrawerTab("touches"); setTouchesFocusSignal(s => s + 1); }}
             />
           )}
         </div>

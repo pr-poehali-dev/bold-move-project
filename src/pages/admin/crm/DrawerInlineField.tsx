@@ -23,7 +23,7 @@ function isPhoneValid(masked: string): boolean {
   return masked.replace(/\D/g, "").length === 11;
 }
 
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline, onCall, calling }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline, onCall, calling, onMessage }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
@@ -36,6 +36,8 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   /** Если задано — рядом со значением телефона появляется иконка звонка (через АТС) */
   onCall?: () => void;
   calling?: boolean;
+  /** Если задано — рядом со значением телефона появляется иконка «написать» (переход на вкладку «Касания») */
+  onMessage?: () => void;
 }) {
   const t = useTheme();
   const [editing,      setEditing]      = useState(false);
@@ -142,6 +144,15 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
                 ? <span style={{ color: "#fff" }}>{displayVal()}</span>
                 : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
             </button>
+            {onMessage && displayVal() && (
+              <button
+                onClick={e => { e.stopPropagation(); onMessage(); }}
+                title="Написать сообщение"
+                className="flex-shrink-0 p-1 rounded-md transition hover:opacity-80"
+                style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
+                <Icon name="MessageCircle" size={13} />
+              </button>
+            )}
             {onCall && displayVal() && (
               <button
                 onClick={e => { e.stopPropagation(); onCall(); }}

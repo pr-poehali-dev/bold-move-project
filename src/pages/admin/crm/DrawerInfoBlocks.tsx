@@ -125,6 +125,8 @@ interface InfoBlocksProps {
   setEditingBlock: (id: BlockId | null) => void;
   saveWithLog: (patch: Partial<Client>, logText: string, icon?: string, color?: string) => void;
   logAction: (icon: string, color: string, text: string) => void;
+  /** Перейти на вкладку «Касания» и поставить курсор в поле ввода (иконка «написать» у телефона) */
+  onGoToTouches?: () => void;
 }
 
 function loadExtraRows(blockId: string): ExtraRow[] {
@@ -164,7 +166,7 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 }
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
-export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
+export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog, onGoToTouches }: InfoBlocksProps) {
   const id: BlockId = "contacts";
   const { isHidden, editMode } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
   const { call: callViaUis, calling } = useCallClient();
@@ -218,6 +220,7 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
                 multiline={field.id === "builtin_notes"}
                 onCall={saveKey === "phone" ? () => callViaUis(val) : undefined}
                 calling={saveKey === "phone" ? calling : undefined}
+                onMessage={saveKey === "phone" && onGoToTouches ? onGoToTouches : undefined}
               />
             </RowWithToggle>
           );

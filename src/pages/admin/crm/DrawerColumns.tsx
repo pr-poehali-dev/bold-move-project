@@ -52,6 +52,8 @@ interface ColumnsProps {
   canFieldFiles?:    boolean;
   canFieldCancel?:   boolean;
   onReload?: () => void;
+  /** Перейти на вкладку «Касания» и поставить курсор в поле ввода (иконка «написать» у телефона) */
+  onGoToTouches?: () => void;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -63,13 +65,13 @@ export function DrawerColumns(props: ColumnsProps) {
     canFinance = true, canFiles = true,
     canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
     canFieldFinance = true, canFieldFiles = true, canFieldCancel = true,
-    onReload,
+    onReload, onGoToTouches,
   } = props;
   const t = useTheme();
 
   const infoProps = {
     data, client, setData, save, hiddenBlocks, editingBlock,
-    toggleHidden, setEditingBlock, saveWithLog, logAction,
+    toggleHidden, setEditingBlock, saveWithLog, logAction, onGoToTouches,
   };
 
   const finProps = {
