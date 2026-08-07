@@ -9,7 +9,7 @@ import boto3
 import urllib.request as _ureq
 from datetime import datetime
 
-# redeploy-marker: tg-leads endpoints added
+# redeploy-marker: tg-proxy switched to https relay domain
 
 
 # ── Мост до api.telegram.org через собственный VPS ──────────────────────────
