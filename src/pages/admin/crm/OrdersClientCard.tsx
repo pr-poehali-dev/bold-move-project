@@ -145,6 +145,14 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
                     <Icon name="ExternalLink" size={9} /> Avito
                   </button>
                 )}
+                {c.has_missed_call && (
+                  <span
+                    title="Есть пропущенный звонок, на который ещё не перезвонили"
+                    className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold"
+                    style={{ background: "#ef444420", color: "#ef4444" }}>
+                    <Icon name="PhoneMissed" size={9} /> Пропущен
+                  </span>
+                )}
                 {isInstall
                   ? <InstallProgress client={clientWithSub} />
                   : activeSub

@@ -783,6 +783,7 @@ def handler(event: dict, context) -> dict:
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
                            lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
                            lc.next_call_date, lcall.last_call_at,
+                           COALESCE(missed.has_missed_call, FALSE) AS has_missed_call,
                            COALESCE(u.is_demo, FALSE) AS is_demo,
                            COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total
                     FROM {SCHEMA}.live_chats lc
@@ -799,6 +800,23 @@ def handler(event: dict, context) -> dict:
                         WHERE te.channel='call' AND te.direction='in' AND tc2.crm_contact_id IS NOT NULL
                         GROUP BY tc2.crm_contact_id
                     ) lcall ON lcall.contact_id = lc.id
+                    LEFT JOIN (
+                        -- Пропущенный звонок считаем "непрочитанным" в карточке, пока по нему
+                        -- нет исходящего звонка/сообщения ПОЗЖЕ времени пропуска (менеджер ещё не перезвонил).
+                        SELECT tc3.crm_contact_id AS contact_id, TRUE AS has_missed_call
+                        FROM {SCHEMA}.touch_clients tc3
+                        JOIN {SCHEMA}.touch_events te3 ON te3.client_id = tc3.id
+                        WHERE te3.channel='call' AND te3.direction='in'
+                          AND te3.status IN ('missed','no-answer','noanswer','busy','declined')
+                          AND tc3.crm_contact_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM {SCHEMA}.touch_events te4
+                              WHERE te4.client_id = tc3.id
+                                AND te4.created_at > te3.created_at
+                                AND (te4.direction = 'out' OR (te4.channel='call' AND te4.status NOT IN ('missed','no-answer','noanswer','busy','declined')))
+                          )
+                        GROUP BY tc3.crm_contact_id
+                    ) missed ON missed.contact_id = lc.id
                     WHERE (lc.status != 'deleted' OR lc.status = %s)
                 """
                 # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.

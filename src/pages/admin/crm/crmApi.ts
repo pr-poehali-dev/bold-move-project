@@ -215,6 +215,7 @@ export interface Client {
   status_changed_at?: string | null;
   next_call_date?: string | null;
   last_call_at?: string | null;
+  has_missed_call?: boolean;
 }
 
 export function fmt(n: number): string {

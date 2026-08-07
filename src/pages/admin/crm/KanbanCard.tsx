@@ -126,6 +126,14 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
               <Icon name="ExternalLink" size={9} /> Avito
             </button>
           )}
+          {client.has_missed_call && (
+            <span
+              title="Есть пропущенный звонок, на который ещё не перезвонили"
+              className="flex-shrink-0 flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold"
+              style={{ background: "#ef444420", color: "#ef4444" }}>
+              <Icon name="PhoneMissed" size={9} /> Пропущен
+            </span>
+          )}
         </div>
 
         {/* Имя + телефон + адрес */}
