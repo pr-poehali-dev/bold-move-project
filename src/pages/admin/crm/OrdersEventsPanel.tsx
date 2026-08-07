@@ -12,11 +12,26 @@ interface Props {
 const MEASURE_ACTIVE = ["new", "call", "measure"];
 const INSTALL_ACTIVE = ["contract", "prepaid", "install_scheduled"];
 
+// Порог «Нет действий N+ дней» — настраивается через шестерёнку (1–10 дней),
+// хранится локально в браузере, по умолчанию 7 (как было раньше).
+const LS_NO_ACTION_DAYS = "crm_no_action_days_threshold";
+function loadNoActionDays(): number {
+  try {
+    const v = Number(localStorage.getItem(LS_NO_ACTION_DAYS));
+    return v >= 1 && v <= 10 ? v : 7;
+  } catch { return 7; }
+}
+function saveNoActionDays(v: number) {
+  try { localStorage.setItem(LS_NO_ACTION_DAYS, String(v)); } catch { /* тихо */ }
+}
+
 export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const t = useTheme();
   const [eventDays, setEventDays] = useState<1 | 2 | 3 | 7>(3);
   const [collapsed, setCollapsed] = useState(true);
   const [pushAsked, setPushAsked] = useState(false);
+  const [noActionDays, setNoActionDays] = useState(loadNoActionDays);
+  const [noActionSettingsOpen, setNoActionSettingsOpen] = useState(false);
 
   const now = new Date();
 
@@ -62,13 +77,13 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const upcomingCount = upcomingMeasures.length + upcomingInstalls.length;
   const hasEvents = upcomingCount > 0;
 
-  // Нет действий 7+ дней: статус активный, updated_at не менялся 7+ дней
-  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
+  // Нет действий N+ дней: статус активный, updated_at не менялся N+ дней (порог настраивается через шестерёнку)
+  const noActionThreshold = new Date(now); noActionThreshold.setDate(now.getDate() - noActionDays);
   const ACTIVE_STATUSES = [...MEASURE_ACTIVE, ...INSTALL_ACTIVE];
   const noAction = allClients.filter(c => {
     if (!ACTIVE_STATUSES.includes(c.status)) return false;
     const lastActivity = c.updated_at ? new Date(c.updated_at) : new Date(c.created_at);
-    return lastActivity < sevenDaysAgo;
+    return lastActivity < noActionThreshold;
   }).sort((a, b) => {
     const ta = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.created_at).getTime();
     const tb = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.created_at).getTime();
@@ -126,17 +141,23 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   return (
     <>
-      {/* ── НЕТ ДЕЙСТВИЙ 7+ ДНЕЙ ────────────────────────────────────────────── */}
+      {/* ── НЕТ ДЕЙСТВИЙ N+ ДНЕЙ ────────────────────────────────────────────── */}
       {noAction.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.22)" }}>
           <div className="flex items-center gap-2 mb-3">
             <Icon name="Clock" size={15} style={{ color: "#f59e0b" }} />
-            <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>Нет действий 7+ дней</span>
+            <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>Нет действий {noActionDays}+ дней</span>
             <span className="text-xs px-2 py-0.5 rounded-full font-bold"
               style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b" }}>
               {noAction.length}
             </span>
             <span className="text-xs ml-1" style={{ color: "#fbbf24" }}>— требуют внимания</span>
+            <button onClick={() => setNoActionSettingsOpen(true)}
+              title="Настроить порог дней"
+              className="ml-auto p-1 rounded-md transition hover:bg-white/10 flex-shrink-0"
+              style={{ color: "#f59e0b" }}>
+              <Icon name="Settings" size={13} />
+            </button>
           </div>
           <div className="space-y-2">
             {noAction.map(c => {
@@ -306,6 +327,45 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Настройка порога «Нет действий N+ дней» ──────────────────────────── */}
+      {noActionSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={() => setNoActionSettingsOpen(false)}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+            style={{ background: t.surface, border: `1px solid ${t.border}` }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${t.border}` }}>
+              <span className="text-sm font-bold" style={{ color: t.text }}>Через сколько дней считать просрочкой</span>
+              <button onClick={() => setNoActionSettingsOpen(false)}
+                className="p-1.5 rounded-lg transition hover:bg-white/5" style={{ color: t.textMute }}>
+                <Icon name="X" size={15} />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
+                  const active = n === noActionDays;
+                  return (
+                    <button key={n}
+                      onClick={() => { setNoActionDays(n); saveNoActionDays(n); }}
+                      className="py-2 rounded-xl text-sm font-bold transition"
+                      style={active
+                        ? { background: "#f59e0b", color: "#fff" }
+                        : { background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] mt-3" style={{ color: t.textMute }}>
+                Заявки без изменений дольше этого срока попадут в блок «Нет действий»
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
