@@ -19,9 +19,10 @@ interface Props {
   onStatusChange: (id: number, status: string) => void;
   onSelect: (c: Client) => void;
   onNextStep: (id: number, nextStatus: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
 }
 
-export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange, onSelect, onNextStep }: Props) {
+export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange, onSelect, onNextStep, onSaveSubStatus }: Props) {
   const t = useTheme();
 
   const [colLabels, setColLabels] = useState<Record<string, string>>(loadSyncedLabels);
@@ -113,6 +114,7 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
           clientsForCol={clientsForCol}
           onOpen={onSelect}
           onNextStep={onNextStep}
+          onSaveSubStatus={onSaveSubStatus}
           onDrop={onDrop}
           onDragStart={onDragStart}
           onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
@@ -140,6 +142,7 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
             onDrop={onDrop}
             onOpen={onSelect}
             onNextStep={onNextStep}
+            onSaveSubStatus={onSaveSubStatus}
             onStartResize={() => {}}
             resizeBorderColor={t.border}
             onSaveLabel={saveLabel}

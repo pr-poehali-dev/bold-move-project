@@ -8,6 +8,7 @@ import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
+import { SubstatusPicker } from "./SubstatusPicker";
 
 function Metric({ label, value, color, icon }: { label: string; value: string; color?: string; icon?: string }) {
   const t = useTheme();
@@ -22,11 +23,12 @@ function Metric({ label, value, color, icon }: { label: string; value: string; c
   );
 }
 
-export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
@@ -44,6 +46,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
   const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
   // Активный подэтап (напр. «Новый в работе») — показываем его в углу вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
+  // Все варианты подстатуса для текущего этапа — для выпадающего списка смены
+  const subsForTab  = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
   const isInstall   = tab?.id === "installs";
   const isCancelled = c.status === "cancelled";
   const isDone      = c.status === "done";
@@ -155,15 +159,15 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSwipeBu
                 )}
                 {isInstall
                   ? <InstallProgress client={clientWithSub} />
-                  : activeSub
-                    ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                        style={{ background: activeSub.color, color: "#fff" }}>
-                        {activeSub.label}
-                      </span>
-                    : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                        style={{ background: STATUS_COLORS[c.status] + "20", color: STATUS_COLORS[c.status] }}>
-                        {STATUS_LABELS[c.status] || c.status}
-                      </span>
+                  : (
+                    <SubstatusPicker
+                      active={activeSub}
+                      options={subsForTab}
+                      fallbackLabel={STATUS_LABELS[c.status] || c.status}
+                      fallbackColor={STATUS_COLORS[c.status]}
+                      onSelect={subId => onSaveSubStatus?.(c.id, subId)}
+                    />
+                  )
                 }
               </div>
               <div className="space-y-1 mt-1.5">

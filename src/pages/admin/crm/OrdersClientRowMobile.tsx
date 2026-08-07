@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { Substatus } from "./OrdersTabs";
 import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
+import { SubstatusPicker } from "./SubstatusPicker";
 
 export interface OrdersClientRowMobileProps {
   c: Client;
@@ -19,6 +20,8 @@ export interface OrdersClientRowMobileProps {
   }>;
   clientWithSub: Client;
   activeSub: Substatus | undefined;
+  subsForTab?: Substatus[];
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   isInstall: boolean;
   isDone: boolean;
   isCancelled: boolean;
@@ -37,7 +40,7 @@ export interface OrdersClientRowMobileProps {
 
 export function OrdersClientRowMobile({
   c, t, onClick, mobileRef, offset, dragging, swipeHint, cb,
-  clientWithSub, activeSub, isInstall, isDone, isCancelled,
+  clientWithSub, activeSub, subsForTab = [], onSaveSubStatus, isInstall, isDone, isCancelled,
   nextStatus, nextLabel, stepping, handleNext,
   title, color, hasProject, ordersCount, income, debt, contractSum,
 }: OrdersClientRowMobileProps) {
@@ -119,15 +122,15 @@ export function OrdersClientRowMobile({
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {isInstall
               ? <InstallProgress client={clientWithSub} />
-              : activeSub
-                ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                    style={{ background: activeSub.color, color: "#fff" }}>
-                    {activeSub.label}
-                  </span>
-                : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                    style={{ background: color + "20", color }}>
-                    {STATUS_LABELS[c.status] || c.status}
-                  </span>
+              : (
+                <SubstatusPicker
+                  active={activeSub}
+                  options={subsForTab}
+                  fallbackLabel={STATUS_LABELS[c.status] || c.status}
+                  fallbackColor={color}
+                  onSelect={subId => onSaveSubStatus?.(c.id, subId)}
+                />
+              )
             }
             {income > 0 && (
               <span className="text-xs font-bold text-emerald-500">{income.toLocaleString("ru-RU")} ₽</span>

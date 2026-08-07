@@ -60,6 +60,13 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     onStatusChange(id, nextStatus);
   };
 
+  // Смена подстатуса прямо с карточки/бейджа (без открытия заявки) — тот же
+  // PUT, что и в StatusSelector, но статус остаётся прежним, меняется только этап внутри.
+  const handleSaveSubStatus = async (id: number, subStatusId: number) => {
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ sub_status: String(subStatusId) }) }, { id: String(id) });
+    onReload();
+  };
+
   const { actionModal, actionLoading, handleSwipeBuilder, handleSwipeAgent, handleActionConfirm, closeActionModal } =
     useOrderActionModal(onReload);
 
@@ -137,6 +144,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onStatusChange={onStatusChange}
           onSelect={setSelected}
           onNextStep={handleNextStep}
+          onSaveSubStatus={handleSaveSubStatus}
         />
       ) : (
         <OrdersListView
@@ -147,6 +155,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           activeTab={activeTab}
           onSelect={setSelected}
           onNextStep={handleNextStep}
+          onSaveSubStatus={handleSaveSubStatus}
           onSetActiveTab={setActiveTab}
           onSwipeBuilder={handleSwipeBuilder}
           onSwipeAgent={handleSwipeAgent}

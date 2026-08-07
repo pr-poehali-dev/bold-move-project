@@ -6,6 +6,7 @@ import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
 import { ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
+import { SubstatusPicker } from "./SubstatusPicker";
 
 
 function InstallProgress({ client, color }: { client: Client; color: string }) {
@@ -38,13 +39,15 @@ interface Props {
   colColor?: string;
   onOpen: () => void;
   onNextStep: (id: number, status: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   dragging: boolean;
 }
 
-export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragging }: Props) {
+export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSaveSubStatus, dragging }: Props) {
   const t = useTheme();
   const sources = useOrderSourcesCtx();
   const src = sourceDisplay(client.source, sources);
+  const allSubs = useSubstatuses();
   const [stepping, setStepping] = useState(false);
   const color = colColor || STATUS_COLORS[client.status] || "#8b5cf6";
   const next = NEXT_STATUS[client.status];
@@ -53,6 +56,8 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
   const tab       = ORDERS_TABS.find(tb => tb.statuses.includes(client.status));
   const isInstall = tab?.id === "installs";
   const isDone    = client.status === "done";
+  const activeSub  = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === client.sub_status) : undefined;
+  const subsForTab = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
 
   const contractSum = Number(client.contract_sum) || 0;
   const prepayment  = Number(client.prepayment) || 0;
@@ -107,15 +112,23 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, dragg
           </div>
           {isInstall
             ? <InstallProgress client={client} color={color} />
-            : src
-              ? <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                  style={{ background: src.color + "20", color: src.color }}>
-                  {src.label}
-                </span>
-              : <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                  style={{ background: color + "20", color }}>
-                  {STATUS_LABELS[client.status] || client.status}
-                </span>
+            : (
+              <>
+                {src && (
+                  <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                    style={{ background: src.color + "20", color: src.color }}>
+                    {src.label}
+                  </span>
+                )}
+                <SubstatusPicker
+                  active={activeSub}
+                  options={subsForTab}
+                  fallbackLabel={STATUS_LABELS[client.status] || client.status}
+                  fallbackColor={color}
+                  onSelect={subId => onSaveSubStatus?.(client.id, subId)}
+                />
+              </>
+            )
           }
           {client.avito_chat_url && (
             <button

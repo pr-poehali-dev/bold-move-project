@@ -16,6 +16,7 @@ interface Props {
   clientsForCol: (col: ColDef) => Client[];
   onOpen: (c: Client) => void;
   onNextStep: (id: number, next: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onDrop: (colId: string) => void;
   onDragStart: (c: Client) => void;
   onDragEnd: () => void;
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export function KanbanMobileView({
-  cols, clientsForCol, onOpen, onNextStep, onDrop, onDragStart, onDragEnd, onAddCard,
+  cols, clientsForCol, onOpen, onNextStep, onSaveSubStatus, onDrop, onDragStart, onDragEnd, onAddCard,
 }: Props) {
   const t = useTheme();
   const [activeColIdx, setActiveColIdx] = useState(0);
@@ -161,6 +162,7 @@ export function KanbanMobileView({
                 color={activeCol.color}
                 onOpen={() => onOpen(c)}
                 onNextStep={onNextStep}
+                onSaveSubStatus={onSaveSubStatus}
                 isDragging={false}
               />
             </div>

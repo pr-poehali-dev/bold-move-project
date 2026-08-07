@@ -35,6 +35,7 @@ interface KanbanColumnProps {
   onDrop: (colId: string) => void;
   onOpen: (c: Client) => void;
   onNextStep: (id: number, next: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onStartResize: (e: React.MouseEvent, colId: string) => void;
   resizeBorderColor: string;
   onSaveLabel: (colId: string, val: string) => void;
@@ -46,7 +47,7 @@ export function KanbanColumn({
   col, label, colClients, width, isLast, isOver,
   dragging, canDelete, onAddCard,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
-  onOpen, onNextStep, onStartResize, resizeBorderColor,
+  onOpen, onNextStep, onSaveSubStatus, onStartResize, resizeBorderColor,
   onSaveLabel, onSaveColor, onDelete,
 }: KanbanColumnProps) {
   const t = useTheme();
@@ -201,6 +202,7 @@ export function KanbanColumn({
                 dragging={dragging?.id === c.id}
                 onOpen={() => onOpen(c)}
                 onNextStep={onNextStep}
+                onSaveSubStatus={onSaveSubStatus}
               />
             </div>
           ))}

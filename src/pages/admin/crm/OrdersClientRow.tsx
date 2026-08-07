@@ -8,11 +8,12 @@ import { OrdersClientRowDesktop } from "./OrdersClientRowDesktop";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
 
-export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
@@ -31,6 +32,7 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBui
   const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
   // Активный подэтап — показываем его вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
+  const subsForTab  = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
   const isInstall   = tab?.id === "installs";
   const isDone      = c.status === "done";
   const isCancelled = c.status === "cancelled";
@@ -64,6 +66,8 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBui
         cb={cb}
         clientWithSub={clientWithSub}
         activeSub={activeSub}
+        subsForTab={subsForTab}
+        onSaveSubStatus={onSaveSubStatus}
         isInstall={isInstall}
         isDone={isDone}
         isCancelled={isCancelled}
@@ -87,6 +91,8 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSwipeBui
         onClick={onClick}
         clientWithSub={clientWithSub}
         activeSub={activeSub}
+        subsForTab={subsForTab}
+        onSaveSubStatus={onSaveSubStatus}
         isInstall={isInstall}
         isDone={isDone}
         isCancelled={isCancelled}

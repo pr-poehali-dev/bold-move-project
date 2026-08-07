@@ -189,6 +189,12 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
     }
   };
 
+  const handleSaveSubStatus = async (id: number, subStatusId: number) => {
+    if (id < 0) return; // локальные карточки-заметки подстатусов не имеют
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ sub_status: String(subStatusId) }) }, { id: String(id) });
+    onReload();
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -215,6 +221,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
           clientsForCol={clientsForCol}
           onOpen={setSelected}
           onNextStep={handleNextStep}
+          onSaveSubStatus={handleSaveSubStatus}
           onDrop={onDrop}
           onDragStart={onDragStart}
           onDragEnd={() => { setDragging(null); setDragOverCol(null); }}
@@ -244,6 +251,7 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
             onDrop={onDrop}
             onOpen={setSelected}
             onNextStep={handleNextStep}
+            onSaveSubStatus={handleSaveSubStatus}
             onStartResize={() => {}}
             resizeBorderColor={t.border}
             onSaveLabel={saveLabel}

@@ -33,6 +33,7 @@ interface Props {
   activeTab: string;
   onSelect: (c: Client) => void;
   onNextStep: (id: number, nextStatus: string) => void;
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onSetActiveTab: (tab: string) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
@@ -55,7 +56,7 @@ interface Props {
 }
 
 export function OrdersListView({
-  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSetActiveTab,
+  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSaveSubStatus, onSetActiveTab,
   onSwipeBuilder, onSwipeAgent,
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
@@ -240,10 +241,12 @@ export function OrdersListView({
 
   const renderCard = (c: Client) => (
     <OrdersClientCard key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
+      onSaveSubStatus={onSaveSubStatus}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
   const renderRow = (c: Client) => (
     <OrdersClientRow key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
+      onSaveSubStatus={onSaveSubStatus}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
 

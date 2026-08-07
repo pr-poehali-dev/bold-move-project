@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { Substatus } from "./OrdersTabs";
 import { InstallProgress } from "./ordersClientRowShared";
+import { SubstatusPicker } from "./SubstatusPicker";
 
 export interface OrdersClientRowDesktopProps {
   c: Client;
@@ -10,6 +11,8 @@ export interface OrdersClientRowDesktopProps {
   onClick: () => void;
   clientWithSub: Client;
   activeSub: Substatus | undefined;
+  subsForTab?: Substatus[];
+  onSaveSubStatus?: (id: number, subStatusId: number) => void;
   isInstall: boolean;
   isDone: boolean;
   isCancelled: boolean;
@@ -30,7 +33,7 @@ export interface OrdersClientRowDesktopProps {
 }
 
 export function OrdersClientRowDesktop({
-  c, t, onClick, clientWithSub, activeSub, isInstall, isDone, isCancelled,
+  c, t, onClick, clientWithSub, activeSub, subsForTab = [], onSaveSubStatus, isInstall, isDone, isCancelled,
   nextStatus, nextLabel, stepping, handleNext,
   title, color, hasProject, ordersCount, income, costs, debt, profit,
   onSwipeBuilder, onSwipeAgent,
@@ -77,15 +80,15 @@ export function OrdersClientRowDesktop({
         <div className="flex items-center gap-1 flex-wrap">
           {isInstall
             ? <InstallProgress client={clientWithSub} />
-            : activeSub
-              ? <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
-                  style={{ background: activeSub.color, color: "#fff" }}>
-                  {activeSub.label}
-                </span>
-              : <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                  style={{ background: color + "20", color }}>
-                  {STATUS_LABELS[c.status] || c.status}
-                </span>
+            : (
+              <SubstatusPicker
+                active={activeSub}
+                options={subsForTab}
+                fallbackLabel={STATUS_LABELS[c.status] || c.status}
+                fallbackColor={color}
+                onSelect={subId => onSaveSubStatus?.(c.id, subId)}
+              />
+            )
           }
           {c.avito_chat_url && (
             <button
