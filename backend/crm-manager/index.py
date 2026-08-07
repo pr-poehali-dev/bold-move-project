@@ -3813,34 +3813,6 @@ def handler(event: dict, context) -> dict:
             return ok({"ok": True, "bot_username": bot_username,
                        "webhook_registered": webhook_ok, "webhook_error": webhook_err})
 
-        # ── TG-LEADS-DIAG: временная диагностика — статус вебхука у самого Telegram ──
-        # (getWebhookInfo) — показывает pending_update_count, last_error_message и т.д.
-        # Доступ по тому же секретному ключу, что и у самого вебхука (не публичный
-        # эндпоинт, но не требует сессии пользователя — удобно проверить curl'ом).
-        # TODO: удалить после диагностики.
-        if resource == "tg-leads-diag" and method == "GET":
-            company_id_q = qs.get("company_id")
-            diag_key = qs.get("key", "")
-            if not company_id_q or not diag_key:
-                return err("company_id и key обязательны", 401)
-            try:
-                owner_id = int(company_id_q)
-            except ValueError:
-                return err("company_id invalid")
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = row[0] if row else None
-            if not cfg or cfg.get("_tg_leads_webhook_key") != diag_key:
-                return err("неверный ключ", 401)
-            bot_token = decrypt_secret(cfg.get("tg_leads_bot_token"))
-            if not bot_token:
-                return err("токен не найден", 400)
-            try:
-                info = tg_api_request(f"bot{bot_token}/getWebhookInfo")
-                return ok({"webhook_info": info})
-            except Exception as e:
-                return err(f"{type(e).__name__}: {e}", 502)
-
         # ── TG-LEADS-WEBHOOK: приём апдейтов от бота-«слушателя» (Telegram Bot API) ─
         # Бот стоит в группе с чужим ботом-агрегатором заявок. Мы разбираем текст
         # каждого сообщения — если это похоже на заявку (см. parse_tg_lead_text),
