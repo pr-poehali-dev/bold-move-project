@@ -7,6 +7,7 @@ import DrawerPlanTab from "./DrawerPlanTab";
 import DrawerTouchesTab from "./DrawerTouchesTab";
 import DrawerAnalyticsTab from "./DrawerAnalyticsTab";
 import PdfOptionsModal from "./PdfOptionsModal";
+import OrderShareModal from "./OrderShareModal";
 import { useEstimateData } from "./useEstimateData";
 import { DrawerHeader } from "./DrawerHeader";
 import { DrawerTabsBar } from "./DrawerTabsBar";
@@ -50,6 +51,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
   const [ordersListOpen, setOrdersListOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [touchesFocusSignal, setTouchesFocusSignal] = useState(0);
 
   const {
@@ -113,6 +115,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           ordersCount={allClientOrders.length}
           unreadTouches={unreadTouches}
           setPdfModalOpen={setPdfModalOpen}
+          setShareModalOpen={setShareModalOpen}
         />
 
         {/* ── Контент ── */}
@@ -197,6 +200,14 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
         <PdfOptionsModal
           onConfirm={opts => { estimateData.doPrint(opts); setPdfModalOpen(false); }}
           onClose={() => setPdfModalOpen(false)}
+        />
+      )}
+
+      {/* Модалка «Поделиться» — публичная ссылка на заявку целиком */}
+      {shareModalOpen && (
+        <OrderShareModal
+          orderId={ord.id}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
 

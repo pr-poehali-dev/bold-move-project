@@ -51,6 +51,7 @@ const NotFound    = lazy(() => import("./pages/NotFound"));
 const PlanPage      = lazy(() => import("./pages/plan/PlanPage"));
 const NewsPage      = lazy(() => import("./pages/NewsPage"));
 const PlanSharePage = lazy(() => import("./pages/PlanSharePage"));
+const OrderSharePage = lazy(() => import("./pages/OrderSharePage"));
 const CrmPage       = lazy(() => import("./pages/CrmPage"));
 const LBPage        = lazy(() => import("./pages/LBPage"));
 const BugReportPage = lazy(() => import("./pages/BugReportPage"));
@@ -82,6 +83,7 @@ const App = () => (
                 <Route path="/plan"      element={<PlanPage />} />
                 <Route path="/news"      element={<NewsPage />} />
                 <Route path="/plan-share/:token" element={<PlanSharePage />} />
+                <Route path="/order-share/:token" element={<OrderSharePage />} />
                 <Route path="/crm"       element={<CrmPage />} />
                 <Route path="/bug-report" element={<BugReportPage />} />
                 <Route path="/LB"        element={<LBPage />} />

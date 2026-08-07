@@ -9,7 +9,7 @@ import boto3
 import urllib.request as _ureq
 from datetime import datetime
 
-# redeploy-marker: восстановление crm-manager в func2url.json после случайной потери ключа
+# redeploy-marker: order-share endpoint added
 
 
 
@@ -2436,6 +2436,73 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"DELETE FROM {SCHEMA}.plan_shares WHERE token=%s", (token,))
                 conn.commit()
                 return ok({"deleted": True})
+
+        # ── ORDER-SHARE — постоянная публичная ссылка на заявку целиком ───────────
+        # (адрес, площадь, даты замера/монтажа, статус, смета) — одна ссылка на
+        # заявку, данные всегда актуальные (грузятся заново при каждом открытии).
+        if resource == "order-share":
+            import secrets as _secrets
+
+            # GET по токену — публичный доступ, без авторизации
+            if method == "GET":
+                token = qs.get("token")
+                if not token: return err("token required")
+                cur.execute(f"""
+                    SELECT os.chat_id
+                    FROM {SCHEMA}.order_shares os
+                    WHERE os.token=%s
+                """, (token,))
+                srow = cur.fetchone()
+                if not srow: return err("not found", 404)
+                chat_id_val = srow[0]
+
+                cur.execute(f"""
+                    SELECT id, client_name, address, area, status, sub_status,
+                           measure_date, install_date, created_at
+                    FROM {SCHEMA}.live_chats
+                    WHERE id=%s
+                """, (chat_id_val,))
+                orow = cur.fetchone()
+                if not orow: return err("заявка удалена", 404)
+                ocols = [d[0] for d in cur.description]
+                order = dict(zip(ocols, orow))
+
+                cur.execute(f"""
+                    SELECT title, blocks, totals, final_phrase,
+                           total_econom, total_standard, total_premium, chosen_tier
+                    FROM {SCHEMA}.saved_estimates
+                    WHERE chat_id=%s ORDER BY id DESC LIMIT 1
+                """, (chat_id_val,))
+                erow = cur.fetchone()
+                estimate = None
+                if erow:
+                    ecols = [d[0] for d in cur.description]
+                    estimate = dict(zip(ecols, erow))
+
+                return ok({"order": order, "estimate": estimate})
+
+            # POST — вернуть уже существующий токен для этой заявки, либо создать
+            # новый (по умолчанию ссылка постоянная и переиспользуется).
+            if method == "POST":
+                if not authenticated:
+                    return err("Требуется авторизация", 401)
+                insert_cmp = master_uid if (company_id is None or company_id == 0) else company_id
+                chat_id_val = body.get("chat_id")
+                if not chat_id_val: return err("chat_id required")
+
+                cur.execute(f"SELECT token FROM {SCHEMA}.order_shares WHERE chat_id=%s LIMIT 1", (int(chat_id_val),))
+                existing = cur.fetchone()
+                if existing:
+                    return ok({"token": existing[0]})
+
+                token = _secrets.token_hex(12)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.order_shares (token, company_id, chat_id)
+                    VALUES (%s, %s, %s) RETURNING token
+                """, (token, insert_cmp, int(chat_id_val)))
+                row = cur.fetchone()
+                conn.commit()
+                return ok({"token": row[0]})
 
         # ── INTEGRATIONS: настройки внешних сервисов компании (config JSONB) ──────
         if resource == "integrations":

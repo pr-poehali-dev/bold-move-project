@@ -10,9 +10,10 @@ interface Props {
   ordersCount: number;
   unreadTouches?: number;
   setPdfModalOpen: (v: boolean) => void;
+  setShareModalOpen?: (v: boolean) => void;
 }
 
-export function DrawerTabsBar({ t, drawerTab, setDrawerTab, ordersCount, unreadTouches = 0, setPdfModalOpen }: Props) {
+export function DrawerTabsBar({ t, drawerTab, setDrawerTab, ordersCount, unreadTouches = 0, setPdfModalOpen, setShareModalOpen }: Props) {
   const badgeFor: Record<string, number> = {
     orders: ordersCount,
     touches: unreadTouches,
@@ -45,15 +46,25 @@ export function DrawerTabsBar({ t, drawerTab, setDrawerTab, ordersCount, unreadT
           </button>
         );
       })}
-      {/* Кнопка PDF — всегда справа */}
+      {/* Кнопки PDF / Поделиться — всегда справа */}
       <div className="flex-1" />
+      {setShareModalOpen && (
+        <button
+          onClick={() => setShareModalOpen(true)}
+          className="flex items-center justify-center p-2 rounded-xl transition hover:opacity-80 active:scale-[0.97] flex-shrink-0"
+          style={{ color: t.textMute, background: t.surface2, border: `1px solid ${t.border}` }}
+          title="Поделиться ссылкой на заявку"
+        >
+          <Icon name="Share2" size={14} />
+        </button>
+      )}
       <button
         onClick={() => setPdfModalOpen(true)}
         className="flex items-center justify-center p-2 rounded-xl transition hover:opacity-80 active:scale-[0.97] flex-shrink-0"
         style={{ color: t.textMute, background: t.surface2, border: `1px solid ${t.border}` }}
-        title="Настройки PDF"
+        title="Скачать PDF сметы"
       >
-        <Icon name="Share2" size={14} />
+        <Icon name="FileText" size={14} />
       </button>
     </div>
   );

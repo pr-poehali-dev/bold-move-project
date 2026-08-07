@@ -112,6 +112,23 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "GET order-share missing token",
+      "method": "GET",
+      "path": "/?r=order-share",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "token required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST order-share without auth is rejected",
+      "method": "POST",
+      "path": "/?r=order-share",
+      "body": {"chat_id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET bug_reports",
       "method": "GET",
       "path": "/?r=bug_reports",
