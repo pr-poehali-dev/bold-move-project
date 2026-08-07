@@ -59,14 +59,16 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
     return () => clearTimeout(timer);
   }, [filters.search]);
 
-  const load = () => {
-    setLoading(true);
+  // silent=true — для тихого фонового обновления (по таймеру), без спиннера
+  // поверх интерфейса: список просто подменяется, когда ответ уже готов.
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     const extra: Record<string, string> = {};
     if (debouncedSearch)       extra.search = debouncedSearch;
     if (filters.statusFilter) extra.status = filters.statusFilter;
     crmFetch("clients", undefined, extra).then(d => {
       setClients((Array.isArray(d) ? d : []).filter((c: Client) => c.status !== "deleted"));
-      setLoading(false);
+      if (!silent) setLoading(false);
     });
   };
 
@@ -75,7 +77,7 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
   // Тихий поллинг списка — новые клиенты (напр. из Avito) появляются сами,
   // без ручного обновления страницы.
   useEffect(() => {
-    const timer = setInterval(load, 30000);
+    const timer = setInterval(() => load(true), 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, filters.statusFilter]);

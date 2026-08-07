@@ -92,15 +92,17 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     session_id:  typeof c.session_id  === "string"                   ? c.session_id  : "",
   });
 
-  const loadClients = () => {
-    setLoading(true);
+  // silent=true — для тихого фонового обновления (по таймеру), без спиннера
+  // поверх интерфейса: список просто подменяется, когда ответ уже готов.
+  const loadClients = (silent = false) => {
+    if (!silent) setLoading(true);
     crmFetch("clients").then(d => {
       setClients(
         (Array.isArray(d) ? d : [])
           .map(normalizeClient)
           .filter((c: Client) => c.status !== "deleted")
       );
-      setLoading(false);
+      if (!silent) setLoading(false);
     });
   };
 
@@ -119,7 +121,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // сами, без ручного обновления страницы. Только пока открыта вкладка "Заказы".
   useEffect(() => {
     if (!token || tab !== "orders") return;
-    const timer = setInterval(loadClients, 30000);
+    const timer = setInterval(() => loadClients(true), 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, tab]);
