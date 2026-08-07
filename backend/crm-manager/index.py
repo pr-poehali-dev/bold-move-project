@@ -3378,8 +3378,11 @@ def handler(event: dict, context) -> dict:
             client_id = client_row[0]
 
             # Новый клиент по звонку — сразу создаём заявку в CRM (как и для Avito),
-            # чтобы звонок не терялся без карточки.
-            if is_new_client:
+            # чтобы звонок не терялся без карточки. Только для ВХОДЯЩИХ звонков —
+            # если это мы сами кому-то позвонили (direction='out', например через
+            # ручной набор в UIS, не через кнопку «Позвонить»), заявку не создаём:
+            # исходящий звонок не означает нового клиента, обратившегося к нам.
+            if is_new_client and call["direction"] == "in":
                 cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
                 master_row = cur.fetchone()
                 master_id = master_row[0] if master_row else None
@@ -3387,7 +3390,7 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, notes, source, created_via, company_id, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, 'Телефония', 'call', %s, NOW())
+                    VALUES (%s, %s, %s, 'new', %s, 'Звонок на прямую', 'call', %s, NOW())
                     RETURNING id
                 """, (f"uis_{call['session_id'] or uuid.uuid4().hex}", "Клиент по звонку", call["phone"],
                       "Первый звонок через АТС UIS", final_company_id))
