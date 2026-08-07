@@ -99,10 +99,24 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [flashInput, setFlashInput] = useState(false);
+
+  // Каналы, доступные для отправки текстового сообщения (звонок сюда не входит)
+  const TEXT_CHANNELS = new Set(["telegram", "max", "avito"]);
 
   const focusDraft = () => {
+    // Переключаем канал отправки на последний, которым реально переписывались
+    // с клиентом; если такого канала ещё не было — по умолчанию MAX.
+    const lastTextTouch = [...touches].reverse().find(tt => TEXT_CHANNELS.has(tt.channel));
+    setSendChannel(lastTextTouch ? lastTextTouch.channel : "max");
+
     textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     textareaRef.current?.focus();
+
+    // Плавное мигание контура красным 3 раза, чтобы привлечь внимание к полю
+    setFlashInput(false);
+    requestAnimationFrame(() => setFlashInput(true));
+    setTimeout(() => setFlashInput(false), 1900);
   };
 
   // Запрос фокуса извне (напр. клик по иконке «написать» рядом с телефоном на
@@ -363,7 +377,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
           }}
           rows={1} placeholder="Написать сообщение…"
-          className="flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none"
+          className={`flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none ${flashInput ? "animate-ring-flash-red" : ""}`}
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, maxHeight: 120 }} />
         <button onClick={handleSend} disabled={!draft.trim() || sending}
           className="flex-shrink-0 rounded-lg px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
