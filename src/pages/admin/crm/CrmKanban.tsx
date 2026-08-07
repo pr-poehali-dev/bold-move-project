@@ -115,17 +115,20 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
   // Все карточки: реальные клиенты + локальные заметки
   const allCards = [...clients, ...localCards];
 
+  // Свежие карточки — первыми (по дате создания).
   const clientsForCol = (col: { id: string; statuses: readonly string[] }) => {
     const colStatus = DROP_STATUS[col.id] || col.id;
-    return allCards.filter(c => {
-      const match = col.statuses.length > 0
-        ? col.statuses.includes(c.status)
-        : c.status === colStatus;
-      if (!match) return false;
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
-    });
+    return allCards
+      .filter(c => {
+        const match = col.statuses.length > 0
+          ? col.statuses.includes(c.status)
+          : c.status === colStatus;
+        if (!match) return false;
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };
 
   const addCard = (colId: string, providedName?: string) => {

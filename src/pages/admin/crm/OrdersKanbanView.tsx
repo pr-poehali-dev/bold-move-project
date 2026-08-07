@@ -49,8 +49,11 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
     })),
   ];
 
+  // Свежие заявки — первыми (по дате создания), внутри каждой колонки канбана.
   const clientsForCol = (col: { statuses: readonly string[] }) =>
-    allClients.filter(c => col.statuses.includes(c.status ?? "") && matchesOrderSearch(c, search));
+    allClients
+      .filter(c => col.statuses.includes(c.status ?? "") && matchesOrderSearch(c, search))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const saveLabel = (colId: string, val: string) => {
     const next = { ...colLabels, [colId]: val.trim() };

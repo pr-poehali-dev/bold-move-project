@@ -220,11 +220,17 @@ export function OrdersListView({
 
   const filterSearch = (list: Client[]) => filterOrdersBySearch(list, search);
 
-  // На вкладке "Замеры" сортируем по дате замера, на "Монтажи" — по дате монтажа.
-  // Ближайшие по времени — первыми, заявки без даты — в конце.
+  // Свежие заявки — первыми (по дате создания).
+  const sortByCreated = (list: Client[]) =>
+    [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // На вкладке "Замеры" сортируем по дате замера, на "Монтажи" — по дате монтажа
+  // (ближайшие по времени — первыми, заявки без даты — в конце), это осознанное
+  // исключение, чтобы видеть ближайшие выезды сверху. Везде остальное — по дате
+  // создания заявки, сначала свежие.
   const sortByDate = (list: Client[]) => {
     const field = activeTab === "measures" ? "measure_date" : activeTab === "installs" ? "install_date" : null;
-    if (!field) return list;
+    if (!field) return sortByCreated(list);
     return [...list].sort((a, b) => {
       const da = a[field] ? new Date(a[field] as string).getTime() : Infinity;
       const db = b[field] ? new Date(b[field] as string).getTime() : Infinity;
@@ -330,7 +336,7 @@ export function OrdersListView({
 
           {(() => {
             const group = DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0];
-            const items = filterSearch(currentClients.filter(c => group.statuses.includes(c.status ?? "")));
+            const items = sortByCreated(filterSearch(currentClients.filter(c => group.statuses.includes(c.status ?? ""))));
             return viewMode === "list" ? (
               <div className="space-y-2">
                 {items.length === 0
