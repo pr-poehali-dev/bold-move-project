@@ -3714,38 +3714,54 @@ def handler(event: dict, context) -> dict:
             if not bot_token:
                 return err("Сначала сохраните токен бота", 400)
 
-            # Проверяем токен через getMe. Таймаут короткий (4 сек) — дальше идёт ещё
-            # один сетевой запрос (setWebhook), а вся функция ограничена ~10 сек платформой:
-            # с таймаутом 10+10 запрос гарантированно не укладывался и обрывался без ответа.
-            try:
-                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=4) as r:
-                    me = json.loads(r.read().decode())
-                if not me.get("ok"):
-                    return err("Telegram: неверный токен бота", 400)
-                bot_username = me["result"].get("username")
-            except Exception as e:
-                print(f"[tg-leads-check] getMe failed: {type(e).__name__}: {e}")
-                return err(f"Telegram: {type(e).__name__} — {str(e)[:150]}", 400)
+            # getMe и setWebhook независимы друг от друга (setWebhook не требует
+            # результата getMe) — запускаем ОБА запроса ПАРАЛЛЕЛЬНО в потоках вместо
+            # последовательного вызова. Раньше они шли один за другим с таймаутом 4+4 сек,
+            # а сеть из этого окружения до api.telegram.org сама по себе не мгновенная —
+            # последовательно это не укладывалось и обрывалось как "нет ответа" даже на
+            # валидном токене. Параллельно оба успевают за общий бюджет ~8 сек.
+            import concurrent.futures
 
-            # Регистрируем вебхук — Telegram сам будет слать сюда апдейты
             wh_key = cfg.get("_tg_leads_webhook_key")
             if not wh_key:
                 wh_key = uuid.uuid4().hex
                 cfg["_tg_leads_webhook_key"] = wh_key
             webhook_url = f"{SELF_FUNCTION_URL}?r=tg-leads-webhook&company_id={owner_id}&key={wh_key}"
-            webhook_ok = False
-            webhook_err = None
-            try:
+
+            def _call_get_me():
+                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=8) as r:
+                    return json.loads(r.read().decode())
+
+            def _call_set_webhook():
                 wdata = json.dumps({"url": webhook_url, "allowed_updates": ["message"]}).encode()
                 wreq = _ureq.Request(f"https://api.telegram.org/bot{bot_token}/setWebhook", data=wdata,
                                       headers={"Content-Type": "application/json"}, method="POST")
-                with _ureq.urlopen(wreq, timeout=4) as r:
-                    wresp = json.loads(r.read().decode())
-                webhook_ok = bool(wresp.get("ok"))
-                if not webhook_ok:
-                    webhook_err = wresp.get("description", "неизвестная ошибка")
-            except Exception as e:
-                webhook_err = str(e)[:200]
+                with _ureq.urlopen(wreq, timeout=8) as r:
+                    return json.loads(r.read().decode())
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                fut_me = pool.submit(_call_get_me)
+                fut_wh = pool.submit(_call_set_webhook)
+
+                try:
+                    me = fut_me.result()
+                except Exception as e:
+                    print(f"[tg-leads-check] getMe failed: {type(e).__name__}: {e}")
+                    return err(f"Telegram: {type(e).__name__} — {str(e)[:150]}", 400)
+
+                if not me.get("ok"):
+                    return err("Telegram: неверный токен бота", 400)
+                bot_username = me["result"].get("username")
+
+                webhook_ok = False
+                webhook_err = None
+                try:
+                    wresp = fut_wh.result()
+                    webhook_ok = bool(wresp.get("ok"))
+                    if not webhook_ok:
+                        webhook_err = wresp.get("description", "неизвестная ошибка")
+                except Exception as e:
+                    webhook_err = str(e)[:200]
 
             cfg["_tg_leads_bot_username"] = bot_username
             cfg["_tg_leads_webhook_registered"] = webhook_ok
