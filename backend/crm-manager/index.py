@@ -12,6 +12,35 @@ from datetime import datetime
 # redeploy-marker: tg-leads endpoints added
 
 
+# ── Мост до api.telegram.org через собственный VPS ──────────────────────────
+# api.telegram.org недоступен напрямую из окружения облачных функций (Telegram
+# блокирует диапазоны IP облачных провайдеров) — подтверждено логами:
+# "urlopen error timed out" даже с taймаутом 8 сек и валидным токеном. При этом
+# с VPS-сервера (обычный IP, не облако) Telegram отвечает нормально. Поэтому
+# запросы к Telegram идут не напрямую, а через лёгкий HTTP-мост на своём VPS
+# (см. TG_PROXY_URL/TG_PROXY_TOKEN в секретах) — он просто пересылает запрос
+# и возвращает ответ Telegram как есть. Если мост не настроен — используем
+# прямой запрос как раньше (на случай если блокировка снимется или окружение сменится).
+def tg_api_request(method_path, data=None, timeout=8):
+    """Запрос к Telegram Bot API (например 'bot123:ABC/getMe') через VPS-мост,
+    если он настроен, иначе напрямую. Возвращает распарсенный JSON-ответ."""
+    proxy_url = os.environ.get("TG_PROXY_URL")
+    proxy_token = os.environ.get("TG_PROXY_TOKEN")
+    if proxy_url:
+        payload = json.dumps({"path": method_path, "data": data.decode() if data else None}).encode()
+        req = _ureq.Request(f"{proxy_url.rstrip('/')}/relay", data=payload,
+                             headers={"Content-Type": "application/json", "X-Proxy-Token": proxy_token or ""},
+                             method="POST")
+        with _ureq.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode())
+    # Fallback — прямой запрос (если мост не настроен)
+    url = f"https://api.telegram.org/{method_path}"
+    req = _ureq.Request(url, data=data, headers={"Content-Type": "application/json"},
+                         method="POST" if data else "GET")
+    with _ureq.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
 
 # ── Шифрование чувствительных данных интеграций (Avito Client Secret и т.п.) ──
 # Ключ CRM_ENCRYPTION_KEY хранится в секретах проекта (не в БД). Любую строку
@@ -3729,15 +3758,11 @@ def handler(event: dict, context) -> dict:
             webhook_url = f"{SELF_FUNCTION_URL}?r=tg-leads-webhook&company_id={owner_id}&key={wh_key}"
 
             def _call_get_me():
-                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=8) as r:
-                    return json.loads(r.read().decode())
+                return tg_api_request(f"bot{bot_token}/getMe")
 
             def _call_set_webhook():
                 wdata = json.dumps({"url": webhook_url, "allowed_updates": ["message"]}).encode()
-                wreq = _ureq.Request(f"https://api.telegram.org/bot{bot_token}/setWebhook", data=wdata,
-                                      headers={"Content-Type": "application/json"}, method="POST")
-                with _ureq.urlopen(wreq, timeout=8) as r:
-                    return json.loads(r.read().decode())
+                return tg_api_request(f"bot{bot_token}/setWebhook", data=wdata)
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
                 fut_me = pool.submit(_call_get_me)
