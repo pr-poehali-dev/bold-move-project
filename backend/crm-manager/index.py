@@ -9,6 +9,9 @@ import boto3
 import urllib.request as _ureq
 from datetime import datetime
 
+# redeploy-marker: восстановление crm-manager в func2url.json после случайной потери ключа
+
+
 
 # ── Шифрование чувствительных данных интеграций (Avito Client Secret и т.п.) ──
 # Ключ CRM_ENCRYPTION_KEY хранится в секретах проекта (не в БД). Любую строку
