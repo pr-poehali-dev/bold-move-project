@@ -342,8 +342,15 @@ def uis_start_call(api_key, virtual_phone_number, operator_phone, contact_phone)
         _err = resp["error"]
         print(f"[uis-diag] full_error={json.dumps(_err, ensure_ascii=False)}")
         return None, _err.get("message", "UIS: неизвестная ошибка")
+    # call_session_id у UIS иногда лежит не прямо в result, а на уровень глубже
+    # (result.data.call_session_id) — ищем по всей вложенной структуре, иначе
+    # черновая запись звонка остаётся с external_id=NULL и вебхук завершения
+    # не может её найти по UNIQUE(channel, external_id) → создаёт дубль в ленте.
     result = resp.get("result") or {}
-    session_id = result.get("call_session_id") or result.get("session_id")
+    flat_result = _uis_flatten(result)
+    session_id = _uis_pick(flat_result, ["call_session_id", "session_id", "id"])
+    if not session_id:
+        print(f"[uis-diag] no session_id in start_call response, raw result={json.dumps(result, ensure_ascii=False)[:1000]}")
     return session_id, None
 
 
