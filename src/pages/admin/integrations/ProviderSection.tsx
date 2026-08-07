@@ -17,6 +17,7 @@ interface Props {
   revealed: Record<string, boolean>;
   setRevealed: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   sectionCheck: Record<string, "ok" | "err">;
+  sectionChecking?: Record<string, boolean>;
   checkSection: (section: SectionDef, provider: ProviderOption) => void;
   avitoConnected?: boolean;
   avitoConnecting?: boolean;
@@ -27,7 +28,7 @@ interface Props {
 export default function ProviderSection({
   section, isDark, txt, txtSub, cardBg, cardBrd, inputBg, inputBrd,
   activeProvider, setActiveProvider, values, setValues,
-  revealed, setRevealed, sectionCheck, checkSection,
+  revealed, setRevealed, sectionCheck, sectionChecking, checkSection,
   avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
@@ -166,11 +167,15 @@ export default function ProviderSection({
       {section.kind !== "account" && section.id !== "avito" && <div className="flex items-center gap-2 mt-3">
         <button
           onClick={() => checkSection(section, current)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+          disabled={!!sectionChecking?.[section.id]}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-60"
           style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-          <Icon name="Zap" size={11} /> {section.id === "tg_leads" ? "Подключить" : "Проверить"}
+          {sectionChecking?.[section.id]
+            ? <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+            : <Icon name="Zap" size={11} />}
+          {sectionChecking?.[section.id] ? "Проверка..." : (section.id === "tg_leads" ? "Подключить" : "Проверить")}
         </button>
-        {sectionCheck[section.id] === "ok" && (
+        {!sectionChecking?.[section.id] && sectionCheck[section.id] === "ok" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
             <Icon name="CheckCircle2" size={12} />
             {section.id === "tg_leads"
@@ -178,7 +183,7 @@ export default function ProviderSection({
               : "Поля заполнены"}
           </span>
         )}
-        {sectionCheck[section.id] === "err" && (
+        {!sectionChecking?.[section.id] && sectionCheck[section.id] === "err" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
             <Icon name="AlertTriangle" size={12} />
             {section.id === "tg_leads" ? "Не удалось подключить — проверьте токен" : "Заполните обязательные поля"}

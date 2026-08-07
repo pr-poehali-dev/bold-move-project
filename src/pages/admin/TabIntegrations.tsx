@@ -30,6 +30,7 @@ export default function TabIntegrations({ isDark }: Props) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [sectionCheck, setSectionCheck] = useState<Record<string, "ok" | "err">>({});
+  const [sectionChecking, setSectionChecking] = useState<Record<string, boolean>>({});
   // Отдельно от sectionCheck: подключён ли реально владелец Avito-аккаунта
   // (через OAuth-вход) — только это даёт права на получение/отправку сообщений.
   const [avitoConnected, setAvitoConnected] = useState(false);
@@ -76,6 +77,7 @@ export default function TabIntegrations({ isDark }: Props) {
 
     if (section.id === "avito") {
       if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
+      setSectionChecking(s => ({ ...s, [section.id]: true }));
       try {
         // Сначала сохраняем введённые ключи в БД компании
         await saveIntegrationsConfig(values);
@@ -84,12 +86,15 @@ export default function TabIntegrations({ isDark }: Props) {
         setSectionCheck(s => ({ ...s, [section.id]: res?.ok ? "ok" : "err" }));
       } catch {
         setSectionCheck(s => ({ ...s, [section.id]: "err" }));
+      } finally {
+        setSectionChecking(s => ({ ...s, [section.id]: false }));
       }
       return;
     }
 
     if (section.id === "tg_leads") {
       if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
+      setSectionChecking(s => ({ ...s, [section.id]: true }));
       try {
         // Сначала сохраняем токен, затем проверяем его через Telegram API
         // и регистрируем вебхук — тот же паттерн, что и у Avito.
@@ -104,6 +109,8 @@ export default function TabIntegrations({ isDark }: Props) {
         }
       } catch {
         setSectionCheck(s => ({ ...s, [section.id]: "err" }));
+      } finally {
+        setSectionChecking(s => ({ ...s, [section.id]: false }));
       }
       return;
     }
@@ -298,7 +305,7 @@ export default function TabIntegrations({ isDark }: Props) {
                     activeProvider={activeProvider} setActiveProvider={setActiveProvider}
                     values={values} setValues={setValues}
                     revealed={revealed} setRevealed={setRevealed}
-                    sectionCheck={sectionCheck} checkSection={checkSection}
+                    sectionCheck={sectionCheck} sectionChecking={sectionChecking} checkSection={checkSection}
                     avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
                     tgLeadsBotUsername={tgLeadsBotUsername}
                   />

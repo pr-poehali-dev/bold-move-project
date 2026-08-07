@@ -3714,15 +3714,17 @@ def handler(event: dict, context) -> dict:
             if not bot_token:
                 return err("Сначала сохраните токен бота", 400)
 
-            # Проверяем токен через getMe
+            # Проверяем токен через getMe. Таймаут короткий (4 сек) — дальше идёт ещё
+            # один сетевой запрос (setWebhook), а вся функция ограничена ~10 сек платформой:
+            # с таймаутом 10+10 запрос гарантированно не укладывался и обрывался без ответа.
             try:
-                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=10) as r:
+                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=4) as r:
                     me = json.loads(r.read().decode())
                 if not me.get("ok"):
                     return err("Telegram: неверный токен бота", 400)
                 bot_username = me["result"].get("username")
             except Exception as e:
-                return err(f"Telegram: не удалось проверить токен: {str(e)[:150]}", 400)
+                return err(f"Telegram: не удалось проверить токен (нет ответа от Telegram): {str(e)[:150]}", 400)
 
             # Регистрируем вебхук — Telegram сам будет слать сюда апдейты
             wh_key = cfg.get("_tg_leads_webhook_key")
@@ -3736,7 +3738,7 @@ def handler(event: dict, context) -> dict:
                 wdata = json.dumps({"url": webhook_url, "allowed_updates": ["message"]}).encode()
                 wreq = _ureq.Request(f"https://api.telegram.org/bot{bot_token}/setWebhook", data=wdata,
                                       headers={"Content-Type": "application/json"}, method="POST")
-                with _ureq.urlopen(wreq, timeout=10) as r:
+                with _ureq.urlopen(wreq, timeout=4) as r:
                     wresp = json.loads(r.read().decode())
                 webhook_ok = bool(wresp.get("ok"))
                 if not webhook_ok:
