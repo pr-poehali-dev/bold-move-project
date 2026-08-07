@@ -21,13 +21,14 @@ interface Props {
   avitoConnected?: boolean;
   avitoConnecting?: boolean;
   connectAvito?: () => void;
+  tgLeadsBotUsername?: string | null;
 }
 
 export default function ProviderSection({
   section, isDark, txt, txtSub, cardBg, cardBrd, inputBg, inputBrd,
   activeProvider, setActiveProvider, values, setValues,
   revealed, setRevealed, sectionCheck, checkSection,
-  avitoConnected, avitoConnecting, connectAvito,
+  avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
   const multiProvider = section.providers.length > 1;
@@ -152,22 +153,35 @@ export default function ProviderSection({
         )}
       </div>}
 
+      {/* Заявки из Telegram-группы: подсказка + реальная проверка токена и вебхука */}
+      {section.id === "tg_leads" && (
+        <div className="mt-3 text-[10px]" style={{ color: txtSub }}>
+          Заведите бота у @BotFather, добавьте его в группу с заявками и отключите Privacy Mode
+          (@BotFather → /mybots → выбрать бота → Bot Settings → Group Privacy → Turn off) — иначе бот
+          не увидит чужие сообщения в группе.
+        </div>
+      )}
+
       {/* Проверить — только для остальных секций с полями (не Avito, не личные аккаунты) */}
       {section.kind !== "account" && section.id !== "avito" && <div className="flex items-center gap-2 mt-3">
         <button
           onClick={() => checkSection(section, current)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
           style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-          <Icon name="Zap" size={11} /> Проверить
+          <Icon name="Zap" size={11} /> {section.id === "tg_leads" ? "Подключить" : "Проверить"}
         </button>
         {sectionCheck[section.id] === "ok" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#10b981" }}>
-            <Icon name="CheckCircle2" size={12} /> Поля заполнены
+            <Icon name="CheckCircle2" size={12} />
+            {section.id === "tg_leads"
+              ? `Подключено${tgLeadsBotUsername ? `: @${tgLeadsBotUsername}` : ""}`
+              : "Поля заполнены"}
           </span>
         )}
         {sectionCheck[section.id] === "err" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
-            <Icon name="AlertTriangle" size={12} /> Заполните обязательные поля
+            <Icon name="AlertTriangle" size={12} />
+            {section.id === "tg_leads" ? "Не удалось подключить — проверьте токен" : "Заполните обязательные поля"}
           </span>
         )}
       </div>}

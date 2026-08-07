@@ -129,6 +129,23 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "POST tg-leads-check without auth is rejected",
+      "method": "POST",
+      "path": "/?r=tg-leads-check",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST tg-leads-webhook missing key",
+      "method": "POST",
+      "path": "/?r=tg-leads-webhook",
+      "body": {"message": {"text": "test"}},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "company_id и key обязательны"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET bug_reports",
       "method": "GET",
       "path": "/?r=bug_reports",

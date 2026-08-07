@@ -94,6 +94,17 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: "tg_leads", group: "channels",
+    title: "Заявки из Telegram-группы",
+    desc: "Свой бот стоит в группе, куда падают заявки от бота-агрегатора, и автоматически заводит по ним карточки в CRM.",
+    icon: "Inbox",
+    providers: [
+      { id: "tg_leads", label: "Telegram", fields: [
+        { key: "tg_leads_bot_token", label: "Токен бота (получить у @BotFather)", placeholder: "123456:AA...", type: "password" },
+      ]},
+    ],
+  },
+  {
     id: "webchat", group: "channels",
     title: "Веб-чат на сайте",
     desc: "Виджет чата на вашем сайте — клиент пишет прямо там, без мессенджеров.",

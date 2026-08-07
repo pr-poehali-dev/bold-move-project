@@ -9,7 +9,7 @@ import boto3
 import urllib.request as _ureq
 from datetime import datetime
 
-# redeploy-marker: order-share endpoint added
+# redeploy-marker: tg-leads endpoints added
 
 
 
@@ -519,6 +519,52 @@ def normalize_phone(raw):
     if digits:
         return "+" + digits
     return ""
+
+
+def parse_tg_lead_text(text):
+    """Разбирает текст заявки от бота-агрегатора в группе Telegram (формат вида
+    «Заявка в Москве / Нужно сделать.../ площадь: 50 м². Срок: 7 дней /
+    Телефон: +7.../ Удобнее общаться: MAX») в структурированные поля.
+    Возвращает dict или None, если текст не похож на заявку (нет телефона)."""
+    if not text or not isinstance(text, str):
+        return None
+
+    phone_m = re.search(r'[Тт]елефон:\s*(\+?\d[\d\s\-\(\)]{9,})', text)
+    if not phone_m:
+        return None  # без телефона это не заявка — обычное сообщение в группе
+    phone = normalize_phone(phone_m.group(1))
+    if not phone:
+        return None
+
+    city_m = re.search(r'[Зз]аявка\s+в\s+([^\n]+)', text)
+    city = city_m.group(1).strip() if city_m else None
+
+    area_m = re.search(r'площадь:\s*([\d.,]+)\s*м', text, re.IGNORECASE)
+    area = None
+    if area_m:
+        try:
+            area = float(area_m.group(1).replace(",", "."))
+        except ValueError:
+            area = None
+
+    term_m = re.search(r'[Сс]рок:\s*([^\n.]+(?:\n[^\nА-ЯЁ][^\n]*)?)', text)
+    term = re.sub(r'\s+', ' ', term_m.group(1)).strip() if term_m else None
+
+    contact_m = re.search(r'[Уу]добнее общаться:\s*([^\n]+)', text)
+    contact_via = contact_m.group(1).strip() if contact_m else None
+
+    # Описание работ — весь текст после заголовка "Заявка в ..." и до первого
+    # служебного поля (площадь/Телефон/Срок), с очисткой лишних пробелов.
+    desc_m = re.search(
+        r'[Зз]аявка\s+в\s+[^\n]+\n+(.+?)(?:,?\s*площадь:|\n[Тт]елефон:|\n[Сс]рок:)',
+        text, re.DOTALL)
+    description = re.sub(r'\s+', ' ', desc_m.group(1)).strip() if desc_m else None
+
+    return {
+        "phone": phone, "city": city, "area": area, "term": term,
+        "contact_via": contact_via, "description": description,
+    }
+
 
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
@@ -2516,7 +2562,7 @@ def handler(event: dict, context) -> dict:
             # Секретные поля (шифруются в БД, наружу отдаются маской "••••")
             SECRET_KEYS = ("avito_client_secret", "whatsapp_token", "mistral_key",
                            "openai_key", "assemblyai_key", "whisper_key", "other_key",
-                           "uis_api_key")
+                           "uis_api_key", "tg_leads_bot_token")
             SECRET_MASK = "••••••••"
 
             # GET — прочитать config компании (секреты маскируем, не отдаём открыто)
@@ -3650,6 +3696,134 @@ def handler(event: dict, context) -> dict:
 
             return ok({"ok": True, "client_id": client_id, "session_id": session_id,
                        "touch_id": trow[0] if trow else None})
+
+        # ── TG-LEADS-CHECK: сохранить токен бота-«слушателя» и проверить связь ─────
+        # Бот должен быть добавлен в группу, куда падают заявки от бота-агрегатора,
+        # с ВЫКЛЮЧЕННЫМ Privacy Mode (иначе Telegram не пришлёт боту чужие сообщения).
+        if resource == "tg-leads-check" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else {}
+            bot_token = decrypt_secret(cfg.get("tg_leads_bot_token"))
+            if not bot_token:
+                return err("Сначала сохраните токен бота", 400)
+
+            # Проверяем токен через getMe
+            try:
+                with _ureq.urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=10) as r:
+                    me = json.loads(r.read().decode())
+                if not me.get("ok"):
+                    return err("Telegram: неверный токен бота", 400)
+                bot_username = me["result"].get("username")
+            except Exception as e:
+                return err(f"Telegram: не удалось проверить токен: {str(e)[:150]}", 400)
+
+            # Регистрируем вебхук — Telegram сам будет слать сюда апдейты
+            wh_key = cfg.get("_tg_leads_webhook_key")
+            if not wh_key:
+                wh_key = uuid.uuid4().hex
+                cfg["_tg_leads_webhook_key"] = wh_key
+            webhook_url = f"{SELF_FUNCTION_URL}?r=tg-leads-webhook&company_id={owner_id}&key={wh_key}"
+            webhook_ok = False
+            webhook_err = None
+            try:
+                wdata = json.dumps({"url": webhook_url, "allowed_updates": ["message"]}).encode()
+                wreq = _ureq.Request(f"https://api.telegram.org/bot{bot_token}/setWebhook", data=wdata,
+                                      headers={"Content-Type": "application/json"}, method="POST")
+                with _ureq.urlopen(wreq, timeout=10) as r:
+                    wresp = json.loads(r.read().decode())
+                webhook_ok = bool(wresp.get("ok"))
+                if not webhook_ok:
+                    webhook_err = wresp.get("description", "неизвестная ошибка")
+            except Exception as e:
+                webhook_err = str(e)[:200]
+
+            cfg["_tg_leads_bot_username"] = bot_username
+            cfg["_tg_leads_webhook_registered"] = webhook_ok
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+
+            return ok({"ok": True, "bot_username": bot_username,
+                       "webhook_registered": webhook_ok, "webhook_error": webhook_err})
+
+        # ── TG-LEADS-WEBHOOK: приём апдейтов от бота-«слушателя» (Telegram Bot API) ─
+        # Бот стоит в группе с чужим ботом-агрегатором заявок. Мы разбираем текст
+        # каждого сообщения — если это похоже на заявку (см. parse_tg_lead_text),
+        # сразу создаём карточку в CRM. Отвечаем быстро — Telegram ждёт ответ < 60 сек.
+        if resource == "tg-leads-webhook" and method == "POST":
+            company_id_q = qs.get("company_id")
+            webhook_key = qs.get("key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_tg_leads_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            msg = (body or {}).get("message") or {}
+            text = msg.get("text") or msg.get("caption")
+            if not text:
+                return ok({"skipped": True})  # не текстовое сообщение (стикер, фото без подписи и т.д.)
+
+            lead = parse_tg_lead_text(text)
+            if not lead:
+                return ok({"skipped": True, "reason": "not a lead"})  # обычное сообщение в группе, не заявка
+
+            # Дедупликация: используем message_id из Telegram как уникальный внешний id,
+            # чтобы повторная доставка того же апдейта не создала вторую заявку.
+            msg_id = msg.get("message_id")
+            chat_id_tg = (msg.get("chat") or {}).get("id")
+            session_id = f"tgleads_{chat_id_tg}_{msg_id}" if msg_id else f"tgleads_{uuid.uuid4().hex}"
+
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            master_row = cur.fetchone()
+            master_id = master_row[0] if master_row else None
+            final_company_id = owner_id or master_id
+
+            notes_parts = []
+            if lead["description"]:
+                notes_parts.append(lead["description"])
+            if lead["term"]:
+                notes_parts.append(f"Срок: {lead['term']}")
+            if lead["contact_via"]:
+                notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
+            notes = "\n".join(notes_parts) if notes_parts else None
+
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Telegram-заявки', 'telegram_leads', %s, NOW())
+                    ON CONFLICT (session_id) DO NOTHING
+                    RETURNING id
+                """, (session_id, "Заявка из Telegram", lead["phone"],
+                      lead["city"], lead["area"], notes, final_company_id))
+                new_row = cur.fetchone()
+                conn.commit()
+            except psycopg2.Error:
+                conn.rollback()
+                return err("db error", 500)
+
+            if not new_row:
+                return ok({"duplicate": True})
+
+            return ok({"created": True, "client_id": new_row[0]})
 
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":

@@ -34,6 +34,8 @@ export default function TabIntegrations({ isDark }: Props) {
   // (через OAuth-вход) — только это даёт права на получение/отправку сообщений.
   const [avitoConnected, setAvitoConnected] = useState(false);
   const [avitoConnecting, setAvitoConnecting] = useState(false);
+  // Бот-«слушатель» заявок из Telegram-группы — статус после реальной проверки токена
+  const [tgLeadsBotUsername, setTgLeadsBotUsername] = useState<string | null>(null);
 
   // Сохраняет config интеграций (merge с текущим на сервере, чтобы не затереть
   // другие поля, если сейчас правим только одну секцию, напр. UIS).
@@ -86,6 +88,26 @@ export default function TabIntegrations({ isDark }: Props) {
       return;
     }
 
+    if (section.id === "tg_leads") {
+      if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
+      try {
+        // Сначала сохраняем токен, затем проверяем его через Telegram API
+        // и регистрируем вебхук — тот же паттерн, что и у Avito.
+        await saveIntegrationsConfig(values);
+        const res = await crmFetch("tg-leads-check", { method: "POST" }) as
+          { ok?: boolean; bot_username?: string; webhook_registered?: boolean; error?: string };
+        if (res?.ok && res.webhook_registered) {
+          setTgLeadsBotUsername(res.bot_username || null);
+          setSectionCheck(s => ({ ...s, [section.id]: "ok" }));
+        } else {
+          setSectionCheck(s => ({ ...s, [section.id]: "err" }));
+        }
+      } catch {
+        setSectionCheck(s => ({ ...s, [section.id]: "err" }));
+      }
+      return;
+    }
+
     setSectionCheck(s => ({ ...s, [section.id]: filled ? "ok" : "err" }));
   };
 
@@ -115,6 +137,11 @@ export default function TabIntegrations({ isDark }: Props) {
           const { _providers, avito_connected, ...vals } = d.config;
           setValues(v => ({ ...vals, ...v }));
           if (avito_connected) setAvitoConnected(true);
+          const cfgAny = d.config as Record<string, unknown>;
+          if (cfgAny._tg_leads_webhook_registered && cfgAny._tg_leads_bot_username) {
+            setTgLeadsBotUsername(String(cfgAny._tg_leads_bot_username));
+            setSectionCheck(s => ({ ...s, tg_leads: "ok" }));
+          }
           if (_providers) {
             try { setActiveProvider(p => ({ ...JSON.parse(_providers), ...p })); } catch { /* игнор */ }
           }
@@ -273,6 +300,7 @@ export default function TabIntegrations({ isDark }: Props) {
                     revealed={revealed} setRevealed={setRevealed}
                     sectionCheck={sectionCheck} checkSection={checkSection}
                     avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
+                    tgLeadsBotUsername={tgLeadsBotUsername}
                   />
                 )
               ))}
