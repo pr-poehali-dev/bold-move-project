@@ -135,6 +135,13 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
           />
         ) : (
           <div className="flex-1 flex items-center justify-end gap-1.5 py-2">
+            <button onClick={startEdit}
+              className={`text-right text-sm transition hover:opacity-70 min-w-0 ${multiline ? "" : "truncate"}`}
+              style={multiline ? { whiteSpace: "pre-wrap", wordBreak: "break-word" } : undefined}>
+              {displayVal()
+                ? <span style={{ color: "#fff" }}>{displayVal()}</span>
+                : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
+            </button>
             {onCall && displayVal() && (
               <button
                 onClick={e => { e.stopPropagation(); onCall(); }}
@@ -145,13 +152,6 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
                 <Icon name={calling ? "Loader2" : "PhoneCall"} size={13} className={calling ? "animate-spin" : ""} />
               </button>
             )}
-            <button onClick={startEdit}
-              className={`text-right text-sm transition hover:opacity-70 min-w-0 ${multiline ? "" : "truncate"}`}
-              style={multiline ? { whiteSpace: "pre-wrap", wordBreak: "break-word" } : undefined}>
-              {displayVal()
-                ? <span style={{ color: "#fff" }}>{displayVal()}</span>
-                : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
-            </button>
           </div>
         )}
       </div>
