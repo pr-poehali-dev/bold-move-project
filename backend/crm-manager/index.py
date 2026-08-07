@@ -2826,12 +2826,14 @@ def handler(event: dict, context) -> dict:
                     "analysis_updated_at": cli[7],
                     "last_read_at": last_read_at,
                 }
-                # Лента касаний по времени
+                # Лента касаний по времени. status='hidden' — технические дубли звонков
+                # (черновик click-to-call, который из-за сбоя не смог смэтчиться с
+                # вебхуком завершения по external_id) — в ленте не показываем.
                 cur.execute(f"""
                     SELECT id, channel, direction, external_id, text, audio_url,
                            duration_sec, attachments, status, created_at
                     FROM {SCHEMA}.touch_events
-                    WHERE client_id=%s
+                    WHERE client_id=%s AND status != 'hidden'
                     ORDER BY created_at ASC, id ASC
                 """, (client_id,))
                 touches = [{
