@@ -2,6 +2,7 @@ import { useState, useRef, type ChangeEvent } from "react";
 import type React from "react";
 import { useTheme } from "./themeContext";
 import { DateTimePickerPopup } from "./DateTimePicker";
+import Icon from "@/components/ui/icon";
 
 function applyPhoneMask(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -22,7 +23,7 @@ function isPhoneValid(masked: string): boolean {
   return masked.replace(/\D/g, "").length === 11;
 }
 
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline, onCall, calling }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
@@ -32,6 +33,9 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   labelExtra?: React.ReactNode;
   /** Показывать значение целиком с переносом строк (без обрезки truncate) — напр. для комментария */
   multiline?: boolean;
+  /** Если задано — рядом со значением телефона появляется иконка звонка (через АТС) */
+  onCall?: () => void;
+  calling?: boolean;
 }) {
   const t = useTheme();
   const [editing,      setEditing]      = useState(false);
@@ -130,13 +134,25 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
             }}
           />
         ) : (
-          <button onClick={startEdit}
-            className={`flex-1 text-right text-sm transition hover:opacity-70 py-2 ${multiline ? "min-w-0" : "truncate"}`}
-            style={multiline ? { whiteSpace: "pre-wrap", wordBreak: "break-word" } : undefined}>
-            {displayVal()
-              ? <span style={{ color: "#fff" }}>{displayVal()}</span>
-              : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
-          </button>
+          <div className="flex-1 flex items-center justify-end gap-1.5 py-2">
+            {onCall && displayVal() && (
+              <button
+                onClick={e => { e.stopPropagation(); onCall(); }}
+                disabled={calling}
+                title={`Позвонить: ${displayVal()}`}
+                className="flex-shrink-0 p-1 rounded-md transition hover:opacity-80 disabled:opacity-60"
+                style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>
+                <Icon name={calling ? "Loader2" : "PhoneCall"} size={13} className={calling ? "animate-spin" : ""} />
+              </button>
+            )}
+            <button onClick={startEdit}
+              className={`text-right text-sm transition hover:opacity-70 min-w-0 ${multiline ? "" : "truncate"}`}
+              style={multiline ? { whiteSpace: "pre-wrap", wordBreak: "break-word" } : undefined}>
+              {displayVal()
+                ? <span style={{ color: "#fff" }}>{displayVal()}</span>
+                : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
+            </button>
+          </div>
         )}
       </div>
       {phoneErr && editing && (

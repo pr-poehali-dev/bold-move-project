@@ -7,6 +7,7 @@ import { RowWithToggle } from "./DrawerFinRowHelpers";
 import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientExtraValues, type CustomClientField } from "./clientFieldsStore";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
+import { useCallClient } from "./useCallClient";
 
 // Источник — маркетинговый канал (Авито/ВК/Сайт), выбирается вручную, влияет на статистику.
 function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => void }) {
@@ -166,6 +167,7 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
   const id: BlockId = "contacts";
   const { isHidden, editMode } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
+  const { call: callViaUis, calling } = useCallClient();
 
   // Читаем поля из единого хранилища (синхронизировано с ClientTab)
   const [fields, setFields]           = useState(loadClientFields);
@@ -214,6 +216,8 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
                 onSave={v => saveWithLog({ [saveKey]: v } as Partial<Client>, `${field.label}: ${v}`, "User", "#10b981")}
                 placeholder={field.label}
                 multiline={field.id === "builtin_notes"}
+                onCall={saveKey === "phone" ? () => callViaUis(val) : undefined}
+                calling={saveKey === "phone" ? calling : undefined}
               />
             </RowWithToggle>
           );
