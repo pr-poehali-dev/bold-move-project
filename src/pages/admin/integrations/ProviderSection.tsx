@@ -23,13 +23,14 @@ interface Props {
   avitoConnecting?: boolean;
   connectAvito?: () => void;
   tgLeadsBotUsername?: string | null;
+  tgLeadsError?: string | null;
 }
 
 export default function ProviderSection({
   section, isDark, txt, txtSub, cardBg, cardBrd, inputBg, inputBrd,
   activeProvider, setActiveProvider, values, setValues,
   revealed, setRevealed, sectionCheck, sectionChecking, checkSection,
-  avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername,
+  avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername, tgLeadsError,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
   const multiProvider = section.providers.length > 1;
@@ -186,7 +187,9 @@ export default function ProviderSection({
         {!sectionChecking?.[section.id] && sectionCheck[section.id] === "err" && (
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "#ef4444" }}>
             <Icon name="AlertTriangle" size={12} />
-            {section.id === "tg_leads" ? "Не удалось подключить — проверьте токен" : "Заполните обязательные поля"}
+            {section.id === "tg_leads"
+              ? `Не удалось подключить${tgLeadsError ? `: ${tgLeadsError}` : ""}`
+              : "Заполните обязательные поля"}
           </span>
         )}
       </div>}

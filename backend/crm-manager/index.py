@@ -3724,7 +3724,8 @@ def handler(event: dict, context) -> dict:
                     return err("Telegram: неверный токен бота", 400)
                 bot_username = me["result"].get("username")
             except Exception as e:
-                return err(f"Telegram: не удалось проверить токен (нет ответа от Telegram): {str(e)[:150]}", 400)
+                print(f"[tg-leads-check] getMe failed: {type(e).__name__}: {e}")
+                return err(f"Telegram: {type(e).__name__} — {str(e)[:150]}", 400)
 
             # Регистрируем вебхук — Telegram сам будет слать сюда апдейты
             wh_key = cfg.get("_tg_leads_webhook_key")

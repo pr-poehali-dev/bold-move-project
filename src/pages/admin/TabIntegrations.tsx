@@ -37,6 +37,7 @@ export default function TabIntegrations({ isDark }: Props) {
   const [avitoConnecting, setAvitoConnecting] = useState(false);
   // Бот-«слушатель» заявок из Telegram-группы — статус после реальной проверки токена
   const [tgLeadsBotUsername, setTgLeadsBotUsername] = useState<string | null>(null);
+  const [tgLeadsError, setTgLeadsError] = useState<string | null>(null);
 
   // Сохраняет config интеграций (merge с текущим на сервере, чтобы не затереть
   // другие поля, если сейчас правим только одну секцию, напр. UIS).
@@ -95,19 +96,24 @@ export default function TabIntegrations({ isDark }: Props) {
     if (section.id === "tg_leads") {
       if (!filled) { setSectionCheck(s => ({ ...s, [section.id]: "err" })); return; }
       setSectionChecking(s => ({ ...s, [section.id]: true }));
+      setTgLeadsError(null);
       try {
         // Сначала сохраняем токен, затем проверяем его через Telegram API
         // и регистрируем вебхук — тот же паттерн, что и у Avito.
         await saveIntegrationsConfig(values);
         const res = await crmFetch("tg-leads-check", { method: "POST" }) as
-          { ok?: boolean; bot_username?: string; webhook_registered?: boolean; error?: string };
+          { ok?: boolean; bot_username?: string; webhook_registered?: boolean; webhook_error?: string; error?: string };
         if (res?.ok && res.webhook_registered) {
           setTgLeadsBotUsername(res.bot_username || null);
           setSectionCheck(s => ({ ...s, [section.id]: "ok" }));
         } else {
+          // Показываем реальную причину: либо ошибка ответа (400/401), либо ошибка
+          // конкретно регистрации вебхука (токен верный, но setWebhook не прошёл)
+          setTgLeadsError(res?.error || res?.webhook_error || "неизвестная ошибка");
           setSectionCheck(s => ({ ...s, [section.id]: "err" }));
         }
       } catch {
+        setTgLeadsError("не удалось связаться с сервером");
         setSectionCheck(s => ({ ...s, [section.id]: "err" }));
       } finally {
         setSectionChecking(s => ({ ...s, [section.id]: false }));
@@ -308,6 +314,7 @@ export default function TabIntegrations({ isDark }: Props) {
                     sectionCheck={sectionCheck} sectionChecking={sectionChecking} checkSection={checkSection}
                     avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
                     tgLeadsBotUsername={tgLeadsBotUsername}
+                    tgLeadsError={tgLeadsError}
                   />
                 )
               ))}
