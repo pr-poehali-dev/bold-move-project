@@ -181,6 +181,14 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "Требуется авторизация"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET email-leads-poll wrong key is rejected",
+      "method": "GET",
+      "path": "/?r=email-leads-poll&key=wrong",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "unauthorized"},
+      "bodyMatcher": "partial"
     }
   ]
 }

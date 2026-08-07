@@ -3882,6 +3882,122 @@ def handler(event: dict, context) -> dict:
 
             return ok({"created": True, "client_id": new_row[0]})
 
+        # ── EMAIL-LEADS-POLL: заявки с leakad.ru, присылаемые НЕ вебхуком, а на
+        # почту (noreply@egokad.ru → mospotolkipro@gmail.com, письма часто попадают
+        # в Спам). Telegram-бот тут не подходит (см. tg-leads-webhook — Telegram
+        # запрещает боту видеть сообщения от другого бота), а leakad.ru отправляет
+        # именно email. У облачных функций нет своего "будильника" — этот эндпоинт
+        # должен периодически дёргать внешний бесплатный cron-сервис (cron-job.org),
+        # каждый раз он заходит в почту по IMAP, разбирает текст письма (тем же
+        # парсером, что и для Telegram — формат заявки идентичный) и заводит
+        # карточку в CRM. Доступ — по секретному ключу EMAIL_LEADS_POLL_KEY в query,
+        # чтобы эндпоинт не мог дёрнуть кто попало.
+        if resource == "email-leads-poll" and method == "GET":
+            poll_key = qs.get("key", "")
+            expected_key = os.environ.get("EMAIL_LEADS_POLL_KEY")
+            if not expected_key or poll_key != expected_key:
+                return err("unauthorized", 401)
+
+            smtp_user = os.environ.get("SMTP_USER")
+            smtp_password = os.environ.get("SMTP_PASSWORD")
+            if not smtp_user or not smtp_password:
+                return err("почта не настроена (SMTP_USER/SMTP_PASSWORD)", 400)
+
+            import imaplib
+            import email as email_lib
+
+            SENDER = "noreply@egokad.ru"
+
+            def _extract_email_text(msg):
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        if part.get_content_type() == "text/plain" and not part.get_filename():
+                            charset = part.get_content_charset() or "utf-8"
+                            try:
+                                return part.get_payload(decode=True).decode(charset, errors="ignore")
+                            except Exception:
+                                continue
+                    return None
+                charset = msg.get_content_charset() or "utf-8"
+                try:
+                    return msg.get_payload(decode=True).decode(charset, errors="ignore")
+                except Exception:
+                    return None
+
+            try:
+                imap = imaplib.IMAP4_SSL("imap.gmail.com", 993, timeout=8)
+                imap.login(smtp_user, smtp_password)
+            except Exception as e:
+                return err(f"imap login failed: {type(e).__name__}: {e}", 502)
+
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            master_row = cur.fetchone()
+            master_id = master_row[0] if master_row else None
+
+            created, skipped, error_count = 0, 0, 0
+
+            try:
+                for folder in ("INBOX", '"[Gmail]/Spam"', '"[Gmail]/Спам"'):
+                    try:
+                        status, _ = imap.select(folder)
+                    except Exception:
+                        continue
+                    if status != "OK":
+                        continue
+                    status, data = imap.search(None, f'(UNSEEN FROM "{SENDER}")')
+                    if status != "OK" or not data or not data[0]:
+                        continue
+                    for eid in data[0].split():
+                        try:
+                            status, msg_data = imap.fetch(eid, "(RFC822)")
+                            if status != "OK" or not msg_data or not msg_data[0]:
+                                continue
+                            msg = email_lib.message_from_bytes(msg_data[0][1])
+                            message_id = msg.get("Message-ID") or f"emlid_{uuid.uuid4().hex}"
+                            text = _extract_email_text(msg)
+                            lead = parse_tg_lead_text(text) if text else None
+                            if not lead:
+                                imap.store(eid, "+FLAGS", "\\Seen")
+                                skipped += 1
+                                continue
+
+                            session_id = f"emaillead_{hashlib.sha256(message_id.encode()).hexdigest()[:32]}"
+                            notes_parts = []
+                            if lead["description"]:
+                                notes_parts.append(lead["description"])
+                            if lead["term"]:
+                                notes_parts.append(f"Срок: {lead['term']}")
+                            if lead["contact_via"]:
+                                notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
+                            notes = "\n".join(notes_parts) if notes_parts else None
+
+                            cur.execute(f"""
+                                INSERT INTO {SCHEMA}.live_chats
+                                    (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
+                                VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Email-заявки', 'email_leads', %s, NOW())
+                                ON CONFLICT (session_id) DO NOTHING
+                                RETURNING id
+                            """, (session_id, "Заявка с сайта (email)", lead["phone"],
+                                  lead["city"], lead["area"], notes, master_id))
+                            new_row = cur.fetchone()
+                            conn.commit()
+                            imap.store(eid, "+FLAGS", "\\Seen")
+                            if new_row:
+                                created += 1
+                            else:
+                                skipped += 1
+                        except Exception:
+                            conn.rollback()
+                            error_count += 1
+                            continue
+            finally:
+                try:
+                    imap.logout()
+                except Exception:
+                    pass
+
+            return ok({"created": created, "skipped": skipped, "errors": error_count})
+
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":
             if not authenticated:
