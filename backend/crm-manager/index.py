@@ -314,13 +314,18 @@ def uis_extract_call(body):
 
 def uis_start_call(api_key, virtual_phone_number, operator_phone, contact_phone):
     """Инициирует звонок через UIS Call API (не Data API!). Возвращает (session_id, error)."""
+    # UIS API (в отличие от нашего внутреннего формата +7XXXXXXXXXX) ждёт номера
+    # БЕЗ знака "+" — просто 11 цифр (74991234567). Со знаком "+" UIS отвечает
+    # "Invalid parameter value" по полю virtual_phone_number/operator.
+    def _uis_digits(p):
+        return (p or "").lstrip("+")
     payload = json.dumps({
         "jsonrpc": "2.0", "id": "1", "method": "start.simple_call",
         "params": {
             "access_token": api_key,
-            "virtual_phone_number": virtual_phone_number,
-            "operator": operator_phone,
-            "contact": contact_phone,
+            "virtual_phone_number": _uis_digits(virtual_phone_number),
+            "operator": _uis_digits(operator_phone),
+            "contact": _uis_digits(contact_phone),
             "direction": "out",
             "first_call": "operator",
         },
