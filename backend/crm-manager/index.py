@@ -3497,21 +3497,19 @@ def handler(event: dict, context) -> dict:
             if not cfg.get("uis_enabled"):
                 return err("Телефония UIS отключена в настройках", 400)
             api_key = decrypt_secret(cfg.get("uis_api_key"))
-            virtual_number = cfg.get("uis_virtual_phone_number")
-            if not api_key or not virtual_number:
+            virtual_number_raw = cfg.get("uis_virtual_phone_number")
+            if not api_key or not virtual_number_raw:
                 return err("Заполните API-ключ и виртуальный номер в настройках телефонии", 400)
-            # ── ВРЕМЕННАЯ ДИАГНОСТИКА (убрать после проверки) ──────────────────
-            try:
-                with _ureq.urlopen("https://api.ipify.org?format=json", timeout=5) as _r:
-                    _my_ip = json.loads(_r.read().decode()).get("ip")
-            except Exception as _e:
-                _my_ip = f"unknown ({_e})"
-            print(f"[uis-diag] key_len={len(api_key)} key_head={api_key[:4]} key_tail={api_key[-4:]} "
-                  f"virtual={virtual_number!r} outbound_ip={_my_ip}")
+            # UIS принимает номер только цифрами (+7XXXXXXXXXX) — в настройках номер
+            # мог быть введён с пробелами/скобками ("+7 (495) 487-74-77"), из-за чего
+            # API отвечал "Invalid parameter value" по полю virtual_phone_number.
+            virtual_number = normalize_phone(virtual_number_raw)
+            if not virtual_number:
+                return err("Виртуальный номер в настройках телефонии указан некорректно", 400)
 
             cur.execute(f"SELECT uis_phone FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
             urow = cur.fetchone()
-            operator_phone = urow[0] if urow else None
+            operator_phone = normalize_phone(urow[0]) if urow and urow[0] else None
             if not operator_phone:
                 return err("У вас не указан номер в АТС — заполните его в настройках телефонии", 400)
 
