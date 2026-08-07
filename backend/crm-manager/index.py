@@ -21,24 +21,37 @@ from datetime import datetime
 # (см. TG_PROXY_URL/TG_PROXY_TOKEN в секретах) — он просто пересылает запрос
 # и возвращает ответ Telegram как есть. Если мост не настроен — используем
 # прямой запрос как раньше (на случай если блокировка снимется или окружение сменится).
-def tg_api_request(method_path, data=None, timeout=8):
+def tg_api_request(method_path, data=None, timeout=3, retries=3):
     """Запрос к Telegram Bot API (например 'bot123:ABC/getMe') через VPS-мост,
-    если он настроен, иначе напрямую. Возвращает распарсенный JSON-ответ."""
+    если он настроен, иначе напрямую. Возвращает распарсенный JSON-ответ.
+
+    DNS-резолвинг поддомена моста из окружения облачных функций оказался
+    НЕСТАБИЛЬНЫМ (примерно 1 успешная попытка из 5 подряд, подтверждено серией
+    ручных проверок) — сам мост при этом всегда доступен и отвечает мгновенно.
+    Поэтому делаем несколько быстрых попыток подряд вместо одной с длинным
+    таймаутом — суммарно укладываемся в тот же бюджет времени, но резко
+    повышаем шанс на успех за счёт повторов."""
     proxy_url = os.environ.get("TG_PROXY_URL")
     proxy_token = os.environ.get("TG_PROXY_TOKEN")
-    if proxy_url:
-        payload = json.dumps({"path": method_path, "data": data.decode() if data else None}).encode()
-        req = _ureq.Request(f"{proxy_url.rstrip('/')}/relay", data=payload,
-                             headers={"Content-Type": "application/json", "X-Proxy-Token": proxy_token or ""},
-                             method="POST")
-        with _ureq.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode())
-    # Fallback — прямой запрос (если мост не настроен)
-    url = f"https://api.telegram.org/{method_path}"
-    req = _ureq.Request(url, data=data, headers={"Content-Type": "application/json"},
-                         method="POST" if data else "GET")
-    with _ureq.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode())
+    last_err = None
+    for attempt in range(retries):
+        try:
+            if proxy_url:
+                payload = json.dumps({"path": method_path, "data": data.decode() if data else None}).encode()
+                req = _ureq.Request(f"{proxy_url.rstrip('/')}/relay", data=payload,
+                                     headers={"Content-Type": "application/json", "X-Proxy-Token": proxy_token or ""},
+                                     method="POST")
+            else:
+                # Fallback — прямой запрос (если мост не настроен)
+                req = _ureq.Request(f"https://api.telegram.org/{method_path}", data=data,
+                                     headers={"Content-Type": "application/json"},
+                                     method="POST" if data else "GET")
+            with _ureq.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read().decode())
+        except Exception as e:
+            last_err = e
+            print(f"[tg_api_request] attempt {attempt+1}/{retries} failed: {type(e).__name__}: {e}")
+    raise last_err
 
 
 
