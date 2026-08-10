@@ -4227,10 +4227,13 @@ def handler(event: dict, context) -> dict:
 
             return ok({
                 "webhook_url": webhook_url,
+                "webhook_enabled": cfg.get("leakad_webhook_enabled") != "false",
                 "email_configured": has_password,
                 "email_address": email_address,
                 "email_sender": email_sender,
                 "email_has_password": has_password,
+                "email_enabled": cfg.get("email_leads_enabled") != "false",
+                "tg_leads_enabled": cfg.get("tg_leads_enabled") != "false",
                 "stats": stats,
             })
 
@@ -4256,6 +4259,8 @@ def handler(event: dict, context) -> dict:
                 cfg["email_leads_sender"] = sender
             if password:
                 cfg["email_leads_password"] = encrypt_secret(password)
+            if "enabled" in body:
+                cfg["email_leads_enabled"] = "true" if body.get("enabled") else "false"
 
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
@@ -4264,6 +4269,40 @@ def handler(event: dict, context) -> dict:
             """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
             conn.commit()
             return ok({"saved": True})
+
+        # ── SOURCE-TOGGLE: включить/выключить источник заявок одним переключателем ──
+        # Универсальный эндпоинт для тумблеров на карточках (вебхук leakad, почта,
+        # Telegram-группа) — просто пишет флаг *_enabled в config компании.
+        if resource == "source-toggle" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            source = body.get("source")
+            enabled = bool(body.get("enabled"))
+            key_map = {
+                "leakad_webhook": "leakad_webhook_enabled",
+                "email_leads": "email_leads_enabled",
+                "telegram_leads": "tg_leads_enabled",
+            }
+            cfg_key = key_map.get(source)
+            if not cfg_key:
+                return err("unknown source")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+            cfg[cfg_key] = "true" if enabled else "false"
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+            return ok({"saved": True, "enabled": enabled})
 
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":
