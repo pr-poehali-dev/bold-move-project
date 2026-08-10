@@ -3961,21 +3961,36 @@ def handler(event: dict, context) -> dict:
             if resource == "email-leads-check-now":
                 if not authenticated:
                     return err("Требуется авторизация", 401)
+                owner_id = company_id or master_uid
             else:
                 poll_key = qs.get("key", "")
                 expected_key = os.environ.get("EMAIL_LEADS_POLL_KEY")
                 if not expected_key or poll_key != expected_key:
                     return err("unauthorized", 401)
+                # Будильник не знает company_id (дёргает публичный URL без токена) —
+                # берём настройки почты мастер-аккаунта (единственный, кто её сейчас использует).
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
+                m = cur.fetchone()
+                owner_id = m[0] if m else None
 
-            smtp_user = os.environ.get("SMTP_USER")
-            smtp_password = os.environ.get("SMTP_PASSWORD")
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            # Ящик и пароль: сначала берём настройки из «Интеграций» (редактируемые
+            # в интерфейсе), если их нет — используем значения по умолчанию из секретов.
+            smtp_user = cfg.get("email_leads_mailbox") or os.environ.get("SMTP_USER")
+            smtp_password = decrypt_secret(cfg.get("email_leads_password")) or os.environ.get("LEAKAD_IMAP_APP_PASSWORD") or os.environ.get("SMTP_PASSWORD")
             if not smtp_user or not smtp_password:
-                return err("почта не настроена (SMTP_USER/SMTP_PASSWORD)", 400)
+                return err("почта не настроена — впишите ящик и пароль приложения в «Интеграциях»", 400)
+
+            if cfg.get("email_leads_enabled") == "false":
+                return ok({"skipped": True, "reason": "disabled"})
 
             import imaplib
             import email as email_lib
 
-            SENDER = "noreply@egokad.ru"
+            SENDER = cfg.get("email_leads_sender") or "noreply@egokad.ru"
 
             def _extract_email_text(msg):
                 if msg.is_multipart():
@@ -3999,9 +4014,12 @@ def handler(event: dict, context) -> dict:
             except Exception as e:
                 return err(f"imap login failed: {type(e).__name__}: {e}", 502)
 
-            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
-            master_row = cur.fetchone()
-            master_id = master_row[0] if master_row else None
+            if owner_id:
+                master_id = owner_id
+            else:
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
+                master_row = cur.fetchone()
+                master_id = master_row[0] if master_row else None
 
             created, skipped, error_count = 0, 0, 0
             spam_folder = imap_find_spam_folder(imap)
@@ -4180,6 +4198,16 @@ def handler(event: dict, context) -> dict:
             wh_key = os.environ.get("LEAKAD_WEBHOOK_KEY")
             webhook_url = (f"{SELF_FUNCTION_URL}?r=leakad-webhook&key={wh_key}") if wh_key else None
 
+            owner_id = company_id or master_uid
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            # Ящик/отправитель: значения из «Интеграций», если не заданы — дефолт mospotolkipro@gmail.com
+            email_address = cfg.get("email_leads_mailbox") or os.environ.get("SMTP_USER") or "mospotolkipro@gmail.com"
+            email_sender = cfg.get("email_leads_sender") or "noreply@egokad.ru"
+            has_password = bool(cfg.get("email_leads_password") or os.environ.get("LEAKAD_IMAP_APP_PASSWORD") or os.environ.get("SMTP_PASSWORD"))
+
             stats = {}
             for via in ("leakad_webhook", "email_leads", "telegram_leads"):
                 cur.execute(f"""
@@ -4194,11 +4222,43 @@ def handler(event: dict, context) -> dict:
 
             return ok({
                 "webhook_url": webhook_url,
-                "email_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASSWORD")),
-                "email_address": os.environ.get("SMTP_USER") or None,
-                "email_sender": "noreply@egokad.ru",
+                "email_configured": has_password,
+                "email_address": email_address,
+                "email_sender": email_sender,
+                "email_has_password": has_password,
                 "stats": stats,
             })
+
+        # ── EMAIL-LEADS-CONFIG: сохранить ящик/отправителя/пароль почты для заявок ──
+        if resource == "email-leads-config" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            mailbox = (body.get("mailbox") or "").strip()
+            sender = (body.get("sender") or "").strip()
+            password = (body.get("password") or "").strip()
+
+            if mailbox:
+                cfg["email_leads_mailbox"] = mailbox
+            if sender:
+                cfg["email_leads_sender"] = sender
+            if password:
+                cfg["email_leads_password"] = encrypt_secret(password)
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+            """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+            conn.commit()
+            return ok({"saved": True})
 
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":

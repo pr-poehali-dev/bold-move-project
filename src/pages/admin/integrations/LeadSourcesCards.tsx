@@ -9,6 +9,7 @@ interface Info {
   email_configured?: boolean;
   email_address?: string | null;
   email_sender?: string | null;
+  email_has_password?: boolean;
   stats?: Record<string, Stat>;
 }
 
@@ -75,15 +76,42 @@ export default function LeadSourcesCards({
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
 
+  // Редактирование ящика/отправителя/пароля почты для заявок
+  const [editingMail, setEditingMail] = useState(false);
+  const [mailbox, setMailbox] = useState("");
+  const [sender, setSender] = useState("");
+  const [password, setPassword] = useState("");
+  const [savingMail, setSavingMail] = useState(false);
+  const [mailSaved, setMailSaved] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
   const load = async () => {
     try {
       const d = await crmFetch("leads-sources-info") as Info;
       setInfo(d ?? null);
+      setMailbox(d?.email_address || "");
+      setSender(d?.email_sender || "");
     } catch { /* тихо */ }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  const saveMailConfig = async () => {
+    setSavingMail(true);
+    try {
+      await crmFetch("email-leads-config", {
+        method: "POST",
+        body: JSON.stringify({ mailbox, sender, password }),
+      });
+      setPassword("");
+      setEditingMail(false);
+      setMailSaved(true);
+      setTimeout(() => setMailSaved(false), 1500);
+      load();
+    } catch { /* тихо */ }
+    setSavingMail(false);
+  };
 
   const copyUrl = () => {
     if (!info?.webhook_url) return;
@@ -173,30 +201,99 @@ export default function LeadSourcesCards({
         connected={!!info?.email_configured}
         stat={info?.stats?.email_leads}>
 
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl"
-            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
-            <Icon name="Inbox" size={13} style={{ color: txtSub, flexShrink: 0 }} />
-            <span className="truncate">Ящик: <b>{info?.email_address || "не настроен"}</b></span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl"
-            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
-            <Icon name="AtSign" size={13} style={{ color: txtSub, flexShrink: 0 }} />
-            <span className="truncate">Ждём письма от: <b>{info?.email_sender}</b></span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={checkMailNow} disabled={checking}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-60"
-              style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-              <Icon name={checking ? "Loader2" : "RefreshCw"} size={11} className={checking ? "animate-spin" : ""} />
-              {checking ? "Проверяю..." : "Проверить почту сейчас"}
-            </button>
-            {checkResult && (
-              <span className="text-[11px] font-semibold" style={{ color: txtSub }}>{checkResult}</span>
+        {!editingMail ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl"
+              style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
+              <Icon name="Inbox" size={13} style={{ color: txtSub, flexShrink: 0 }} />
+              <span className="truncate">Ящик: <b>{info?.email_address || "не настроен"}</b></span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl"
+              style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
+              <Icon name="AtSign" size={13} style={{ color: txtSub, flexShrink: 0 }} />
+              <span className="truncate">Ждём письма от: <b>{info?.email_sender}</b></span>
+            </div>
+            {!info?.email_has_password && (
+              <div className="text-[11px] px-3 py-2 rounded-xl"
+                style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                Пароль приложения не задан — почта не проверяется.
+              </div>
             )}
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={checkMailNow} disabled={checking}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-60"
+                style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
+                <Icon name={checking ? "Loader2" : "RefreshCw"} size={11} className={checking ? "animate-spin" : ""} />
+                {checking ? "Проверяю..." : "Проверить почту сейчас"}
+              </button>
+              <button onClick={() => setEditingMail(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+                style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: txtSub }}>
+                <Icon name="Settings" size={11} /> Изменить
+              </button>
+              {checkResult && (
+                <span className="text-[11px] font-semibold" style={{ color: txtSub }}>{checkResult}</span>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <div className="text-[11px] font-semibold mb-1" style={{ color: txtSub }}>Ящик (IMAP Gmail)</div>
+              <input value={mailbox} onChange={e => setMailbox(e.target.value)}
+                placeholder="mospotolkipro@gmail.com"
+                className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:font-semibold"
+                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }} />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[11px] font-semibold" style={{ color: txtSub }}>Пароль приложения Gmail</span>
+                <button type="button" onClick={() => setShowHelp(h => !h)}
+                  className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
+                  <Icon name="HelpCircle" size={11} />
+                </button>
+              </div>
+              {showHelp && (
+                <div className="text-[10px] mb-1.5 px-3 py-2 rounded-xl leading-relaxed"
+                  style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txtSub }}>
+                  Это не обычный пароль от аккаунта Google — нужен «пароль приложения»:<br/>
+                  1. Зайдите в аккаунт нужной почты<br/>
+                  2. Включите двухэтапную аутентификацию (myaccount.google.com/security)<br/>
+                  3. Откройте myaccount.google.com/apppasswords<br/>
+                  4. Введите название (например «CRM») и нажмите «Создать»<br/>
+                  5. Скопируйте показанный 16-значный пароль и вставьте сюда
+                </div>
+              )}
+              <input value={password} onChange={e => setPassword(e.target.value)}
+                type="password"
+                placeholder={info?.email_has_password ? "•••••••••••••••• (оставьте пустым, если не меняете)" : "abcd efgh ijkl mnop"}
+                className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:font-semibold"
+                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }} />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold mb-1" style={{ color: txtSub }}>Ждём письма от (отправитель)</div>
+              <input value={sender} onChange={e => setSender(e.target.value)}
+                placeholder="noreply@egokad.ru"
+                className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:font-semibold"
+                style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }} />
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={saveMailConfig} disabled={savingMail}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-60"
+                style={{ background: mailSaved ? "rgba(16,185,129,0.15)" : "#7c3aed", color: mailSaved ? "#10b981" : "#fff" }}>
+                <Icon name={savingMail ? "Loader2" : mailSaved ? "Check" : "Save"} size={11} className={savingMail ? "animate-spin" : ""} />
+                {mailSaved ? "Сохранено" : "Сохранить"}
+              </button>
+              <button onClick={() => { setEditingMail(false); setPassword(""); }}
+                className="px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+                style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: txtSub }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
       </SourceCard>
     </>
   );
