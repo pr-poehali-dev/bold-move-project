@@ -4105,7 +4105,11 @@ def handler(event: dict, context) -> dict:
             name = payload.get("name") or payload.get("title") or payload.get("имя")
             comment = payload.get("comment") or payload.get("комментарий")
             city = payload.get("city") or payload.get("город")
-            source_name = payload.get("source") or payload.get("источник") or "Leakad-заявки"
+            # Источник всегда фиксированный "Квиз" — независимо от того, что реально
+            # прислал leakad.ru в своём поле source (там бывает то "Egokad CRM",
+            # то не заполнено вовсе). В воронке уже есть категория "Квиз" —
+            # все заявки с leakad.ru должны попадать именно туда одним источником.
+            source_name = "Квиз"
 
             lead = None
             if not phone_raw:
