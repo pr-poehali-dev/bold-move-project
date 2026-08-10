@@ -3998,6 +3998,68 @@ def handler(event: dict, context) -> dict:
 
             return ok({"created": created, "skipped": skipped, "errors": error_count})
 
+        # ── LEAKAD-WEBHOOK: заявки с leakad.ru напрямую по вебхуку (без задержек
+        # почты). Формат текста заявки такой же, как в письмах/Telegram — разбираем
+        # тем же parse_tg_lead_text. Точный формат тела запроса leakad.ru заранее
+        # неизвестен, поэтому принимаем гибко: JSON с полем text/message/body,
+        # либо сырой текст в теле запроса. Защита — секретный ключ в query.
+        if resource == "leakad-webhook" and method == "POST":
+            webhook_key = qs.get("key", "")
+            expected_key = os.environ.get("LEAKAD_WEBHOOK_KEY")
+            if not expected_key or webhook_key != expected_key:
+                return err("unauthorized", 401)
+
+            raw_body = event.get("body") or ""
+            if event.get("isBase64Encoded"):
+                try:
+                    raw_body = base64.b64decode(raw_body).decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+
+            text = None
+            if isinstance(body, dict) and body:
+                text = body.get("text") or body.get("message") or body.get("body") or body.get("caption")
+            if not text and raw_body:
+                text = raw_body
+
+            lead = parse_tg_lead_text(text) if text else None
+            if not lead:
+                return ok({"skipped": True, "reason": "not a lead"})
+
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            master_row = cur.fetchone()
+            master_id = master_row[0] if master_row else None
+
+            session_id = f"leakadwh_{hashlib.sha256(text.encode()).hexdigest()[:32]}"
+            notes_parts = []
+            if lead["description"]:
+                notes_parts.append(lead["description"])
+            if lead["term"]:
+                notes_parts.append(f"Срок: {lead['term']}")
+            if lead["contact_via"]:
+                notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
+            notes = "\n".join(notes_parts) if notes_parts else None
+
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.live_chats
+                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Leakad-заявки', 'leakad_webhook', %s, NOW())
+                    ON CONFLICT (session_id) DO NOTHING
+                    RETURNING id
+                """, (session_id, "Заявка с сайта (leakad)", lead["phone"],
+                      lead["city"], lead["area"], notes, master_id))
+                new_row = cur.fetchone()
+                conn.commit()
+            except psycopg2.Error:
+                conn.rollback()
+                return err("db error", 500)
+
+            if not new_row:
+                return ok({"duplicate": True})
+
+            return ok({"created": True, "client_id": new_row[0]})
+
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":
             if not authenticated:
