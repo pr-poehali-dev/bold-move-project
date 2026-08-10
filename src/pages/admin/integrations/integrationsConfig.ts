@@ -23,6 +23,10 @@ export interface SectionDef {
   kind?: "fields" | "account";
   /** способ входа для kind="account": qr (Telegram) | code (MAX по номеру) */
   authMethod?: "qr" | "code";
+  /** Ключ в config для тумблера вкл/выкл этой карточки (если задан — тумблер показывается) */
+  enabledKey?: string;
+  /** true — выключение реально останавливает приём на бэкенде; false/не задано — только визуально */
+  realToggle?: boolean;
 }
 
 // Смысловые группы вкладки «Интеграции»
@@ -48,6 +52,7 @@ export const SECTIONS: SectionDef[] = [
     icon: "Send",
     kind: "account", authMethod: "qr",
     providers: [{ id: "tg_personal", label: "Telegram", fields: [] }],
+    enabledKey: "tg_personal_enabled", realToggle: false,
   },
   {
     id: "max_personal", group: "accounts",
@@ -56,6 +61,7 @@ export const SECTIONS: SectionDef[] = [
     icon: "MessageCircle",
     kind: "account", authMethod: "code",
     providers: [{ id: "max_personal", label: "MAX", fields: [] }],
+    enabledKey: "max_personal_enabled", realToggle: false,
   },
   // ── Боты (уведомления по токену) ──
   {
@@ -68,6 +74,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "tg_channel_token", label: "Токен бота (получить у @BotFather)", placeholder: "123456:AA...", type: "password" },
       ]},
     ],
+    enabledKey: "tg_bot_enabled", realToggle: false,
   },
   {
     id: "max_bot", group: "bots",
@@ -79,6 +86,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "max_channel_token", label: "Токен бота MAX (получить у @MasterBot)", placeholder: "...", type: "password" },
       ]},
     ],
+    enabledKey: "max_bot_enabled", realToggle: false,
   },
   // ── Другие каналы ──
   {
@@ -92,6 +100,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "avito_client_secret", label: "Client Secret", placeholder: "...", type: "password" },
       ]},
     ],
+    enabledKey: "avito_enabled", realToggle: true,
   },
   {
     id: "tg_leads", group: "channels",
@@ -103,6 +112,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "tg_leads_bot_token", label: "Токен бота (получить у @BotFather)", placeholder: "123456:AA...", type: "password" },
       ]},
     ],
+    enabledKey: "tg_leads_enabled", realToggle: true,
   },
   {
     id: "webchat", group: "channels",
@@ -114,6 +124,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "webchat_site_url", label: "Адрес сайта", placeholder: "https://..." },
       ]},
     ],
+    enabledKey: "webchat_enabled", realToggle: false,
   },
   // ── ИИ и обработка ──
   {
@@ -130,6 +141,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "whisper_model", label: "Модель", placeholder: "whisper-1" },
       ]},
     ],
+    enabledKey: "transcription_enabled", realToggle: false,
   },
   {
     id: "llm", group: "ai",
@@ -153,6 +165,7 @@ export const SECTIONS: SectionDef[] = [
         { key: "other_model", label: "Модель", placeholder: "название-модели" },
       ]},
     ],
+    enabledKey: "llm_enabled", realToggle: false,
   },
   // ── Телефония ──
   {
@@ -166,5 +179,6 @@ export const SECTIONS: SectionDef[] = [
         { key: "uis_virtual_phone_number", label: "Виртуальный номер UIS", placeholder: "+7..." },
       ]},
     ],
+    // У UIS уже есть свой встроенный тумблер внутри TelephonyUisCard (uis_enabled) — здесь не дублируем.
   },
 ];

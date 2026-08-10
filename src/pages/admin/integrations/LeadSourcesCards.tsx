@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { crmFetch } from "../crm/crmApi";
+import EnabledToggle from "./EnabledToggle";
 
 interface Stat { count: number; last_at: string | null }
 
 interface Info {
   webhook_url?: string | null;
+  webhook_enabled?: boolean;
   email_configured?: boolean;
   email_address?: string | null;
   email_sender?: string | null;
   email_has_password?: boolean;
+  email_enabled?: boolean;
   stats?: Record<string, Stat>;
 }
 
@@ -25,13 +28,15 @@ const fmtDate = (iso: string | null | undefined) =>
 /** Общая обёртка-карточка источника заявок */
 function SourceCard({
   cardBg, cardBrd, txt, txtSub, icon, title, desc, connected, stat, children,
+  enabled, onToggleEnabled, toggling,
 }: {
   cardBg: string; cardBrd: string; txt: string; txtSub: string;
   icon: string; title: string; desc: string;
   connected: boolean; stat?: Stat; children?: React.ReactNode;
+  enabled: boolean; onToggleEnabled: (next: boolean) => void; toggling?: boolean;
 }) {
   return (
-    <div className="rounded-2xl p-4" style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
+    <div className="rounded-2xl p-4" style={{ background: cardBg, border: `1px solid ${cardBrd}`, opacity: enabled ? 1 : 0.65 }}>
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(124,58,237,0.12)" }}>
@@ -42,16 +47,17 @@ function SourceCard({
             <div className="text-sm font-bold" style={{ color: txt }}>{title}</div>
             <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md"
               style={{
-                background: connected ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.12)",
-                color: connected ? "#10b981" : txtSub,
+                background: !enabled ? "rgba(148,163,184,0.12)" : connected ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.12)",
+                color: !enabled ? txtSub : connected ? "#10b981" : txtSub,
               }}>
               <span className="w-1.5 h-1.5 rounded-full"
-                style={{ background: connected ? "#10b981" : "#94a3b8" }} />
-              {connected ? "Работает" : "Не настроено"}
+                style={{ background: !enabled ? "#94a3b8" : connected ? "#10b981" : "#94a3b8" }} />
+              {!enabled ? "Отключено" : connected ? "Работает" : "Не настроено"}
             </span>
           </div>
           <div className="text-[11px] mt-0.5" style={{ color: txtSub }}>{desc}</div>
         </div>
+        <EnabledToggle enabled={enabled} onChange={onToggleEnabled} disabled={toggling} />
       </div>
 
       {children}
@@ -84,6 +90,7 @@ export default function LeadSourcesCards({
   const [savingMail, setSavingMail] = useState(false);
   const [mailSaved, setMailSaved] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -93,6 +100,23 @@ export default function LeadSourcesCards({
       setSender(d?.email_sender || "");
     } catch { /* тихо */ }
     setLoading(false);
+  };
+
+  const toggleSource = async (source: string, next: boolean) => {
+    setToggling(source);
+    // Оптимистичное обновление — тумблер сразу отражает выбор пользователя
+    setInfo(i => i ? {
+      ...i,
+      ...(source === "leakad_webhook" ? { webhook_enabled: next } : {}),
+      ...(source === "email_leads" ? { email_enabled: next } : {}),
+    } : i);
+    try {
+      await crmFetch("source-toggle", {
+        method: "POST",
+        body: JSON.stringify({ source, enabled: next }),
+      });
+    } catch { /* тихо */ }
+    setToggling(null);
   };
 
   useEffect(() => { load(); }, []);
@@ -157,7 +181,10 @@ export default function LeadSourcesCards({
         title="Вебхук leakad.ru"
         desc="Заявки приходят напрямую в CRM за секунду. Самый быстрый и надёжный способ."
         connected={!!info?.webhook_url}
-        stat={info?.stats?.leakad_webhook}>
+        stat={info?.stats?.leakad_webhook}
+        enabled={info?.webhook_enabled !== false}
+        onToggleEnabled={next => toggleSource("leakad_webhook", next)}
+        toggling={toggling === "leakad_webhook"}>
 
         <div className="text-[11px] font-semibold mb-1.5" style={{ color: txtSub }}>
           Передайте этот адрес в поддержку leakad.ru (метод POST)
@@ -199,7 +226,10 @@ export default function LeadSourcesCards({
         title="Заявки с почты"
         desc="Запасной канал: система сама заходит в почту раз в минуту и заводит карточки по письмам."
         connected={!!info?.email_configured}
-        stat={info?.stats?.email_leads}>
+        stat={info?.stats?.email_leads}
+        enabled={info?.email_enabled !== false}
+        onToggleEnabled={next => toggleSource("email_leads", next)}
+        toggling={toggling === "email_leads"}>
 
         {!editingMail ? (
           <div className="flex flex-col gap-2">

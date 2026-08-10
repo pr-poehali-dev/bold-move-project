@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import EnabledToggle from "./EnabledToggle";
 
 interface Props {
   cardBg: string;
@@ -21,6 +22,10 @@ interface Props {
   onTest: () => void;
   testing: boolean;
   testResult: "ok" | "err" | null;
+  /** Визуальный тумблер вкл/выкл (пока без реального эффекта на бэкенде — уведомления
+      отправляются только вручную кнопкой «Проверить», автоприёма пока нет) */
+  enabled?: boolean;
+  onToggleEnabled?: (next: boolean) => void;
 }
 
 export default function NotifyIntegrationCard({
@@ -29,19 +34,23 @@ export default function NotifyIntegrationCard({
   tokenValue, onTokenChange, tokenPlaceholder,
   chatValue, onChatChange, chatPlaceholder,
   onTest, testing, testResult,
+  enabled = true, onToggleEnabled,
 }: Props) {
   return (
     <div className="rounded-2xl p-4"
-      style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
+      style={{ background: cardBg, border: `1px solid ${cardBrd}`, opacity: enabled ? 1 : 0.65 }}>
       <div className="flex items-center gap-2 mb-3">
         <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(124,58,237,0.15)" }}>
           {iconNode ?? <Icon name={iconName || "Send"} size={14} style={{ color: "#a78bfa" }} />}
         </div>
-        <div>
+        <div className="flex-1">
           <div className="text-sm font-black" style={{ color: text }}>{title}</div>
           <div className="text-[11px]" style={{ color: muted }}>{subtitle}</div>
         </div>
+        {onToggleEnabled && (
+          <EnabledToggle enabled={enabled} onChange={onToggleEnabled} />
+        )}
       </div>
       <div className="space-y-2.5">
         <div>

@@ -61,6 +61,35 @@ export default function TabIntegrations({ isDark }: Props) {
   // Бот-«слушатель» заявок из Telegram-группы — статус после реальной проверки токена
   const [tgLeadsBotUsername, setTgLeadsBotUsername] = useState<string | null>(null);
   const [tgLeadsError, setTgLeadsError] = useState<string | null>(null);
+  const [togglingSection, setTogglingSection] = useState<string | null>(null);
+
+  // section.id → source для эндпоинта source-toggle (только те, что реально
+  // останавливают приём на бэкенде — realToggle: true в integrationsConfig.ts)
+  const REAL_TOGGLE_SOURCE: Record<string, string> = {
+    avito: "avito",
+    tg_leads: "telegram_leads",
+  };
+
+  // Тумблер вкл/выкл карточки: для «реальных» источников дёргаем source-toggle
+  // (бэкенд реально останавливает приём), для остальных — просто сохраняем
+  // визуальный флаг в общий config (как договорились — без изменения логики бэкенда).
+  const toggleSectionEnabled = async (section: SectionDef, next: boolean) => {
+    if (!section.enabledKey) return;
+    setTogglingSection(section.id);
+    setValues(v => ({ ...v, [section.enabledKey!]: String(next) }));
+    try {
+      const realSource = REAL_TOGGLE_SOURCE[section.id];
+      if (realSource) {
+        await crmFetch("source-toggle", {
+          method: "POST",
+          body: JSON.stringify({ source: realSource, enabled: next }),
+        });
+      } else {
+        await saveIntegrationsConfig({ [section.enabledKey]: String(next) });
+      }
+    } catch { /* тихо */ }
+    setTogglingSection(null);
+  };
 
   // Сохраняет config интеграций (merge с текущим на сервере, чтобы не затереть
   // другие поля, если сейчас правим только одну секцию, напр. UIS).
@@ -286,6 +315,8 @@ export default function TabIntegrations({ isDark }: Props) {
         avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
         tgLeadsBotUsername={tgLeadsBotUsername}
         tgLeadsError={tgLeadsError}
+        onToggleEnabled={toggleSectionEnabled}
+        toggling={togglingSection === section.id}
       />
     );
   };
@@ -346,6 +377,8 @@ export default function TabIntegrations({ isDark }: Props) {
               chatValue={tgChat} onChatChange={setTgChat}
               chatPlaceholder="ID чата или группы (узнать у @userinfobot)"
               onTest={testTelegram} testing={tgTesting} testResult={tgTestResult}
+              enabled={values.tg_notify_enabled !== "false"}
+              onToggleEnabled={next => toggleSectionEnabled({ id: "tg_notify", enabledKey: "tg_notify_enabled" } as SectionDef, next)}
             />
             <NotifyIntegrationCard
               cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
@@ -357,6 +390,8 @@ export default function TabIntegrations({ isDark }: Props) {
               chatValue={maxChat} onChatChange={setMaxChat}
               chatPlaceholder="ID чата (числовой ID получателя)"
               onTest={testMax} testing={maxTesting} testResult={maxTestResult}
+              enabled={values.max_notify_enabled !== "false"}
+              onToggleEnabled={next => toggleSectionEnabled({ id: "max_notify", enabledKey: "max_notify_enabled" } as SectionDef, next)}
             />
           </>
         )}

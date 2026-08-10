@@ -1,5 +1,6 @@
 import Icon from "@/components/ui/icon";
 import type { SectionDef, ProviderOption } from "./integrationsConfig";
+import EnabledToggle from "./EnabledToggle";
 
 interface Props {
   section: SectionDef;
@@ -24,6 +25,8 @@ interface Props {
   connectAvito?: () => void;
   tgLeadsBotUsername?: string | null;
   tgLeadsError?: string | null;
+  onToggleEnabled?: (section: SectionDef, next: boolean) => void;
+  toggling?: boolean;
 }
 
 export default function ProviderSection({
@@ -31,22 +34,28 @@ export default function ProviderSection({
   activeProvider, setActiveProvider, values, setValues,
   revealed, setRevealed, sectionCheck, sectionChecking, checkSection,
   avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername, tgLeadsError,
+  onToggleEnabled, toggling,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
   const multiProvider = section.providers.length > 1;
+  const enabled = section.enabledKey ? values[section.enabledKey] !== "false" : true;
   return (
     <div className="rounded-2xl p-4"
-      style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
+      style={{ background: cardBg, border: `1px solid ${cardBrd}`, opacity: enabled ? 1 : 0.65 }}>
 
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(124,58,237,0.12)" }}>
           <Icon name={section.icon} size={17} style={{ color: "#a78bfa" }} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-sm font-bold" style={{ color: txt }}>{section.title}</div>
           <div className="text-[11px] mt-0.5" style={{ color: txtSub }}>{section.desc}</div>
         </div>
+        {section.enabledKey && onToggleEnabled && (
+          <EnabledToggle enabled={enabled} disabled={toggling}
+            onChange={next => onToggleEnabled(section, next)} />
+        )}
       </div>
 
       {/* Личный аккаунт: вход по QR/номеру через VPS-воркер (не поля-токены) */}

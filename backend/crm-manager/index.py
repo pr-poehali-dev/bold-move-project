@@ -3395,6 +3395,8 @@ def handler(event: dict, context) -> dict:
             cfg = row[0] if row else None
             if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
                 return err("неверный ключ", 401)
+            if cfg.get("avito_enabled") == "false":
+                return ok({"skipped": True, "reason": "disabled"})
 
             # ── ВРЕМЕННАЯ ДИАГНОСТИКА (включено ~на 2 дня) ──────────────────────
             # Логируем ПОЛНЫЙ сырой JSON от Avito, чтобы проверить: приходит ли в
@@ -3894,6 +3896,8 @@ def handler(event: dict, context) -> dict:
             cfg = row[0] if row else None
             if not cfg or cfg.get("_tg_leads_webhook_key") != webhook_key:
                 return err("неверный ключ", 401)
+            if cfg.get("tg_leads_enabled") == "false":
+                return ok({"skipped": True, "reason": "disabled"})
 
             msg = (body or {}).get("message") or {}
             text = msg.get("text") or msg.get("caption")
@@ -4104,6 +4108,12 @@ def handler(event: dict, context) -> dict:
             if not expected_key or webhook_key != expected_key:
                 return err("unauthorized", 401)
 
+            cur.execute(f"SELECT i.config FROM {SCHEMA}.users u LEFT JOIN {SCHEMA}.integrations i ON i.company_id=u.id WHERE u.email='mospotolkipro@gmail.com'")
+            _row = cur.fetchone()
+            _cfg = dict(_row[0]) if _row and _row[0] else {}
+            if _cfg.get("leakad_webhook_enabled") == "false":
+                return ok({"ok": True, "skipped": True, "reason": "disabled"})
+
             raw_body = event.get("body") or ""
             if event.get("isBase64Encoded"):
                 try:
@@ -4286,6 +4296,7 @@ def handler(event: dict, context) -> dict:
                 "leakad_webhook": "leakad_webhook_enabled",
                 "email_leads": "email_leads_enabled",
                 "telegram_leads": "tg_leads_enabled",
+                "avito": "avito_enabled",
             }
             cfg_key = key_map.get(source)
             if not cfg_key:
