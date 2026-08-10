@@ -3,14 +3,36 @@ import Icon from "@/components/ui/icon";
 import { useAuth, type Brand } from "@/context/AuthContext";
 import { updateBrand } from "./own-agent/brandApi";
 import { crmFetch } from "./crm/crmApi";
-import { GROUPS, SECTIONS, type SectionDef, type ProviderOption } from "./integrations/integrationsConfig";
+import { SECTIONS, type SectionDef, type ProviderOption } from "./integrations/integrationsConfig";
 import NotifyIntegrationCard from "./integrations/NotifyIntegrationCard";
 import ProviderSection from "./integrations/ProviderSection";
 import TelephonyUisCard from "./integrations/TelephonyUisCard";
+import LeadSourcesCards from "./integrations/LeadSourcesCards";
 
 interface Props {
   isDark: boolean;
 }
+
+// Горизонтальные табы вкладки «Интеграции». Каждый таб — свой тип подключения,
+// чтобы страница не была одним длинным списком. sections — какие секции из
+// integrationsConfig показывать внутри таба (порядок соблюдается).
+const TABS: { id: string; label: string; icon: string; color: string; desc: string; sections: string[] }[] = [
+  { id: "leads", label: "Источники заявок", icon: "Inbox", color: "#3b82f6",
+    desc: "Откуда заявки автоматически попадают в CRM.",
+    sections: ["tg_leads"] },
+  { id: "notify", label: "Уведомления", icon: "BellRing", color: "#a78bfa",
+    desc: "Куда система присылает сообщения о новых заявках.",
+    sections: [] },
+  { id: "channels", label: "Каналы общения", icon: "MessagesSquare", color: "#10b981",
+    desc: "Переписка с клиентами — попадает в ленту «Касания».",
+    sections: ["avito", "webchat", "tg_personal", "max_personal", "tg_bot", "max_bot"] },
+  { id: "ai", label: "ИИ и обработка", icon: "BrainCircuit", color: "#f59e0b",
+    desc: "Распознавание звонков и модель для анализа клиентов.",
+    sections: ["transcription", "llm"] },
+  { id: "telephony", label: "Телефония", icon: "PhoneCall", color: "#ef4444",
+    desc: "Звонки, кнопка «Позвонить», расшифровка разговоров.",
+    sections: ["telephony"] },
+];
 
 export default function TabIntegrations({ isDark }: Props) {
   const { user, token, updateUser } = useAuth();
@@ -24,6 +46,7 @@ export default function TabIntegrations({ isDark }: Props) {
   const text     = txt;
   const muted    = txtSub;
 
+  const [activeTab, setActiveTab] = useState<string>("leads");
   const [activeProvider, setActiveProvider] = useState<Record<string, string>>(
     Object.fromEntries(SECTIONS.map(s => [s.id, s.providers[0].id]))
   );
@@ -232,98 +255,117 @@ export default function TabIntegrations({ isDark }: Props) {
     }
   };
 
+  const tab = TABS.find(t => t.id === activeTab) ?? TABS[0];
+
+  const renderSection = (id: string) => {
+    const section = SECTIONS.find(s => s.id === id);
+    if (!section) return null;
+    if (section.id === "telephony") {
+      return (
+        <TelephonyUisCard
+          key={section.id}
+          isDark={isDark}
+          cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+          txt={txt} txtSub={txtSub}
+          values={values} setValues={setValues}
+          saveConfig={saveIntegrationsConfig}
+        />
+      );
+    }
+    return (
+      <ProviderSection
+        key={section.id}
+        section={section}
+        isDark={isDark}
+        txt={txt} txtSub={txtSub}
+        cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+        activeProvider={activeProvider} setActiveProvider={setActiveProvider}
+        values={values} setValues={setValues}
+        revealed={revealed} setRevealed={setRevealed}
+        sectionCheck={sectionCheck} sectionChecking={sectionChecking} checkSection={checkSection}
+        avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
+        tgLeadsBotUsername={tgLeadsBotUsername}
+        tgLeadsError={tgLeadsError}
+      />
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
-      <div className="mb-5">
+      <div className="mb-4">
         <h2 className="text-base font-bold" style={{ color: txt }}>Интеграции</h2>
         <p className="text-xs mt-1" style={{ color: txtSub }}>
-          Подключите свои сервисы: транскрибацию, ИИ и каналы связи. Ключи вводятся один раз.
+          Подключите свои сервисы. Ключи вводятся один раз и сохраняются.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {/* ═══ ГРУППА: Уведомления о заявках ═══ */}
-        <div className="flex items-center gap-2 mt-1">
-          <Icon name="BellRing" size={15} style={{ color: "#a78bfa" }} />
-          <div>
-            <div className="text-sm font-black" style={{ color: txt }}>Уведомления о заявках</div>
-            <div className="text-[11px]" style={{ color: txtSub }}>Куда система присылает новые заявки (в один чат).</div>
-          </div>
-        </div>
-
-        {/* Интеграция с Telegram */}
-        <NotifyIntegrationCard
-          cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
-          iconName="Send"
-          title="Интеграция с Telegram"
-          subtitle="Новые заявки будут приходить в ваш бот"
-          tokenValue={tgToken} onTokenChange={setTgToken}
-          tokenPlaceholder="Токен бота (получить у @BotFather)"
-          chatValue={tgChat} onChatChange={setTgChat}
-          chatPlaceholder="ID чата или группы (узнать у @userinfobot)"
-          onTest={testTelegram} testing={tgTesting} testResult={tgTestResult}
-        />
-
-        {/* Интеграция с MAX */}
-        <NotifyIntegrationCard
-          cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
-          iconNode={<span style={{ fontSize: 15, lineHeight: 1, color: "#a78bfa", fontWeight: 900 }}>М</span>}
-          title="Интеграция с MAX"
-          subtitle="Новые заявки будут приходить в ваш бот MAX"
-          tokenValue={maxToken} onTokenChange={setMaxToken}
-          tokenPlaceholder="Токен бота (получить у @MasterBot в MAX)"
-          chatValue={maxChat} onChatChange={setMaxChat}
-          chatPlaceholder="ID чата (числовой ID получателя)"
-          onTest={testMax} testing={maxTesting} testResult={maxTestResult}
-        />
-
-        {/* ═══ ГРУППЫ: Каналы общения · ИИ · Телефония ═══ */}
-        {GROUPS.map(group => {
-          const groupSections = SECTIONS.filter(s => s.group === group.id);
-          if (groupSections.length === 0) return null;
+      {/* ═══ Горизонтальные табы ═══ */}
+      <div className="flex gap-2 items-center overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: "none" }}>
+        {TABS.map(t => {
+          const active = activeTab === t.id;
           return (
-            <div key={group.id} className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 mt-3">
-                <Icon name="Layers" size={15} style={{ color: "#a78bfa" }} />
-                <div>
-                  <div className="text-sm font-black" style={{ color: txt }}>{group.title}</div>
-                  <div className="text-[11px]" style={{ color: txtSub }}>{group.desc}</div>
-                </div>
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2.5 rounded-xl transition"
+              style={{
+                background: active ? t.color + "18" : cardBg,
+                border: `1px solid ${active ? t.color + "50" : cardBrd}`,
+              }}>
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: t.color + "20" }}>
+                <Icon name={t.icon} size={13} style={{ color: t.color }} />
               </div>
-
-              {groupSections.map(section => (
-                section.id === "telephony" ? (
-                  <TelephonyUisCard
-                    key={section.id}
-                    isDark={isDark}
-                    cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
-                    txt={txt} txtSub={txtSub}
-                    values={values} setValues={setValues}
-                    saveConfig={saveIntegrationsConfig}
-                  />
-                ) : (
-                  <ProviderSection
-                    key={section.id}
-                    section={section}
-                    isDark={isDark}
-                    txt={txt} txtSub={txtSub}
-                    cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
-                    activeProvider={activeProvider} setActiveProvider={setActiveProvider}
-                    values={values} setValues={setValues}
-                    revealed={revealed} setRevealed={setRevealed}
-                    sectionCheck={sectionCheck} sectionChecking={sectionChecking} checkSection={checkSection}
-                    avitoConnected={avitoConnected} avitoConnecting={avitoConnecting} connectAvito={connectAvito}
-                    tgLeadsBotUsername={tgLeadsBotUsername}
-                    tgLeadsError={tgLeadsError}
-                  />
-                )
-              ))}
-            </div>
+              <span className="text-xs font-bold whitespace-nowrap"
+                style={{ color: active ? t.color : txt }}>{t.label}</span>
+            </button>
           );
         })}
       </div>
 
-      <div className="mt-5 flex items-center gap-3">
+      {/* ═══ Описание активного таба ═══ */}
+      <div className="text-[11px] mb-3.5 px-1" style={{ color: txtSub }}>{tab.desc}</div>
+
+      <div className="flex flex-col gap-4">
+        {/* Источники заявок: вебхук + почта (новое) + Telegram-группа */}
+        {activeTab === "leads" && (
+          <LeadSourcesCards
+            cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd}
+            txt={txt} txtSub={txtSub} isDark={isDark}
+          />
+        )}
+
+        {/* Уведомления: Telegram и MAX */}
+        {activeTab === "notify" && (
+          <>
+            <NotifyIntegrationCard
+              cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
+              iconName="Send"
+              title="Интеграция с Telegram"
+              subtitle="Новые заявки будут приходить в ваш бот"
+              tokenValue={tgToken} onTokenChange={setTgToken}
+              tokenPlaceholder="Токен бота (получить у @BotFather)"
+              chatValue={tgChat} onChatChange={setTgChat}
+              chatPlaceholder="ID чата или группы (узнать у @userinfobot)"
+              onTest={testTelegram} testing={tgTesting} testResult={tgTestResult}
+            />
+            <NotifyIntegrationCard
+              cardBg={cardBg} cardBrd={cardBrd} inputBg={inputBg} inputBrd={inputBrd} text={text} muted={muted}
+              iconNode={<span style={{ fontSize: 15, lineHeight: 1, color: "#a78bfa", fontWeight: 900 }}>М</span>}
+              title="Интеграция с MAX"
+              subtitle="Новые заявки будут приходить в ваш бот MAX"
+              tokenValue={maxToken} onTokenChange={setMaxToken}
+              tokenPlaceholder="Токен бота (получить у @MasterBot в MAX)"
+              chatValue={maxChat} onChatChange={setMaxChat}
+              chatPlaceholder="ID чата (числовой ID получателя)"
+              onTest={testMax} testing={maxTesting} testResult={maxTestResult}
+            />
+          </>
+        )}
+
+        {/* Остальные табы — секции из конфига */}
+        {tab.sections.map(renderSection)}
+      </div>
+
+      <div className="mt-5 flex items-center gap-3 flex-wrap">
         <button
           onClick={save}
           disabled={saving}
@@ -336,7 +378,7 @@ export default function TabIntegrations({ isDark }: Props) {
             : <><Icon name="Save" size={15} /> Сохранить</>}
         </button>
         <span className="text-[11px]" style={{ color: txtSub }}>
-          Telegram и MAX сохраняются. Остальные сервисы — пока внешний вид.
+          Сохраняются все введённые ключи на этой странице.
         </span>
       </div>
     </div>

@@ -3892,11 +3892,18 @@ def handler(event: dict, context) -> dict:
         # парсером, что и для Telegram — формат заявки идентичный) и заводит
         # карточку в CRM. Доступ — по секретному ключу EMAIL_LEADS_POLL_KEY в query,
         # чтобы эндпоинт не мог дёрнуть кто попало.
-        if resource == "email-leads-poll" and method == "GET":
-            poll_key = qs.get("key", "")
-            expected_key = os.environ.get("EMAIL_LEADS_POLL_KEY")
-            if not expected_key or poll_key != expected_key:
-                return err("unauthorized", 401)
+        # Тот же самый обход почты доступен и по кнопке «Проверить почту сейчас»
+        # во вкладке «Интеграции» — тогда вместо секретного ключа достаточно быть
+        # авторизованным в CRM (resource=email-leads-check-now, POST).
+        if resource in ("email-leads-poll", "email-leads-check-now"):
+            if resource == "email-leads-check-now":
+                if not authenticated:
+                    return err("Требуется авторизация", 401)
+            else:
+                poll_key = qs.get("key", "")
+                expected_key = os.environ.get("EMAIL_LEADS_POLL_KEY")
+                if not expected_key or poll_key != expected_key:
+                    return err("unauthorized", 401)
 
             smtp_user = os.environ.get("SMTP_USER")
             smtp_password = os.environ.get("SMTP_PASSWORD")
@@ -4059,6 +4066,37 @@ def handler(event: dict, context) -> dict:
                 return ok({"duplicate": True})
 
             return ok({"created": True, "client_id": new_row[0]})
+
+        # ── LEADS-SOURCES-INFO: сводка по источникам заявок для вкладки «Интеграции».
+        # Отдаёт готовый адрес вебхука (с секретным ключом — только авторизованным,
+        # чтобы ключ не лежал в коде сайта) и статистику: сколько заявок пришло
+        # по каждому каналу и когда была последняя.
+        if resource == "leads-sources-info" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+
+            wh_key = os.environ.get("LEAKAD_WEBHOOK_KEY")
+            webhook_url = (f"{SELF_FUNCTION_URL}?r=leakad-webhook&key={wh_key}") if wh_key else None
+
+            stats = {}
+            for via in ("leakad_webhook", "email_leads", "telegram_leads"):
+                cur.execute(f"""
+                    SELECT COUNT(*), MAX(created_at)
+                    FROM {SCHEMA}.live_chats WHERE created_via=%s
+                """, (via,))
+                r = cur.fetchone()
+                stats[via] = {
+                    "count": r[0] if r else 0,
+                    "last_at": r[1].isoformat() if r and r[1] else None,
+                }
+
+            return ok({
+                "webhook_url": webhook_url,
+                "email_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASSWORD")),
+                "email_address": os.environ.get("SMTP_USER") or None,
+                "email_sender": "noreply@egokad.ru",
+                "stats": stats,
+            })
 
         # ── UIS-EMPLOYEES: номера сотрудников в АТС (для click-to-call) ────────────
         if resource == "uis-employees":
