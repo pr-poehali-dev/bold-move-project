@@ -921,10 +921,13 @@ def handler(event: dict, context) -> dict:
                         GROUP BY client_id
                     ) cfv ON cfv.client_id = lc.id
                     LEFT JOIN (
+                        -- "Последний звонок" учитывает и входящие, и исходящие (сотрудник
+                        -- сам звонил клиенту через кнопку «Позвонить») — раньше фильтровался
+                        -- только direction='in', из-за чего исходящие звонки не отображались.
                         SELECT tc2.crm_contact_id AS contact_id, MAX(te.created_at) AS last_call_at
                         FROM {SCHEMA}.touch_clients tc2
                         JOIN {SCHEMA}.touch_events te ON te.client_id = tc2.id
-                        WHERE te.channel='call' AND te.direction='in' AND tc2.crm_contact_id IS NOT NULL
+                        WHERE te.channel='call' AND tc2.crm_contact_id IS NOT NULL
                         GROUP BY tc2.crm_contact_id
                     ) lcall ON lcall.contact_id = lc.id
                     LEFT JOIN (
