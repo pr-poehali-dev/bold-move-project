@@ -1013,7 +1013,7 @@ def handler(event: dict, context) -> dict:
 
             if method == "POST":
                 tags = body.get("tags", [])
-                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
                 master_id_row = cur.fetchone()
                 master_id = master_id_row[0] if master_id_row else None
                 final_company_id = company_id if company_id is not None else master_id
@@ -3491,7 +3491,7 @@ def handler(event: dict, context) -> dict:
             # (та же таблица, что и остальные заявки), с меткой источника «Авито».
             if is_new_client:
                 cur.execute(
-                    f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+                    f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
                 master_row = cur.fetchone()
                 master_id = master_row[0] if master_row else None
                 final_company_id = owner_id or master_id
@@ -3663,7 +3663,7 @@ def handler(event: dict, context) -> dict:
             # ручной набор в UIS, не через кнопку «Позвонить»), заявку не создаём:
             # исходящий звонок не означает нового клиента, обратившегося к нам.
             if is_new_client and call["direction"] == "in":
-                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
                 master_row = cur.fetchone()
                 master_id = master_row[0] if master_row else None
                 final_company_id = owner_id or master_id
@@ -3910,7 +3910,7 @@ def handler(event: dict, context) -> dict:
             chat_id_tg = (msg.get("chat") or {}).get("id")
             session_id = f"tgleads_{chat_id_tg}_{msg_id}" if msg_id else f"tgleads_{uuid.uuid4().hex}"
 
-            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
             master_row = cur.fetchone()
             master_id = master_row[0] if master_row else None
             final_company_id = owner_id or master_id
@@ -3999,7 +3999,7 @@ def handler(event: dict, context) -> dict:
             except Exception as e:
                 return err(f"imap login failed: {type(e).__name__}: {e}", 502)
 
-            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
             master_row = cur.fetchone()
             master_id = master_row[0] if master_row else None
 
@@ -4127,7 +4127,7 @@ def handler(event: dict, context) -> dict:
             parsed_comment = parse_tg_lead_text(comment) if comment else None
             area = (parsed_comment or {}).get("area") if parsed_comment else None
 
-            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
+            cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
             master_row = cur.fetchone()
             master_id = master_row[0] if master_row else None
 
