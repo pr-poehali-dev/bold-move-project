@@ -59,6 +59,8 @@ export function DiscountSliderPanel({
   const [riskPopupOpen, setRiskPopupOpen] = useState(false);
   const [modalOpen,     setModalOpen]     = useState(false);
   const [modalFocus,    setModalFocus]    = useState<"pct" | "amt">("pct");
+  // По умолчанию блок свёрнут — разворачивается по клику на шапку.
+  const [collapsed, setCollapsed] = useState(true);
 
   const openModal = (focus: "pct" | "amt") => { setModalFocus(focus); setModalOpen(true); };
 
@@ -75,19 +77,21 @@ export function DiscountSliderPanel({
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, background: "#f59e0b08" }}>
 
-      {/* Шапка */}
-      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: `1px solid ${borderColor}` }}>
+      {/* Шапка — кликабельна целиком, сворачивает/разворачивает блок */}
+      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
+        style={{ borderBottom: collapsed ? "none" : `1px solid ${borderColor}` }}
+        onClick={() => setCollapsed(v => !v)}>
         <Icon name="Tag" size={12} style={{ color: "#f59e0b", flexShrink: 0 }} />
         <span className="text-[11px] font-bold uppercase tracking-wider flex-1 min-w-0 truncate text-yellow-400">
           Оценка риска скидки
         </span>
-        <button onClick={() => setRiskPopupOpen(true)}
+        <button onClick={(e) => { e.stopPropagation(); setRiskPopupOpen(true); }}
           className="flex items-center justify-center w-7 h-7 rounded-lg transition hover:opacity-80 flex-shrink-0"
           style={{ background: "rgba(139,92,246,0.1)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.25)" }}
           title="Настройки правил скидки">
           <Icon name="Settings2" size={12} />
         </button>
-        <button onClick={onAnalysisClick} disabled={analysisLoading}
+        <button onClick={(e) => { e.stopPropagation(); onAnalysisClick(); }} disabled={analysisLoading}
           className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition disabled:opacity-50 hover:opacity-80 flex-shrink-0 whitespace-nowrap"
           style={{ background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }}>
           {analysisLoading
@@ -95,6 +99,7 @@ export function DiscountSliderPanel({
             : <><Icon name="BarChart2" size={11} /><span className="hidden sm:inline"> Анализ объекта</span><span className="sm:hidden">Анализ</span></>
           }
         </button>
+        <Icon name={collapsed ? "ChevronDown" : "ChevronUp"} size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
       </div>
 
       {riskPopupOpen && <DiscountRiskPopup onClose={() => setRiskPopupOpen(false)} />}
@@ -113,55 +118,59 @@ export function DiscountSliderPanel({
         />
       )}
 
-      {/* РЕЖИМ: скидка уже применена */}
-      {hasAppliedDiscount && (
-        <DiscountAppliedView
-          appliedDiscountPct={appliedDiscountPct}
-          totalDiscountAmount={totalDiscountAmount}
-          discountHistory={discountHistory}
-          discountedProfit={discountedProfit}
-          discountedMargin={discountedMargin}
-          isRealLoss={isRealLoss}
-          accentColor={accentColor}
-          applying={applying}
-          effectiveMax={effectiveMax}
-          fmt={fmt}
-          onOpenModal={openModal}
-          onResetDiscount={onResetDiscount}
-          onUpdateDiscount={onUpdateDiscount}
-        />
-      )}
+      {!collapsed && (
+        <>
+          {/* РЕЖИМ: скидка уже применена */}
+          {hasAppliedDiscount && (
+            <DiscountAppliedView
+              appliedDiscountPct={appliedDiscountPct}
+              totalDiscountAmount={totalDiscountAmount}
+              discountHistory={discountHistory}
+              discountedProfit={discountedProfit}
+              discountedMargin={discountedMargin}
+              isRealLoss={isRealLoss}
+              accentColor={accentColor}
+              applying={applying}
+              effectiveMax={effectiveMax}
+              fmt={fmt}
+              onOpenModal={openModal}
+              onResetDiscount={onResetDiscount}
+              onUpdateDiscount={onUpdateDiscount}
+            />
+          )}
 
-      {/* РЕЖИМ: скидка не применена (слайдер) */}
-      {!hasAppliedDiscount && (
-        <DiscountSliderView
-          discount={discount}
-          setDiscount={setDiscount}
-          applying={applying}
-          applied={applied}
-          baseIncome={baseIncome}
-          discountedIncome={discountedIncome}
-          discountedProfit={discountedProfit}
-          discountedMargin={discountedMargin}
-          isRealLoss={isRealLoss}
-          isOverMinMargin={isOverMinMargin}
-          isNegative={isNegative}
-          isWarning={isWarning}
-          isOverMax={isOverMax}
-          currentZone={currentZone}
-          accentColor={accentColor}
-          effectiveMax={effectiveMax}
-          sliderMax={sliderMax}
-          zoneLow={zoneLow}
-          zoneMid={zoneMid}
-          risk={risk}
-          aiRisk={aiRisk}
-          aiError={aiError}
-          fmt={fmt}
-          onOpenModal={openModal}
-          onApplyDiscount={onApplyDiscount}
-          setApplied={setApplied}
-        />
+          {/* РЕЖИМ: скидка не применена (слайдер) */}
+          {!hasAppliedDiscount && (
+            <DiscountSliderView
+              discount={discount}
+              setDiscount={setDiscount}
+              applying={applying}
+              applied={applied}
+              baseIncome={baseIncome}
+              discountedIncome={discountedIncome}
+              discountedProfit={discountedProfit}
+              discountedMargin={discountedMargin}
+              isRealLoss={isRealLoss}
+              isOverMinMargin={isOverMinMargin}
+              isNegative={isNegative}
+              isWarning={isWarning}
+              isOverMax={isOverMax}
+              currentZone={currentZone}
+              accentColor={accentColor}
+              effectiveMax={effectiveMax}
+              sliderMax={sliderMax}
+              zoneLow={zoneLow}
+              zoneMid={zoneMid}
+              risk={risk}
+              aiRisk={aiRisk}
+              aiError={aiError}
+              fmt={fmt}
+              onOpenModal={openModal}
+              onApplyDiscount={onApplyDiscount}
+              setApplied={setApplied}
+            />
+          )}
+        </>
       )}
     </div>
   );
