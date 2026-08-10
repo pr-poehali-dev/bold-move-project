@@ -635,6 +635,37 @@ def parse_tg_lead_text(text):
     }
 
 
+# Характерные фразы автоинформатора оператора связи («автоответчик» в быту).
+# UIS не присылает отдельного признака "ответил человек / включился автоответчик",
+# поэтому определяем эвристикой по тексту расшифровки — это те же служебные
+# фразы, что видны в реальных примерах (см. touch_events.id=385,386 от 10.08).
+_VOICEMAIL_PHRASES = (
+    "абонент выключен", "абонент недоступен", "телефон выключен",
+    "телефон занят", "перезвоните позже", "попробуйте перезвонить",
+    "не может ответить на ваш звонок", "поставил вызов на удержание",
+    "оставьте сообщение после сигнала", "находится вне зоны действия сети",
+)
+
+
+def detect_call_answered_by(text, duration_sec, status):
+    """Определяет, кто принял звонок: 'human' (ответил человек),
+    'voicemail' (автоответчик/автоинформатор оператора) или None (неизвестно —
+    нет текста расшифровки, либо звонок не состоялся вовсе).
+    Возвращает строку или None."""
+    if status in ("missed", "no-answer", "noanswer", "busy", "declined", "initiated"):
+        return None
+    if not text or not text.strip():
+        return None
+    low = text.lower()
+    if any(phrase in low for phrase in _VOICEMAIL_PHRASES):
+        return "voicemail"
+    if duration_sec and duration_sec > 0:
+        return "human"
+    # Есть текст, длительность 0 — короткий обрывок технического сообщения,
+    # но без явных ключевых фраз. Не гадаем дальше — считаем неопределённым.
+    return None
+
+
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
     "next_call_date",
@@ -3025,6 +3056,7 @@ def handler(event: dict, context) -> dict:
                     "id": r[0], "channel": r[1], "direction": r[2], "external_id": r[3],
                     "text": r[4], "audio_url": r[5], "duration_sec": r[6],
                     "attachments": r[7], "status": r[8], "created_at": r[9],
+                    "answered_by": (detect_call_answered_by(r[4], r[6], r[8]) if r[1] == "call" else None),
                 } for r in cur.fetchall()]
 
                 # Последний детальный ИИ-анализ клиента (для вкладки «Аналитика»)

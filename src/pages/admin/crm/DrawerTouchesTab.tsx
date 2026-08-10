@@ -16,6 +16,10 @@ interface Touch {
   attachments: unknown;
   status: string;
   created_at: string;
+  /** Кто принял звонок: 'human' — ответил человек, 'voicemail' — включился
+   * автоответчик/автоинформатор оператора, null — неизвестно (нет текста
+   * расшифровки или звонок не состоялся). Вычисляется на бэкенде по тексту. */
+  answered_by?: "human" | "voicemail" | null;
 }
 
 // Достаёт ссылки на картинки из вложений сообщения.
@@ -311,6 +315,18 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                         </span>
                         {tt.status === "transcribing" && (
                           <span className="text-[10px]" style={{ color: t.textMute }}>расшифровка…</span>
+                        )}
+                        {tt.answered_by === "voicemail" && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ background: "#f59e0b22", color: "#f59e0b" }}>
+                            <Icon name="Voicemail" size={10} /> Автоответчик
+                          </span>
+                        )}
+                        {tt.answered_by === "human" && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ background: "#22c55e22", color: "#22c55e" }}>
+                            <Icon name="User" size={10} /> Ответил человек
+                          </span>
                         )}
                       </div>
                       {tt.audio_url && (
