@@ -216,6 +216,8 @@ export interface Client {
   next_call_date?: string | null;
   last_call_at?: string | null;
   has_missed_call?: boolean;
+  /** Менеджер отметил при закрытии карточки, что звонить клиенту больше не нужно */
+  no_call_needed?: boolean;
 }
 
 export function fmt(n: number): string {

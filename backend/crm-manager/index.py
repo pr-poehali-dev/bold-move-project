@@ -668,7 +668,7 @@ def detect_call_answered_by(text, duration_sec, status):
 
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
-    "next_call_date",
+    "next_call_date", "no_call_needed",
     "notes", "address", "area", "budget", "source",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "discount_pct", "discount_amount",
@@ -1147,6 +1147,14 @@ def handler(event: dict, context) -> dict:
                         srow = cur.fetchone()
                         if srow:
                             body["sub_status"] = str(srow[0])
+
+                # Поля взаимоисключающие: если менеджер ставит «звонить не нужно» и явно
+                # не передал новую дату звонка — гасим next_call_date, чтобы в карточке
+                # не висело одновременно и напоминание, и отметка «звонить не нужно».
+                if body.get("no_call_needed") is True and "next_call_date" not in body:
+                    body["next_call_date"] = None
+                if body.get("next_call_date") and "no_call_needed" not in body:
+                    body["no_call_needed"] = False
 
                 sets, vals = [], []
                 for f in ALL_CLIENT_FIELDS:

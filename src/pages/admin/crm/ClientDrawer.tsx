@@ -13,6 +13,7 @@ import { DrawerHeader } from "./DrawerHeader";
 import { DrawerTabsBar } from "./DrawerTabsBar";
 import { DrawerOrdersPanel } from "./DrawerOrdersPanel";
 import { DrawerDeleteConfirm } from "./DrawerDeleteConfirm";
+import { DrawerCloseConfirm } from "./DrawerCloseConfirm";
 import { useUnreadTouches } from "./useUnreadTouches";
 import { useClientDrawerState } from "./useClientDrawerState";
 import { useAutoSummary } from "./useAutoSummary";
@@ -46,6 +47,7 @@ interface Props {
 export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", contactMode = false, defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
   const t = useTheme();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [copied] = useState(false);
   const [hideHidden, setHideHidden]   = useState(() => localStorage.getItem("drawer_hide_hidden") === "true");
@@ -66,6 +68,21 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   // карточки (не чаще раза в час), результат подтягиваем в поля формы.
   useAutoSummary(data.id, data.phone || undefined, !isLocalCard, onUpdated);
   const estimateData = useEstimateData(orderData.id, orderData.client_name, orderData.phone);
+
+  // Закрытие карточки заявки всегда проходит через подтверждение даты
+  // следующего звонка — менеджер каждый раз должен явно согласиться с датой
+  // (или поменять её), либо поставить отметку «звонить не нужно».
+  // В contactMode (карточка открыта из списка «Клиенты», без привязки к одной
+  // заявке) — это неприменимо, закрываем как раньше.
+  const requestClose = () => {
+    if (contactMode || isLocalCard) { onClose(); return; }
+    setConfirmClose(true);
+  };
+  const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean }) => {
+    saveOrder(patch);
+    setConfirmClose(false);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4"
@@ -102,7 +119,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           hideHidden={hideHidden}
           setHideHidden={setHideHidden}
           setConfirmDelete={setConfirmDelete}
-          onClose={onClose}
+          onClose={requestClose}
           onOpenAgent={onOpenAgent}
           onOpenBuilder={onOpenBuilder}
         />
@@ -219,6 +236,17 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           clientName={ord.client_name || ""}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
+        />
+      )}
+
+      {/* Подтверждение даты следующего звонка — всегда перед закрытием карточки заявки */}
+      {confirmClose && (
+        <DrawerCloseConfirm
+          t={t}
+          currentNextCall={orderData.next_call_date}
+          currentNoCallNeeded={orderData.no_call_needed}
+          onConfirm={confirmCloseSave}
+          onCancel={() => setConfirmClose(false)}
         />
       )}
     </div>
