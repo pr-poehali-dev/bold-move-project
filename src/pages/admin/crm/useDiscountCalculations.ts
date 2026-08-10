@@ -3,6 +3,8 @@ import { Client } from "./crmApi";
 import { CustomFinRow } from "./drawerTypes";
 import { RiskSettings } from "./discountBlockTypes";
 import { DiscountEntry } from "@/hooks/useDiscountHistory";
+import { useAutoRules } from "@/hooks/useAutoRules";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 
 interface Params {
   data: Client;
@@ -14,12 +16,22 @@ interface Params {
   customMax: number | null;
 }
 
+// Статьи затрат со своей колонкой в live_chats — остальные (Менеджер, Технолог
+// и т.п., добавленные через "+ Добавить строку") хранятся в БД
+// (client_custom_fin_values). Тот же список, что и в блоке "P&L по заказу" —
+// оба расчёта обязаны брать затраты из одного источника, иначе цифры расходятся.
+const BUILTIN_COST_KEYS = new Set(["material_cost", "measure_cost", "install_cost", "management_cost"]);
+
 export function useDiscountCalculations({
   data, customFinRows, discount, discountHistory, risk, reserve, customMax,
 }: Params) {
-  const customCostRows = customFinRows
-    .filter(r => r.block === "costs")
-    .map(r => ({ value: Number(localStorage.getItem(`fin_row_${data.id}_${r.key}`)) || 0 }));
+  // Кастомные статьи затрат — берём из БД (тот же источник, что и "P&L по заказу"),
+  // а не из localStorage: там значения устаревают и не совпадают с реальными.
+  const { rules: autoRules } = useAutoRules();
+  const { values: customCostValues } = useCustomFinValues(data.id);
+  const customCostRows = autoRules
+    .filter(r => r.row_type === "cost" && r.visible !== false && !BUILTIN_COST_KEYS.has(r.key))
+    .map(r => ({ value: Number(customCostValues[r.key]) || 0 }));
 
   const customIncomeRows = customFinRows
     .filter(r => r.block === "income")
@@ -28,6 +40,7 @@ export function useDiscountCalculations({
   const plCosts = (Number(data.material_cost) || 0)
     + (Number(data.measure_cost) || 0)
     + (Number(data.install_cost) || 0)
+    + (Number(data.management_cost) || 0)
     + customCostRows.reduce((s, r) => s + r.value, 0);
 
   // baseIncome — всегда оригинальная сумма договора ДО скидок.
