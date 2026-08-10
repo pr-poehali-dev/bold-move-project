@@ -4035,10 +4035,13 @@ def handler(event: dict, context) -> dict:
             return ok({"created": created, "skipped": skipped, "errors": error_count})
 
         # ── LEAKAD-WEBHOOK: заявки с leakad.ru напрямую по вебхуку (без задержек
-        # почты). Формат текста заявки такой же, как в письмах/Telegram — разбираем
-        # тем же parse_tg_lead_text. Точный формат тела запроса leakad.ru заранее
-        # неизвестен, поэтому принимаем гибко: JSON с полем text/message/body,
-        # либо сырой текст в теле запроса. Защита — секретный ключ в query.
+        # почты). Реальный формат (уточнён поддержкой leakad 10.08): JSON с полями
+        # phone/телефон (обязательное), name/title/имя, comment/комментарий (тот же
+        # текст, что раньше приходил письмом/в Telegram), city/город, source/источник.
+        # На случай смены формата или ручного теста текстом — оставлен запасной
+        # разбор старым парсером (text/message/body/caption или сырой текст).
+        # ВАЖНО: коды ответа теперь смысловые — 200+id при успехе, 400/422 при отказе,
+        # а не всегда 200 (по требованию leakad — иначе они не отличают потерю заявки).
         if resource == "leakad-webhook" and method == "POST":
             webhook_key = qs.get("key", "")
             expected_key = os.environ.get("LEAKAD_WEBHOOK_KEY")
@@ -4052,39 +4055,70 @@ def handler(event: dict, context) -> dict:
                 except Exception:
                     pass
 
-            text = None
-            if isinstance(body, dict) and body:
-                text = body.get("text") or body.get("message") or body.get("body") or body.get("caption")
-            if not text and raw_body:
-                text = raw_body
+            payload = body if isinstance(body, dict) and body else {}
+            if not payload and raw_body:
+                # На случай если пришлют application/x-www-form-urlencoded вместо JSON
+                try:
+                    from urllib.parse import parse_qsl
+                    parsed_form = dict(parse_qsl(raw_body))
+                    if parsed_form:
+                        payload = parsed_form
+                except Exception:
+                    pass
 
-            lead = parse_tg_lead_text(text) if text else None
-            if not lead:
-                return ok({"skipped": True, "reason": "not a lead"})
+            phone_raw = payload.get("phone") or payload.get("телефон")
+            name = payload.get("name") or payload.get("title") or payload.get("имя")
+            comment = payload.get("comment") or payload.get("комментарий")
+            city = payload.get("city") or payload.get("город")
+            source_name = payload.get("source") or payload.get("источник") or "Leakad-заявки"
+
+            lead = None
+            if not phone_raw:
+                # Запасной путь — старый текстовый формат (ручной тест, старая интеграция)
+                text = payload.get("text") or payload.get("message") or payload.get("body") or payload.get("caption")
+                if not text and raw_body and not payload:
+                    text = raw_body
+                lead = parse_tg_lead_text(text) if text else None
+                if lead:
+                    phone_raw = lead["phone"]
+                    city = city or lead["city"]
+
+            phone = normalize_phone(phone_raw) if phone_raw else ""
+            if not phone:
+                return err("нет поля phone (или телефон не распознан)", 422)
+
+            # Если comment совпадает по формату со старым текстом заявки — вытащим
+            # из него срок и удобный способ связи тем же парсером, что и раньше.
+            parsed_comment = parse_tg_lead_text(comment) if comment else None
+            area = (parsed_comment or {}).get("area") if parsed_comment else None
 
             cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='19.jeka.94@gmail.com'")
             master_row = cur.fetchone()
             master_id = master_row[0] if master_row else None
 
-            session_id = f"leakadwh_{hashlib.sha256(text.encode()).hexdigest()[:32]}"
+            dedup_key = json.dumps({"phone": phone, "comment": comment, "city": city}, ensure_ascii=False, sort_keys=True)
+            session_id = f"leakadwh_{hashlib.sha256(dedup_key.encode()).hexdigest()[:32]}"
+
             notes_parts = []
-            if lead["description"]:
-                notes_parts.append(lead["description"])
-            if lead["term"]:
-                notes_parts.append(f"Срок: {lead['term']}")
-            if lead["contact_via"]:
-                notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
+            if parsed_comment and parsed_comment.get("description"):
+                notes_parts.append(parsed_comment["description"])
+            elif comment:
+                notes_parts.append(comment)
+            if parsed_comment and parsed_comment.get("term"):
+                notes_parts.append(f"Срок: {parsed_comment['term']}")
+            if parsed_comment and parsed_comment.get("contact_via"):
+                notes_parts.append(f"Удобнее общаться: {parsed_comment['contact_via']}")
             notes = "\n".join(notes_parts) if notes_parts else None
 
             try:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Leakad-заявки', 'leakad_webhook', %s, NOW())
+                    VALUES (%s, %s, %s, 'new', %s, %s, %s, %s, 'leakad_webhook', %s, NOW())
                     ON CONFLICT (session_id) DO NOTHING
                     RETURNING id
-                """, (session_id, "Заявка с сайта (leakad)", lead["phone"],
-                      lead["city"], lead["area"], notes, master_id))
+                """, (session_id, name or "Заявка с сайта (leakad)", phone,
+                      city, area, notes, source_name, master_id))
                 new_row = cur.fetchone()
                 conn.commit()
             except psycopg2.Error:
@@ -4092,9 +4126,9 @@ def handler(event: dict, context) -> dict:
                 return err("db error", 500)
 
             if not new_row:
-                return ok({"duplicate": True})
+                return ok({"ok": True, "duplicate": True})
 
-            return ok({"created": True, "client_id": new_row[0]})
+            return ok({"ok": True, "id": new_row[0]})
 
         # ── LEADS-SOURCES-INFO: сводка по источникам заявок для вкладки «Интеграции».
         # Отдаёт готовый адрес вебхука (с секретным ключом — только авторизованным,
