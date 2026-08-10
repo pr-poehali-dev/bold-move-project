@@ -118,20 +118,16 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   measure:    "Замер",
   install:    "Монтаж",
   payment:    "Оплата",
-  call:       "Звонок",
   next_call:  "Следующий звонок",
   last_call:  "Последний звонок",
-  other:      "Другое",
 };
 
 export const EVENT_TYPE_COLORS: Record<string, string> = {
   measure:    "#f59e0b",
   install:    "#f97316",
   payment:    "#10b981",
-  call:       "#3b82f6",
   next_call:  "#3b82f6",
   last_call:  "#8b5cf6",
-  other:      "#8b5cf6",
 };
 
 export const PRIORITY_LABELS: Record<string, string> = {
