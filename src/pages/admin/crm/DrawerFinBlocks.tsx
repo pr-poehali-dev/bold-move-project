@@ -20,7 +20,7 @@ export type { FinBlockProps };
 
 export function DrawerIncomeBlock({
   data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
-  toggleHidden, setEditingBlock, saveWithLog, logAction,
+  toggleHidden, setEditingBlock, save, saveWithLog, logAction,
   toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
   onReload,
 }: FinBlockProps) {
@@ -187,6 +187,7 @@ export function DrawerIncomeBlock({
                 field={key}
                 plannedAmount={Number(data[key]) || null}
                 label={getLabel(key, defs[key].def)}
+                save={save}
                 onConfirmed={() => onReload?.()}
               />
             ) : undefined;

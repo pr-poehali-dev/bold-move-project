@@ -30,12 +30,17 @@ export function PaymentStatusBadge({
   field,
   plannedAmount,
   label,
+  save,
   onConfirmed,
 }: {
   client: Client;
   field: PaymentField;
   plannedAmount: number | null | undefined;
   label: string;
+  /** Та же функция save/saveOrder, что и у остальных полей карточки — обновляет
+      локальный стейт МГНОВЕННО (оптимистично), а не только после перезагрузки
+      списка с сервера. Если не передана — падаем на старое поведение через crmFetch. */
+  save?: (patch: Partial<Client>) => void;
   onConfirmed?: () => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,17 +51,23 @@ export function PaymentStatusBadge({
   const factAmount  = Number(client[fields.fact]) || 0;
   const receiptUrl  = null; // чек пока только в модале
 
+  const applyPatch = async (patch: Partial<Client>) => {
+    if (save) {
+      // save() уже обновляет локальный orderData/data сразу и сам шлёт PUT на сервер
+      save(patch);
+      return;
+    }
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(client.id) });
+  };
+
   const handleConfirmed = async (amount: number, receipt: string | null) => {
     setSaving(true);
     try {
-      await crmFetch("clients", {
-        method: "PUT",
-        body: JSON.stringify({
-          [fields.confirmed]:    true,
-          [fields.confirmed_at]: new Date().toISOString(),
-          [fields.fact]:         amount,
-        }),
-      }, { id: String(client.id) });
+      await applyPatch({
+        [fields.confirmed]:    true,
+        [fields.confirmed_at]: new Date().toISOString(),
+        [fields.fact]:         amount,
+      } as Partial<Client>);
       onConfirmed?.();
     } finally {
       setSaving(false);
@@ -68,14 +79,11 @@ export function PaymentStatusBadge({
     e.stopPropagation();
     setSaving(true);
     try {
-      await crmFetch("clients", {
-        method: "PUT",
-        body: JSON.stringify({
-          [fields.confirmed]:    false,
-          [fields.confirmed_at]: null,
-          [fields.fact]:         null,
-        }),
-      }, { id: String(client.id) });
+      await applyPatch({
+        [fields.confirmed]:    false,
+        [fields.confirmed_at]: null,
+        [fields.fact]:         null,
+      } as Partial<Client>);
       onConfirmed?.();
     } finally {
       setSaving(false);

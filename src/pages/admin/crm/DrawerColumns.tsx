@@ -76,7 +76,7 @@ export function DrawerColumns(props: ColumnsProps) {
 
   const finProps = {
     data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
-    toggleHidden, setEditingBlock, saveWithLog, logAction,
+    toggleHidden, setEditingBlock, save, saveWithLog, logAction,
     toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
     onReload,
   };

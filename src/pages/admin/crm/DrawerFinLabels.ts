@@ -21,6 +21,7 @@ export interface FinBlockProps {
   customFinRows: CustomFinRow[];
   toggleHidden: (id: BlockId) => void;
   setEditingBlock: (id: BlockId | null) => void;
+  save: (patch: Partial<Client>) => void;
   saveWithLog: (patch: Partial<Client>, logText: string, icon?: string, color?: string) => void;
   logAction: (icon: string, color: string, text: string) => void;
   toggleRowVisibility: (key: string) => void;
