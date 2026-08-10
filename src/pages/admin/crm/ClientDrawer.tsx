@@ -73,9 +73,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   // следующего звонка — менеджер каждый раз должен явно согласиться с датой
   // (или поменять её), либо поставить отметку «звонить не нужно».
   // В contactMode (карточка открыта из списка «Клиенты», без привязки к одной
-  // заявке) — это неприменимо, закрываем как раньше.
+  // заявке) — это неприменимо, закрываем как раньше. На финальном этапе
+  // воронки (done/cancelled — заявка завершена или отменена) звонить больше
+  // некому — модалку тоже не показываем.
+  const isFinalStage = orderData.status === "done" || orderData.status === "cancelled";
   const requestClose = () => {
-    if (contactMode || isLocalCard) { onClose(); return; }
+    if (contactMode || isLocalCard || isFinalStage) { onClose(); return; }
     setConfirmClose(true);
   };
   const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean }) => {

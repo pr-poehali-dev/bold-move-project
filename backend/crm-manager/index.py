@@ -7,7 +7,8 @@ import uuid
 import psycopg2
 import boto3
 import urllib.request as _ureq
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 # redeploy-marker: tg-proxy switched to https relay domain
 
@@ -666,6 +667,23 @@ def detect_call_answered_by(text, duration_sec, status):
     return None
 
 
+_MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+
+
+def default_next_call_date():
+    """Автонапоминание о первом звонке новому клиенту: если заявка пришла
+    позже 19:00 по Москве — автоматически ставим напоминание «Следующий
+    звонок» на завтра на 10:00 по Москве (чтобы не звонить клиенту поздно
+    вечером/ночью). В остальное время (рабочий день) напоминание не ставим —
+    менеджер звонит сразу. Возвращает ISO-строку с московским смещением
+    (для timestamptz-поля next_call_date) или None."""
+    now_msk = datetime.now(_MOSCOW_TZ)
+    if now_msk.hour < 19:
+        return None
+    tomorrow_10 = (now_msk + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    return tomorrow_10.isoformat()
+
+
 ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
     "next_call_date", "no_call_needed",
@@ -1022,8 +1040,8 @@ def handler(event: dict, context) -> dict:
                     f"""INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, client_status, measure_date, install_date,
                          notes, address, area, budget, source, created_via,
-                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id, status_changed_at)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id, next_call_date, status_changed_at)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
@@ -1045,6 +1063,7 @@ def handler(event: dict, context) -> dict:
                         body.get("map_link", ""),
                         tags,
                         final_company_id,
+                        default_next_call_date(),
                     )
                 )
                 new_id = cur.fetchone()[0]
@@ -2039,9 +2058,9 @@ def handler(event: dict, context) -> dict:
                     session_id = f"plan-{new_id}"
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.live_chats
-                            (session_id, client_name, phone, address, status, created_via, company_id, project_id, status_changed_at)
-                        VALUES (%s,%s,%s,%s,'new','plan',%s,%s,NOW()) RETURNING id
-                    """, (session_id, client_name or name, phone, address, insert_cmp, new_id))
+                            (session_id, client_name, phone, address, status, created_via, company_id, project_id, next_call_date, status_changed_at)
+                        VALUES (%s,%s,%s,%s,'new','plan',%s,%s,%s,NOW()) RETURNING id
+                    """, (session_id, client_name or name, phone, address, insert_cmp, new_id, default_next_call_date()))
                     chat_id = cur.fetchone()[0]
                 # 3. Связываем проект с заявкой
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s WHERE id=%s", (chat_id, new_id))
@@ -2363,9 +2382,9 @@ def handler(event: dict, context) -> dict:
                 session_id = f"plan-{proj_id}"
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, address, status, created_via, company_id, project_id, status_changed_at)
-                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s,NOW()) RETURNING id
-                """, (session_id, client_name or proj_name, phone, address, insert_cmp, proj_id))
+                        (session_id, client_name, phone, address, status, created_via, company_id, project_id, next_call_date, status_changed_at)
+                    VALUES (%s,%s,%s,%s,'new','plan',%s,%s,%s,NOW()) RETURNING id
+                """, (session_id, client_name or proj_name, phone, address, insert_cmp, proj_id, default_next_call_date()))
                 chat_id = cur.fetchone()[0]
                 cur.execute(f"UPDATE {SCHEMA}.plan_projects SET crm_chat_id=%s, company_id=%s WHERE id=%s", (chat_id, insert_cmp, proj_id))
                 # Канбан
@@ -3518,12 +3537,12 @@ def handler(event: dict, context) -> dict:
 
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, notes, source, created_via, company_id, avito_chat_url, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s, NOW())
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id, avito_chat_url, next_call_date, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, 'Авито', 'chat', %s, %s, %s, NOW())
                     RETURNING id
                 """, (f"avito_{av_chat_id}", client_name, "",
                       (f"Первое сообщение менеджера: {text[:200]}" if av_direction == "out"
-                       else f"Первое сообщение: {text[:200]}"), final_company_id, avito_chat_url))
+                       else f"Первое сообщение: {text[:200]}"), final_company_id, avito_chat_url, default_next_call_date()))
                 new_order_id = cur.fetchone()[0]
                 cur.execute(
                     f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s, name=%s WHERE id=%s",
@@ -3679,11 +3698,11 @@ def handler(event: dict, context) -> dict:
                 final_company_id = owner_id or master_id
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, notes, source, created_via, company_id, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, 'Звонок на прямую', 'call', %s, NOW())
+                        (session_id, client_name, phone, status, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, 'Звонок на прямую', 'call', %s, %s, NOW())
                     RETURNING id
                 """, (f"uis_{call['session_id'] or uuid.uuid4().hex}", "Клиент по звонку", call["phone"],
-                      "Первый звонок через АТС UIS", final_company_id))
+                      "Первый звонок через АТС UIS", final_company_id, default_next_call_date()))
                 new_order_id = cur.fetchone()[0]
                 cur.execute(
                     f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
@@ -3939,12 +3958,12 @@ def handler(event: dict, context) -> dict:
             try:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Telegram-заявки', 'telegram_leads', %s, NOW())
+                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Telegram-заявки', 'telegram_leads', %s, %s, NOW())
                     ON CONFLICT (session_id) DO NOTHING
                     RETURNING id
                 """, (session_id, "Заявка из Telegram", lead["phone"],
-                      lead["city"], lead["area"], notes, final_company_id))
+                      lead["city"], lead["area"], notes, final_company_id, default_next_call_date()))
                 new_row = cur.fetchone()
                 conn.commit()
             except psycopg2.Error:
@@ -4077,12 +4096,12 @@ def handler(event: dict, context) -> dict:
 
                             cur.execute(f"""
                                 INSERT INTO {SCHEMA}.live_chats
-                                    (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
-                                VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Email-заявки', 'email_leads', %s, NOW())
+                                    (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                                VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Email-заявки', 'email_leads', %s, %s, NOW())
                                 ON CONFLICT (session_id) DO NOTHING
                                 RETURNING id
                             """, (session_id, "Заявка с сайта (email)", lead["phone"],
-                                  lead["city"], lead["area"], notes, master_id))
+                                  lead["city"], lead["area"], notes, master_id, default_next_call_date()))
                             new_row = cur.fetchone()
                             conn.commit()
                             imap.store(eid, "+FLAGS", "\\Seen")
@@ -4191,12 +4210,12 @@ def handler(event: dict, context) -> dict:
             try:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, %s, %s, %s, 'leakad_webhook', %s, NOW())
+                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                    VALUES (%s, %s, %s, 'new', %s, %s, %s, %s, 'leakad_webhook', %s, %s, NOW())
                     ON CONFLICT (session_id) DO NOTHING
                     RETURNING id
                 """, (session_id, name or "Заявка с сайта (leakad)", phone,
-                      city, area, notes, source_name, master_id))
+                      city, area, notes, source_name, master_id, default_next_call_date()))
                 new_row = cur.fetchone()
                 conn.commit()
             except psycopg2.Error:
