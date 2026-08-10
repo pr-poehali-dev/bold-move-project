@@ -549,6 +549,33 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
     }, None
 
 
+def imap_find_spam_folder(imap):
+    """Находит реальное имя папки «Спам» в Gmail через IMAP.
+
+    Проблема: Gmail хранит служебные папки в IMAP UTF-7 (например
+    "[Gmail]/&BCEEPwQwBDw-" для русского интерфейса), а не как буквальные
+    "[Gmail]/Спам" или "[Gmail]/Spam" — жёстко зашитые названия не находят
+    папку (imap.select возвращает "NO"), и спам никогда не проверяется.
+    Правильный способ — искать папку по флагу \\Junk, который Gmail
+    присваивает ей независимо от языка интерфейса. Возвращает имя папки
+    (готовое для передачи в imap.select) или None, если не нашли.
+    """
+    try:
+        status, folders = imap.list()
+        if status != "OK" or not folders:
+            return None
+        for f in folders:
+            raw = f.decode("utf-8", errors="ignore") if isinstance(f, bytes) else str(f)
+            if "\\Junk" in raw:
+                # Формат строки: '(\\HasNoChildren \\Junk) "/" "ИмяПапки"'
+                parts = raw.rsplit(' "/" ', 1)
+                if len(parts) == 2:
+                    return parts[1].strip()
+    except Exception:
+        return None
+    return None
+
+
 def normalize_phone(raw):
     """Нормализует номер к виду +7XXXXXXXXXX. Возвращает '' если номер невалиден."""
     if not raw:
@@ -3942,9 +3969,11 @@ def handler(event: dict, context) -> dict:
             master_id = master_row[0] if master_row else None
 
             created, skipped, error_count = 0, 0, 0
+            spam_folder = imap_find_spam_folder(imap)
+            folders_to_check = ["INBOX"] + ([spam_folder] if spam_folder else [])
 
             try:
-                for folder in ("INBOX", '"[Gmail]/Spam"', '"[Gmail]/Спам"'):
+                for folder in folders_to_check:
                     try:
                         status, _ = imap.select(folder)
                     except Exception:
@@ -4004,6 +4033,101 @@ def handler(event: dict, context) -> dict:
                     pass
 
             return ok({"created": created, "skipped": skipped, "errors": error_count})
+
+        # ── EMAIL-LEADS-DEBUG: временная диагностика — почему письма от leakad.ru
+        # не создают заявки. Смотрит ВСЕ письма от отправителя (не только непрочитанные)
+        # в INBOX и Спаме, показывает их сырой текст и результат разбора парсером,
+        # чтобы понять причину без гаданий. Защита тем же EMAIL_LEADS_POLL_KEY.
+        if resource == "email-leads-debug" and method == "GET":
+            poll_key = qs.get("key", "")
+            expected_key = os.environ.get("EMAIL_LEADS_POLL_KEY")
+            if not expected_key or poll_key != expected_key:
+                return err("unauthorized", 401)
+
+            smtp_user = os.environ.get("SMTP_USER")
+            smtp_password = os.environ.get("SMTP_PASSWORD")
+            if not smtp_user or not smtp_password:
+                return err("почта не настроена", 400)
+
+            import imaplib
+            import email as email_lib
+
+            SENDER = "noreply@egokad.ru"
+
+            def _extract_text(msg):
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        if part.get_content_type() == "text/plain" and not part.get_filename():
+                            charset = part.get_content_charset() or "utf-8"
+                            try:
+                                return part.get_payload(decode=True).decode(charset, errors="ignore")
+                            except Exception:
+                                continue
+                    for part in msg.walk():
+                        if part.get_content_type() == "text/html" and not part.get_filename():
+                            charset = part.get_content_charset() or "utf-8"
+                            try:
+                                return "[HTML] " + part.get_payload(decode=True).decode(charset, errors="ignore")
+                            except Exception:
+                                continue
+                    return None
+                charset = msg.get_content_charset() or "utf-8"
+                try:
+                    return msg.get_payload(decode=True).decode(charset, errors="ignore")
+                except Exception:
+                    return None
+
+            try:
+                imap = imaplib.IMAP4_SSL("imap.gmail.com", 993, timeout=8)
+                imap.login(smtp_user, smtp_password)
+            except Exception as e:
+                return err(f"imap login failed: {type(e).__name__}: {e}", 502)
+
+            folder_debug = []
+            result = []
+            try:
+                spam_folder = imap_find_spam_folder(imap)
+                folder_debug.append({"spam_folder_found": spam_folder})
+                for folder in ["INBOX"] + ([spam_folder] if spam_folder else []):
+                    try:
+                        status, sel_data = imap.select(folder, readonly=True)
+                    except Exception as e:
+                        folder_debug.append({"folder": folder, "select_error": str(e)})
+                        continue
+                    total_in_folder = sel_data[0].decode() if status == "OK" and sel_data and sel_data[0] else None
+                    if status != "OK":
+                        folder_debug.append({"folder": folder, "select_status": status})
+                        continue
+                    search_from = qs.get("any") == "1"
+                    status, data = imap.search(None, "ALL") if search_from else imap.search(None, f'(FROM "{SENDER}")')
+                    n_found = len(data[0].split()) if status == "OK" and data and data[0] else 0
+                    folder_debug.append({"folder": folder, "total_messages": total_in_folder, "search_matched": n_found})
+                    if status != "OK" or not data or not data[0]:
+                        continue
+                    ids = data[0].split()[-8:]  # последние письма из папки
+                    for eid in ids:
+                        status, msg_data = imap.fetch(eid, "(RFC822 FLAGS)")
+                        if status != "OK" or not msg_data or not msg_data[0]:
+                            continue
+                        msg = email_lib.message_from_bytes(msg_data[0][1])
+                        text = _extract_text(msg)
+                        lead = parse_tg_lead_text(text) if text else None
+                        result.append({
+                            "folder": folder,
+                            "from": msg.get("From"),
+                            "subject": msg.get("Subject"),
+                            "date": msg.get("Date"),
+                            "seen": b"\\Seen" in (msg_data[0][0] or b""),
+                            "text_preview": (text[:600] if text else None),
+                            "parsed_lead": lead,
+                        })
+            finally:
+                try:
+                    imap.logout()
+                except Exception:
+                    pass
+
+            return ok({"found": len(result), "messages": result, "folder_debug": folder_debug})
 
         # ── LEAKAD-WEBHOOK: заявки с leakad.ru напрямую по вебхуку (без задержек
         # почты). Формат текста заявки такой же, как в письмах/Telegram — разбираем
