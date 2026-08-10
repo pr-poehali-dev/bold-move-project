@@ -117,7 +117,6 @@ export const STATUS_COLORS: Record<string, string> = {
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   measure:    "Замер",
   install:    "Монтаж",
-  payment:    "Оплата",
   next_call:  "Следующий звонок",
   last_call:  "Последний звонок",
 };
@@ -125,7 +124,6 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
 export const EVENT_TYPE_COLORS: Record<string, string> = {
   measure:    "#f59e0b",
   install:    "#f97316",
-  payment:    "#10b981",
   next_call:  "#3b82f6",
   last_call:  "#8b5cf6",
 };
