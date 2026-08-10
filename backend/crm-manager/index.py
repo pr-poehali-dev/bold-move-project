@@ -3978,9 +3978,12 @@ def handler(event: dict, context) -> dict:
             cfg = dict(row[0]) if row and row[0] else {}
 
             # Ящик и пароль: сначала берём настройки из «Интеграций» (редактируемые
-            # в интерфейсе), если их нет — используем значения по умолчанию из секретов.
-            smtp_user = cfg.get("email_leads_mailbox") or os.environ.get("SMTP_USER")
-            smtp_password = decrypt_secret(cfg.get("email_leads_password")) or os.environ.get("LEAKAD_IMAP_APP_PASSWORD") or os.environ.get("SMTP_PASSWORD")
+            # в интерфейсе). Если их нет — дефолт mospotolkipro@gmail.com +
+            # LEAKAD_IMAP_APP_PASSWORD (эта пара логин/пароль всегда должна совпадать,
+            # иначе IMAP отдаёт AUTHENTICATIONFAILED — сюда НЕ подставлять SMTP_USER,
+            # это другой ящик 19.jeka.94@gmail.com с другим паролем).
+            smtp_user = cfg.get("email_leads_mailbox") or "mospotolkipro@gmail.com"
+            smtp_password = decrypt_secret(cfg.get("email_leads_password")) or os.environ.get("LEAKAD_IMAP_APP_PASSWORD")
             if not smtp_user or not smtp_password:
                 return err("почта не настроена — впишите ящик и пароль приложения в «Интеграциях»", 400)
 
@@ -4204,9 +4207,11 @@ def handler(event: dict, context) -> dict:
             cfg = dict(row[0]) if row and row[0] else {}
 
             # Ящик/отправитель: значения из «Интеграций», если не заданы — дефолт mospotolkipro@gmail.com
-            email_address = cfg.get("email_leads_mailbox") or os.environ.get("SMTP_USER") or "mospotolkipro@gmail.com"
+            # (тот же порядок приоритета, что и в реальной IMAP-логике выше — иначе
+            # карточка покажет не тот адрес, для которого реально проверяется пароль).
+            email_address = cfg.get("email_leads_mailbox") or "mospotolkipro@gmail.com"
             email_sender = cfg.get("email_leads_sender") or "noreply@egokad.ru"
-            has_password = bool(cfg.get("email_leads_password") or os.environ.get("LEAKAD_IMAP_APP_PASSWORD") or os.environ.get("SMTP_PASSWORD"))
+            has_password = bool(cfg.get("email_leads_password") or os.environ.get("LEAKAD_IMAP_APP_PASSWORD"))
 
             stats = {}
             for via in ("leakad_webhook", "email_leads", "telegram_leads"):
