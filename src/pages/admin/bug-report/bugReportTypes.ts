@@ -13,10 +13,10 @@ export const REPORT_TYPE = [
 ];
 
 export const STATUS = [
-  { id: "new",         label: "Новый",       color: "#3b82f6", masterOnly: false },
-  { id: "in_progress", label: "В работе",    color: "#f59e0b", masterOnly: true },
-  { id: "done",        label: "Выполнен",    color: "#10b981", masterOnly: true },
-  { id: "rejected",    label: "Не выполнен", color: "#ef4444", masterOnly: true },
+  { id: "new",         label: "Новый",       color: "#3b82f6", masterOnly: false, icon: "Sparkle" },
+  { id: "in_progress", label: "В работе",    color: "#f59e0b", masterOnly: true,  icon: "Loader" },
+  { id: "done",        label: "Выполнен",    color: "#10b981", masterOnly: true,  icon: "Check" },
+  { id: "rejected",    label: "Не выполнен", color: "#ef4444", masterOnly: true,  icon: "X" },
 ];
 
 export const sevById = (id: string) => SEVERITY.find(s => s.id === id) ?? SEVERITY[2];

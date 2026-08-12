@@ -152,11 +152,13 @@
       "expectedStatus": 200
     },
     {
-      "name": "POST bug_report",
+      "name": "POST bug_report without description is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
-      "body": {"description": "Тестовый баг-репорт", "severity": "normal", "report_type": "bug"},
-      "expectedStatus": 200
+      "body": {"severity": "normal", "report_type": "bug"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "description required"},
+      "bodyMatcher": "partial"
     },
     {
       "name": "PUT restore missing id without auth",

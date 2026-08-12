@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { crmFetch } from "@/pages/admin/crm/crmApi";
 import { STATUS, REPORT_TYPE, SEVERITY, type Report } from "./bugReportTypes";
 import FilterChip from "./FilterChip";
+import FilterRow from "./FilterRow";
 import ReportCard from "./ReportCard";
 import BugReportForm from "./BugReportForm";
 
@@ -40,6 +41,21 @@ export default function BugReportPanel() {
     setReports(prev => prev.filter(r => r.id !== id));
     crmFetch("bug_reports", { method: "DELETE", body: JSON.stringify({ id }) }).catch(() => load());
   };
+
+  // Тестовые репорты, которые раньше создавал автотест при каждом деплое
+  const isTestReport = (r: Report) =>
+    r.description === "Тестовый баг-репорт" && !r.title && !r.author_name;
+  const testCount = reports.filter(isTestReport).length;
+
+  const purgeTestReports = () => {
+    if (!confirm(`Удалить все тестовые репорты (${testCount} шт.)?`)) return;
+    setReports(prev => prev.filter(r => !isTestReport(r)));
+    crmFetch("bug_reports", { method: "DELETE", body: JSON.stringify({ purge_test: true }) })
+      .catch(() => load());
+  };
+
+  const hasActiveFilters = filter !== "all" || typeFilter !== "all" || sevFilter !== "all";
+  const resetFilters = () => { setFilter("all"); setTypeFilter("all"); setSevFilter("all"); };
 
   const filtered = reports.filter(r =>
     (filter === "all"     || r.status === filter) &&
@@ -91,30 +107,53 @@ export default function BugReportPanel() {
         </button>
       </div>
 
-      {/* Фильтры по статусам */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <FilterChip label="Все" count={statusAllCount} active={filter === "all"} color="#8b5cf6" onClick={() => setFilter("all")} />
-        {STATUS.map(s => (
-          <FilterChip key={s.id} label={s.label} count={counts[s.id]} active={filter === s.id} color={s.color} onClick={() => setFilter(s.id)} />
-        ))}
-      </div>
+      {/* Фильтры — единый блок, три строки с подписями слева */}
+      <div
+        className="rounded-2xl p-3 sm:p-4 mb-4 flex flex-col gap-2.5"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <FilterRow label="Статус">
+          <FilterChip label="Все" count={statusAllCount} active={filter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setFilter("all")} />
+          {STATUS.map(s => (
+            <FilterChip key={s.id} label={s.label} count={counts[s.id]} active={filter === s.id} color={s.color} icon={s.icon} onClick={() => setFilter(s.id)} />
+          ))}
+        </FilterRow>
 
-      {/* Фильтры по типу */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mr-1">Тип</span>
-        <FilterChip label="Все" count={typeAllCount} active={typeFilter === "all"} color="#8b5cf6" onClick={() => setTypeFilter("all")} />
-        {REPORT_TYPE.map(t => (
-          <FilterChip key={t.id} label={t.label} count={typeCounts[t.id]} active={typeFilter === t.id} color="#60a5fa" onClick={() => setTypeFilter(t.id)} />
-        ))}
-      </div>
+        <FilterRow label="Тип">
+          <FilterChip label="Все" count={typeAllCount} active={typeFilter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setTypeFilter("all")} />
+          {REPORT_TYPE.map(t => (
+            <FilterChip key={t.id} label={t.label} count={typeCounts[t.id]} active={typeFilter === t.id} color="#60a5fa" icon={t.icon} onClick={() => setTypeFilter(t.id)} />
+          ))}
+        </FilterRow>
 
-      {/* Фильтры по важности */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mr-1">Важность</span>
-        <FilterChip label="Все" count={sevAllCount} active={sevFilter === "all"} color="#8b5cf6" onClick={() => setSevFilter("all")} />
-        {SEVERITY.map(s => (
-          <FilterChip key={s.id} label={s.label} count={sevCounts[s.id]} active={sevFilter === s.id} color={s.color} onClick={() => setSevFilter(s.id)} />
-        ))}
+        <FilterRow label="Важность">
+          <FilterChip label="Все" count={sevAllCount} active={sevFilter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setSevFilter("all")} />
+          {SEVERITY.map(s => (
+            <FilterChip key={s.id} label={s.label} count={sevCounts[s.id]} active={sevFilter === s.id} color={s.color} icon={s.icon} onClick={() => setSevFilter(s.id)} />
+          ))}
+        </FilterRow>
+
+        {(hasActiveFilters || isMaster) && (
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-white/45 hover:text-white/80 transition"
+              >
+                <Icon name="X" size={12} /> Сбросить фильтры
+              </button>
+            )}
+            {isMaster && testCount > 0 && (
+              <button
+                onClick={purgeTestReports}
+                className="flex items-center gap-1.5 text-[11px] font-semibold transition hover:opacity-80"
+                style={{ color: "#ef4444" }}
+              >
+                <Icon name="Trash2" size={12} /> Удалить тестовые ({testCount})
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Список */}

@@ -843,11 +843,22 @@ def handler(event: dict, context) -> dict:
                 return ok({"ok": True})
 
             if method == "DELETE":
+                if not is_master:
+                    return err("only master can delete", 403)
+                # Массовая чистка тестовых репортов, которые раньше создавал
+                # автотест при каждом деплое («Тестовый баг-репорт», без автора).
+                if (body.get("purge_test") or qs.get("purge_test")):
+                    cur.execute(
+                        f"""DELETE FROM {SCHEMA}.bug_reports
+                            WHERE description = 'Тестовый баг-репорт'
+                              AND COALESCE(title,'') = ''
+                              AND COALESCE(author_name,'') = ''""")
+                    removed = cur.rowcount
+                    conn.commit()
+                    return ok({"ok": True, "removed": removed})
                 report_id = body.get("id") or qs.get("id")
                 if not report_id:
                     return err("id required")
-                if not is_master:
-                    return err("only master can delete", 403)
                 cur.execute(f"DELETE FROM {SCHEMA}.bug_reports WHERE id=%s", (report_id,))
                 conn.commit()
                 return ok({"ok": True})
