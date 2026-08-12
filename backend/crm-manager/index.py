@@ -3384,10 +3384,36 @@ def handler(event: dict, context) -> dict:
             status, qr_url, account_name, error, updated_at = row
             # QR-код у Telegram живёт недолго (обычно ~30 сек) — если воркер молчит
             # больше 2 минут, считаем сессию протухшей, чтобы фронтенд не крутил
-            # спиннер вечно, а показал ошибку и дал начать заново.
-            if status in ("pending", "qr_ready") and (datetime.now() - updated_at).total_seconds() > 120:
+            # спиннер вечно, а показал ошибку и дал начать заново. Ожидание пароля
+            # (2FA) даём подольше — сотруднику нужно время его вспомнить/найти.
+            stale_after = 300 if status == "password_needed" else 120
+            if status in ("pending", "qr_ready", "password_needed") and (datetime.now() - updated_at).total_seconds() > stale_after:
                 status = "expired"
             return ok({"status": status, "qr_url": qr_url, "account_name": account_name, "error": error})
+
+        # ── CHANNEL-QR-PASSWORD: сотрудник вводит облачный пароль (2FA) ─────────────
+        # Вызывается, когда channel-qr-status вернул status=password_needed.
+        # Пароль кладём во временное поле — воркер заберёт его на следующем опросе
+        # channel-qr-worker и сразу же затрёт после использования.
+        if resource == "channel-qr-password" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            channel = body.get("channel", "telegram")
+            password = body.get("password", "")
+            if not password:
+                return err("password required")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.channel_qr_sessions
+                SET pending_password=%s, updated_at=NOW()
+                WHERE company_id=%s AND channel=%s AND status='password_needed'
+            """, (password, owner_id, channel))
+            if cur.rowcount == 0:
+                return err("сессия подключения не найдена или уже истекла", 400)
+            conn.commit()
+            return ok({"ok": True})
 
         # ── CHANNEL-QR-DISCONNECT: отключить личный аккаунт ─────────────────────────
         if resource == "channel-qr-disconnect" and method == "POST":
@@ -3441,8 +3467,8 @@ def handler(event: dict, context) -> dict:
                 # Воркер отчитывается о ходе конкретной задачи
                 owner_id = body.get("company_id")
                 channel = body.get("channel", "telegram")
-                status = body.get("status")  # qr_ready | connected | error | disconnected
-                if not owner_id or status not in ("qr_ready", "connected", "error", "disconnected"):
+                status = body.get("status")  # qr_ready | connected | error | disconnected | password_needed
+                if not owner_id or status not in ("qr_ready", "connected", "error", "disconnected", "password_needed"):
                     return err("company_id и валидный status обязательны")
                 if status == "disconnected":
                     cur.execute(f"""
@@ -3476,10 +3502,42 @@ def handler(event: dict, context) -> dict:
                         SET status='error', error=%s, updated_at=NOW()
                         WHERE company_id=%s AND channel=%s
                     """, (body.get("error"), owner_id, channel))
+                elif status == "password_needed":
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.channel_qr_sessions
+                        SET status='password_needed', error=NULL, pending_password=NULL, updated_at=NOW()
+                        WHERE company_id=%s AND channel=%s
+                    """, (owner_id, channel))
                 conn.commit()
                 return ok({"ok": True})
 
             return err("unknown method")
+
+        # ── CHANNEL-QR-WORKER-PASSWORD: воркер ждёт облачный пароль (2FA), который
+        # сотрудник ввёл через channel-qr-password. Одноразовая выдача — как только
+        # воркер забрал пароль, он сразу стирается из БД, чтобы не хранить его дольше
+        # необходимого и не отдать повторно по ошибке.
+        if resource == "channel-qr-worker-password" and method == "GET":
+            worker_token = (event.get("headers") or {}).get("X-Worker-Token", "")
+            if not worker_token or worker_token != os.environ.get("TG_PROXY_TOKEN"):
+                return err("неверный токен воркера", 401)
+            owner_id_q = qs.get("company_id")
+            channel_q = qs.get("channel", "telegram")
+            if not owner_id_q:
+                return err("company_id required")
+            cur.execute(f"""
+                SELECT pending_password FROM {SCHEMA}.channel_qr_sessions
+                WHERE company_id=%s AND channel=%s AND status='password_needed'
+            """, (owner_id_q, channel_q))
+            row = cur.fetchone()
+            password = row[0] if row else None
+            if password:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.channel_qr_sessions SET pending_password=NULL, updated_at=NOW()
+                    WHERE company_id=%s AND channel=%s
+                """, (owner_id_q, channel_q))
+                conn.commit()
+            return ok({"password": password})
 
         # ── CHANNEL-WEBHOOK: приём сообщения от воркера (Telegram/MAX) ─────────────
         # Вызывается НЕ сотрудником, а нашим воркером на VPS — авторизация через

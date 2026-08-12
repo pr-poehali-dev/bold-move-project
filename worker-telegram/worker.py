@@ -39,7 +39,7 @@ import os
 import asyncio
 import requests
 from telethon import TelegramClient, events
-from telethon.errors import SessionPasswordNeededError
+from telethon.errors import SessionPasswordNeededError, PasswordHashInvalidError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -61,6 +61,22 @@ active_tasks: dict[int, list[asyncio.Task]] = {}
 
 def _worker_headers():
     return {"X-Worker-Token": CRM_WORKER_TOKEN, "Content-Type": "application/json"}
+
+
+def fetch_password(company_id: int, channel: str):
+    """Sprashivaet u CRM — vvyol li sotrudnik oblachnyi parol' (2FA) v okne QR.
+    Vozvraschaet None, esli parol' eschyo ne vveden."""
+    try:
+        resp = requests.get(
+            f"{CRM_WEBHOOK_URL}?r=channel-qr-worker-password&company_id={company_id}&channel={channel}",
+            headers=_worker_headers(), timeout=15,
+        )
+        if resp.status_code != 200:
+            return None
+        return resp.json().get("password")
+    except Exception as e:
+        print(f"[qr-worker] company={company_id} oshibka zaprosa parolya: {e}")
+        return None
 
 
 def fetch_worker_tasks():
@@ -193,11 +209,25 @@ async def start_existing_session(company_id: int, channel: str, webhook_key: str
     print(f"[qr-worker] company={company_id} sessiya podnyata iz faila")
 
 
+async def wait_for_password(company_id: int, channel: str, timeout_sec: int = 240):
+    """Zhdyot, poka sotrudnik vvedyot oblachnyi parol' (2FA) v okne QR v CRM.
+    Oprashivaet CRM kazhdye 2 sek. Vozvraschaet None, esli vremya vyshlo."""
+    elapsed = 0
+    while elapsed < timeout_sec:
+        password = fetch_password(company_id, channel)
+        if password:
+            return password
+        await asyncio.sleep(2)
+        elapsed += 2
+    return None
+
+
 async def handle_connect_task(company_id: int, channel: str):
     """Obrabatyvaet zayavku na podklyuchenie: generiruet QR, zhdyot skanirovaniya,
+    pri neobhodimosti zaprashivaet oblachnyi parol' (2FA) cherez CRM,
     posle uspeha - zapuskaet fonovye zadachi dlya etoi kompanii."""
     if channel != "telegram":
-        report_qr_status(company_id, channel, "error", error="Kanal poka ne podderzhivaetsya")
+        report_qr_status(company_id, channel, "error", error="Этот канал пока не поддерживается")
         return
 
     session_path = os.path.join(SESSIONS_DIR, f"{company_id}")
@@ -211,6 +241,7 @@ async def handle_connect_task(company_id: int, channel: str):
         # QR u Telegram zhivyot ~30 sek - peregeneriruem do 4 raz (~2 minuty vsego),
         # poka pol'zovatel' ne otskaniruet ili poka ne isteklo obschee vremya ozhidaniya.
         authorized = False
+        need_password = False
         for _ in range(4):
             try:
                 await qr_login.wait(timeout=30)
@@ -220,13 +251,29 @@ async def handle_connect_task(company_id: int, channel: str):
                 await qr_login.recreate()
                 report_qr_status(company_id, channel, "qr_ready", qr_url=qr_login.url)
             except SessionPasswordNeededError:
-                report_qr_status(company_id, channel, "error",
-                                  error="Na akkaunte vklyuchyon parol' (2FA) - poka ne podderzhivaetsya, otklyuchite ego vremenno v Telegram i poprobuite snova")
+                need_password = True
+                break
+
+        if need_password:
+            # Akkaunt so vklyuchyonnym oblachnym parolem (2FA). QR uzhe podtverzhdyon
+            # telefonom, no Telegram trebuet eschyo i parol' — zaprashivaem ego u
+            # sotrudnika cherez CRM (okno QR pokazhet pole vvoda vmesto kartinki).
+            report_qr_status(company_id, channel, "password_needed")
+            password = await wait_for_password(company_id, channel)
+            if not password:
+                report_qr_status(company_id, channel, "error", error="Пароль не был введён вовремя")
+                await client.disconnect()
+                return
+            try:
+                await client.sign_in(password=password)
+                authorized = True
+            except PasswordHashInvalidError:
+                report_qr_status(company_id, channel, "error", error="Неверный пароль")
                 await client.disconnect()
                 return
 
         if not authorized:
-            report_qr_status(company_id, channel, "error", error="QR-kod ne byl otskanirovan vovremya")
+            report_qr_status(company_id, channel, "error", error="QR-код не был отсканирован вовремя")
             await client.disconnect()
             return
 

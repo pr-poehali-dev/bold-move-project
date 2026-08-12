@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Icon from "@/components/ui/icon";
 import { crmFetch } from "@/pages/admin/crm/crmApi";
 
-type QrStatus = "pending" | "qr_ready" | "connected" | "error" | "expired" | "not_connected";
+type QrStatus = "pending" | "qr_ready" | "password_needed" | "connected" | "error" | "expired" | "not_connected";
 
 interface StatusResp {
   status: QrStatus;
@@ -16,6 +16,8 @@ interface StatusResp {
 // Пока идёт ожидание — опрашиваем backend раз в 2 сек (он сам синхронизируется
 // с воркером на VPS, который реально общается с Telegram). Компонент не знает
 // про воркер напрямую, только про статус в нашей БД — простая и надёжная связка.
+// Если у аккаунта включён облачный пароль (2FA) — backend вернёт статус
+// password_needed, и вместо QR показываем поле для ввода пароля.
 export default function ChannelQrModal({
   channel, channelLabel, onClose, onConnected,
 }: {
@@ -27,6 +29,9 @@ export default function ChannelQrModal({
   const [status, setStatus] = useState<QrStatus>("pending");
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [sendingPassword, setSendingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = () => {
@@ -54,6 +59,8 @@ export default function ChannelQrModal({
     setStatus("pending");
     setQrUrl(null);
     setErrorMsg(null);
+    setPassword("");
+    setPasswordError(null);
     try {
       await crmFetch("channel-qr-start", { method: "POST", body: JSON.stringify({ channel }) });
       stopPolling();
@@ -61,6 +68,23 @@ export default function ChannelQrModal({
       poll();
     } catch {
       setErrorMsg("Не удалось начать подключение — проверьте связь с сервером");
+    }
+  };
+
+  const submitPassword = async () => {
+    if (!password.trim()) return;
+    setSendingPassword(true);
+    setPasswordError(null);
+    try {
+      await crmFetch("channel-qr-password", {
+        method: "POST",
+        body: JSON.stringify({ channel, password: password.trim() }),
+      });
+      setPassword("");
+    } catch {
+      setPasswordError("Не удалось отправить пароль — попробуйте ещё раз");
+    } finally {
+      setSendingPassword(false);
     }
   };
 
@@ -100,6 +124,34 @@ export default function ChannelQrModal({
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition"
               style={{ background: "#7c3aed", color: "#fff" }}>
               <Icon name="RotateCw" size={13} /> Попробовать снова
+            </button>
+          </div>
+        ) : status === "password_needed" ? (
+          <div className="w-full flex flex-col items-center gap-3 py-2">
+            <Icon name="Lock" size={32} style={{ color: "#f59e0b" }} />
+            <div className="text-xs text-center text-white/60 leading-relaxed">
+              На аккаунте включён облачный пароль (2FA) — введите его, чтобы завершить вход
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submitPassword()}
+              placeholder="Облачный пароль Telegram"
+              autoFocus
+              className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none text-white"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)" }}
+            />
+            {passwordError && <div className="text-[11px] text-red-400">{passwordError}</div>}
+            <button
+              onClick={submitPassword}
+              disabled={sendingPassword || !password.trim()}
+              className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition disabled:opacity-50"
+              style={{ background: "#7c3aed", color: "#fff" }}>
+              {sendingPassword
+                ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Icon name="Check" size={13} />}
+              Подтвердить
             </button>
           </div>
         ) : (

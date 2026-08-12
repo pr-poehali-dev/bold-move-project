@@ -177,6 +177,23 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "POST channel-qr-password without auth is rejected",
+      "method": "POST",
+      "path": "/?r=channel-qr-password",
+      "body": {"channel": "telegram", "password": "test"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET channel-qr-worker-password without token is rejected",
+      "method": "GET",
+      "path": "/?r=channel-qr-worker-password&company_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "неверный токен воркера"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "POST bug_report without platform is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
