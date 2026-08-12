@@ -2,3 +2,4 @@ telethon
 requests
 python-dotenv
 PySocks
+python-socks[asyncio]
