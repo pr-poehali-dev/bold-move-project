@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { useCallClient } from "./useCallClient";
 import { useAutoTranscribe } from "./useAutoTranscribe";
+import { fmtMoscowDateTime } from "./timeMoscow";
 
 interface Touch {
   id: number;
@@ -62,11 +63,7 @@ const CHANNELS: Record<string, { icon: string; label: string; color: string }> =
 };
 const channelMeta = (c: string) => CHANNELS[c] || { icon: "MessageSquare", label: c, color: "#8b5cf6" };
 
-const fmtTime = (iso: string) => {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-};
+const fmtTime = (iso: string) => fmtMoscowDateTime(iso);
 
 const fmtDuration = (sec: number | null) => {
   if (!sec) return "";
@@ -297,11 +294,10 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                     background: out ? t.accent + "22" : t.surface2,
                     border: `1px solid ${out ? t.accent + "40" : t.border}`,
                   }}>
-                  {/* Заголовок: канал + время */}
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Icon name={meta.icon} size={12} style={{ color: meta.color }} />
+                  {/* Заголовок: канал */}
+                  <div className="flex items-center gap-1 mb-1">
+                    <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
                     <span className="text-[10px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
-                    <span className="text-[10px]" style={{ color: t.textMute }}>· {fmtTime(tt.created_at)}</span>
                   </div>
 
                   {/* Звонок */}
@@ -345,6 +341,9 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                           )}
                         </>
                       )}
+                      <div className="text-right mt-1">
+                        <span className="text-[10px]" style={{ color: t.textMute }}>{fmtTime(tt.created_at)}</span>
+                      </div>
                     </div>
                   ) : (
                     <div>
@@ -359,16 +358,19 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                       <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
                         {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
                       </div>
-                      {out && tt.status === "pending" && (
-                        <div className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: t.textMute }}>
-                          <Icon name="Clock" size={10} /> отправляется…
-                        </div>
-                      )}
-                      {out && tt.status === "error" && (
-                        <div className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: "#ef4444" }}>
-                          <Icon name="AlertTriangle" size={10} /> не удалось отправить
-                        </div>
-                      )}
+                      <div className="flex items-center justify-end gap-1.5 mt-1">
+                        {out && tt.status === "pending" && (
+                          <span className="text-[10px] flex items-center gap-1" style={{ color: t.textMute }}>
+                            <Icon name="Clock" size={10} /> отправляется
+                          </span>
+                        )}
+                        {out && tt.status === "error" && (
+                          <span className="text-[10px] flex items-center gap-1" style={{ color: "#ef4444" }}>
+                            <Icon name="AlertTriangle" size={10} /> не отправлено
+                          </span>
+                        )}
+                        <span className="text-[10px]" style={{ color: t.textMute }}>{fmtTime(tt.created_at)}</span>
+                      </div>
                     </div>
                   )}
                 </div>

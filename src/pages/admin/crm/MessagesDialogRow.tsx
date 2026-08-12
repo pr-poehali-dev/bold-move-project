@@ -2,15 +2,16 @@ import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Dialog, channelMeta } from "./messagesChannels";
+import { fmtMoscowTime, fmtMoscowDateShort, moscowDateParts } from "./timeMoscow";
 
+// Сегодня (по Москве) — только время, иначе дата. Всё в едином московском поясе,
+// чтобы не было расхождения в 3 часа для тех, кто открывает CRM не из Москвы.
 const fmtWhen = (iso: string) => {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  return sameDay
-    ? d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  const parts = moscowDateParts(iso);
+  const nowParts = moscowDateParts(new Date().toISOString());
+  if (!parts || !nowParts) return "";
+  const sameDay = parts.day === nowParts.day && parts.month === nowParts.month && parts.year === nowParts.year;
+  return sameDay ? fmtMoscowTime(iso) : fmtMoscowDateShort(iso);
 };
 
 const isAvito = (d: Dialog) => d.last_channel === "avito" || d.source === "avito" || !!d.avito_chat_url;
