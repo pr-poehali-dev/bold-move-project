@@ -3425,25 +3425,46 @@ def handler(event: dict, context) -> dict:
             if cfg.get("avito_enabled") == "false":
                 return ok({"skipped": True, "reason": "disabled"})
 
-            # ── ВРЕМЕННАЯ ДИАГНОСТИКА (включено ~на 2 дня) ──────────────────────
-            # Логируем ПОЛНЫЙ сырой JSON от Avito, чтобы проверить: приходит ли в
-            # событиях (звонок / отклик / «показал номер») подменный телефон покупателя.
-            # Ставим ДО отсева событий без текста — именно такие события нас интересуют.
-            # TODO: удалить после снятия данных.
+            # ── Постоянный сырой лог входящих событий Avito ──────────────────────
+            # Раньше события звонков терялись без следа — сохраняем КАЖДОЕ сырое
+            # событие в отдельную таблицу ДО какой-либо фильтрации/парсинга, чтобы
+            # при потере заявки можно было посмотреть, что именно прислал Avito
+            # (формат события может отличаться от ожидаемого — value.type у Avito
+            # непостоянен, у звонков встречается и как payload.type, и как
+            # payload.value.type в разных версиях API).
+            raw_log_id = None
             try:
-                print(f"[avito-webhook RAW] {json.dumps(body, ensure_ascii=False)[:4000]}")
-            except Exception:
-                print(f"[avito-webhook RAW] <unserializable body>")
+                payload_outer = (body or {}).get("payload") or {}
+                _probe_value = payload_outer.get("value") or {}
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.avito_webhook_raw_log
+                        (company_id, msg_type, chat_id, payload)
+                        VALUES (%s,%s,%s,%s::jsonb) RETURNING id""",
+                    (owner_id,
+                     (payload_outer.get("type") or _probe_value.get("type") or ""),
+                     str(_probe_value.get("chat_id") or ""),
+                     json.dumps(body, ensure_ascii=False))
+                )
+                raw_log_id = cur.fetchone()[0]
+                conn.commit()
+            except Exception as _log_err:
+                conn.rollback()
+                print(f"[avito-webhook] raw log insert failed: {str(_log_err)[:300]}")
 
-            # Формат Avito: {"payload": {"type":"message","value":{...}}}
+            # Формат Avito: {"payload": {"type":"message","value":{...}}}.
+            # ⚠️ Тип события ищем И на внешнем уровне (payload.type), И на
+            # внутреннем (payload.value.type) — раньше читали только внутренний,
+            # из-за чего события, где тип приходит снаружи (что похоже на случай
+            # со звонками), не распознавались и молча терялись.
             value = ((body or {}).get("payload") or {}).get("value") or {}
+            outer_type = ((body or {}).get("payload") or {}).get("type") or ""
             av_chat_id = value.get("chat_id")
             av_author  = value.get("author_id")
             av_user_id = value.get("user_id")  # получатель = наш аккаунт
             content    = value.get("content") or {}
             text       = content.get("text")
             msg_id     = value.get("id")
-            msg_type   = (value.get("type") or "").lower()
+            msg_type   = (value.get("type") or outer_type or "").lower()
 
             # ── Не-текстовые сообщения: картинки и звонки ────────────────────────
             # Раньше сюда попадал только текст, поэтому фото от клиента и звонки
@@ -3466,20 +3487,35 @@ def handler(event: dict, context) -> dict:
                     av_attachments = [{"type": "image", "url": img_url}]
                     text = text or "Фото"
 
-            elif msg_type == "call":
-                # Звонок: показываем понятную строку прямо в ленте переписки
-                call = content.get("call") or {}
+            elif "call" in msg_type:
+                # Звонок: показываем понятную строку прямо в ленте переписки.
+                # Проверяем "call" по вхождению (а не точным равенством), т.к. у
+                # Avito встречаются варианты названия типа события (call,
+                # voice_call, missed_call и т.п.) — точное сравнение раньше
+                # пропускало часть звонков молча.
+                call = content.get("call") or value.get("call") or {}
                 st = (call.get("status") or "").lower()
                 secs = call.get("duration") or call.get("duration_sec") or 0
-                if st in ("missed", "no-answer", "noanswer", "busy", "declined"):
+                if "missed" in msg_type or st in ("missed", "no-answer", "noanswer", "busy", "declined"):
                     text = "Пропущенный звонок"
-                else:
+                elif secs:
                     mm, ss = divmod(int(secs or 0), 60)
                     dur = f"{mm} мин {ss} сек" if mm else f"{ss} сек"
-                    text = f"Звонок · {dur}" if secs else "Звонок"
+                    text = f"Звонок · {dur}"
+                else:
+                    text = "Звонок"
 
-            # Служебные события без чата/содержимого пропускаем
+            # Служебные события без чата/содержимого пропускаем — но фиксируем
+            # причину в сыром логе, чтобы не гадать при следующей потере заявки.
             if not av_chat_id or not text:
+                if raw_log_id:
+                    try:
+                        cur.execute(
+                            f"UPDATE {SCHEMA}.avito_webhook_raw_log SET error=%s WHERE id=%s",
+                            (f"skipped: chat_id={av_chat_id!r} text={text!r} msg_type={msg_type!r}", raw_log_id))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
                 return ok({"skipped": True})
 
             # Определяем направление: если автор — наш аккаунт Avito, значит сообщение
@@ -3591,6 +3627,12 @@ def handler(event: dict, context) -> dict:
             # Avito ждёт быстрый ответ на вебхук (около 2 сек) и молча отключает доставку,
             # если сервер отвечает медленно. Анализ пересобирается отдельно — при открытии
             # карточки клиента в CRM (см. resource == "touches" analyze).
+            if raw_log_id:
+                try:
+                    cur.execute(f"UPDATE {SCHEMA}.avito_webhook_raw_log SET processed=true WHERE id=%s", (raw_log_id,))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
             return ok({"client_id": client_id, "saved": True})
 
         # ── UIS-WEBHOOK-CONFIG: секретный ключ + URL вебхука для ЛК UIS (аналог channel-config) ──
