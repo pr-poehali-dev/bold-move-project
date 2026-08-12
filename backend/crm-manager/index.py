@@ -4756,25 +4756,32 @@ def handler(event: dict, context) -> dict:
 
             if client_id:
                 cur.execute(
-                    f"SELECT id, channel_ids FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                    f"SELECT id, channel_ids, phone FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
                     (client_id, owner_id))
             elif phone_q:
                 norm = normalize_phone(phone_q)
                 if not norm:
                     return err("phone invalid")
                 cur.execute(
-                    f"SELECT id, channel_ids FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
+                    f"SELECT id, channel_ids, phone FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
                     (norm, owner_id))
             else:
                 return err("client_id или phone обязателен")
             cli = cur.fetchone()
             if not cli:
                 return err("client not found", 404)
-            client_id, channel_ids = cli[0], (cli[1] or {})
+            client_id, channel_ids, client_phone = cli[0], (cli[1] or {}), cli[2]
 
             external_chat_id = channel_ids.get(channel)
             if not external_chat_id:
-                return err(f"нет привязки к каналу «{channel}» — клиент ещё не писал через него", 400)
+                # Telegram/MAX: если клиент ещё не писал сам, но у него есть телефон —
+                # воркер попробует найти его в Telegram по номеру (как обычный "добавить
+                # контакт по номеру") и написать первым. Для Avito/WhatsApp такого пути
+                # нет — там переписка возможна только после первого сообщения клиента.
+                if channel in ("telegram", "max") and client_phone:
+                    pass  # отправляем в pending без external_chat_id — воркер разрулит по phone
+                else:
+                    return err(f"нет привязки к каналу «{channel}» — клиент ещё не писал через него", 400)
 
             # Avito отправляется СРАЗУ через API (без воркера), Telegram/MAX — через
             # очередь pending (их заберёт воркер на VPS).
@@ -4829,7 +4836,7 @@ def handler(event: dict, context) -> dict:
                 return err("неверный ключ", 401)
 
             cur.execute(f"""
-                SELECT te.id, te.client_id, te.text, tc.channel_ids
+                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone
                 FROM {SCHEMA}.touch_events te
                 JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
                 WHERE tc.company_id=%s AND te.channel=%s AND te.direction='out' AND te.status='pending'
@@ -4837,14 +4844,19 @@ def handler(event: dict, context) -> dict:
                 LIMIT 20
             """, (owner_id, channel_q))
             items = []
-            for touch_id, cid, text, channel_ids in cur.fetchall():
+            for touch_id, cid, text, channel_ids, phone in cur.fetchall():
                 external_chat_id = (channel_ids or {}).get(channel_q)
-                if not external_chat_id:
+                # Нет привязки — но есть телефон: воркер попробует найти клиента в
+                # Telegram/MAX по номеру (написать первым). Без ни того ни другого
+                # отправить нечем — пропускаем (такое не должно случаться, т.к.
+                # send-message уже проверяет это на входе).
+                if not external_chat_id and not phone:
                     continue
                 items.append({
                     "touch_id": touch_id,
                     "client_id": cid,
                     "external_chat_id": external_chat_id,
+                    "phone": phone,
                     "text": text,
                 })
             return ok({"messages": items})
@@ -4868,8 +4880,27 @@ def handler(event: dict, context) -> dict:
 
             touch_id = body.get("touch_id")
             success  = body.get("success", True)
+            channel_q = body.get("channel")
+            found_chat_id = body.get("external_chat_id")  # воркер нашёл клиента по телефону
             if not touch_id:
                 return err("touch_id required")
+
+            # Если это было первое сообщение клиенту без привязки (написали по
+            # телефону) и воркер успешно нашёл его в канале — запоминаем chat_id,
+            # чтобы дальше отправлять/принимать сообщения уже без повторного поиска.
+            if success and found_chat_id and channel_q:
+                cur.execute(f"""
+                    SELECT tc.id FROM {SCHEMA}.touch_events te
+                    JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                    WHERE te.id=%s AND tc.company_id=%s
+                """, (touch_id, owner_id))
+                crow = cur.fetchone()
+                if crow:
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.touch_clients
+                        SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
+                        WHERE id=%s
+                    """, (json.dumps({channel_q: str(found_chat_id)}), crow[0]))
 
             cur.execute(f"""
                 UPDATE {SCHEMA}.touch_events te

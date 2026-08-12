@@ -40,6 +40,8 @@ import asyncio
 import requests
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError, PasswordHashInvalidError
+from telethon.tl.functions.contacts import ImportContactsRequest, DeleteContactsRequest
+from telethon.tl.types import InputPhoneContact
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -147,16 +149,53 @@ def get_pending_messages(webhook_key: str, company_id: int):
         return []
 
 
-def mark_sent(webhook_key: str, company_id: int, touch_id: int, success: bool):
+def mark_sent(webhook_key: str, company_id: int, touch_id: int, success: bool,
+              channel: str = None, external_chat_id: str = None):
     try:
+        payload = {"touch_id": touch_id, "success": success}
+        if channel:
+            payload["channel"] = channel
+        if external_chat_id:
+            payload["external_chat_id"] = external_chat_id
         requests.post(
             f"{CRM_WEBHOOK_URL}?r=mark-sent&company_id={company_id}",
-            json={"touch_id": touch_id, "success": success},
+            json=payload,
             headers={"X-Webhook-Key": webhook_key, "Content-Type": "application/json"},
             timeout=15,
         )
     except Exception as e:
         print(f"[crm-out c={company_id}] oshibka mark-sent: {e}")
+
+
+async def find_by_phone(client: TelegramClient, phone: str):
+    """Ischet polzovatelya Telegram po nomeru telefona — tot zhe mehanizm, chto
+    "dobavit' kontakt po nomeru" v obychnom prilozhenii. Rabotaet TOL'KO esli
+    u nomera est' Telegram-akkaunt, telefon otkryt dlya poiska po nomeru (ne
+    skryt v nastroikah privatnosti) i akkaunt voobsche sushchestvuet.
+    Vozvraschaet (entity, chat_id_str) ili (None, None), esli ne naiden.
+    Dobavlennyi kontakt srazu zhe udalyaetsya — my ne hotim zasorat' spisok
+    kontaktov akkaunta kompanii chuzhimi nomerami navsegda."""
+    if not phone:
+        return None, None
+    digits = "".join(c for c in phone if c.isdigit())
+    if not digits:
+        return None, None
+    try:
+        result = await client(ImportContactsRequest([
+            InputPhoneContact(client_id=0, phone=f"+{digits}", first_name="Client", last_name="")
+        ]))
+        if not result.users:
+            return None, None
+        user = result.users[0]
+        # Srazu ubiraem iz kontaktov — nam nuzhen byl tol'ko poisk, ne khranenie.
+        try:
+            await client(DeleteContactsRequest(id=[user.id]))
+        except Exception:
+            pass
+        return user, str(user.id)
+    except Exception as e:
+        print(f"[find-by-phone] oshibka poiska {phone}: {e}")
+        return None, None
 
 
 async def run_company_session(company_id: int, webhook_key: str, client: TelegramClient):
@@ -189,12 +228,26 @@ async def run_company_session(company_id: int, webhook_key: str, client: Telegra
                 messages = get_pending_messages(webhook_key, company_id)
                 for msg in messages:
                     touch_id = msg["touch_id"]
-                    chat_id = int(msg["external_chat_id"])
                     text = msg["text"]
+                    external_chat_id = msg.get("external_chat_id")
+                    phone = msg.get("phone")
                     try:
-                        await client.send_message(chat_id, text)
-                        print(f"[tg-out c={company_id}] otpravleno touch_id={touch_id} -> {chat_id}")
-                        mark_sent(webhook_key, company_id, touch_id, True)
+                        if external_chat_id:
+                            entity = int(external_chat_id)
+                            found_chat_id = None
+                        else:
+                            # Pervoe soobschenie klientu — perepiski eschyo ne bylo.
+                            # Ischem ego v Telegram po nomeru telefona (kak obychnoe
+                            # "dobavit' kontakt po nomeru"), potom pishem pervymi.
+                            entity, found_chat_id = await find_by_phone(client, phone)
+                            if entity is None:
+                                print(f"[tg-out c={company_id}] telefon {phone} ne naiden v Telegram, touch_id={touch_id}")
+                                mark_sent(webhook_key, company_id, touch_id, False)
+                                continue
+                        await client.send_message(entity, text)
+                        print(f"[tg-out c={company_id}] otpravleno touch_id={touch_id} -> {external_chat_id or phone}")
+                        mark_sent(webhook_key, company_id, touch_id, True,
+                                  channel="telegram", external_chat_id=found_chat_id if not external_chat_id else None)
                     except Exception as e:
                         print(f"[tg-out c={company_id}] oshibka otpravki touch_id={touch_id}: {e}")
                         mark_sent(webhook_key, company_id, touch_id, False)
