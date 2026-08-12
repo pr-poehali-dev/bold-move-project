@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { STATUS, sevById, typeById, statusById, type Report } from "./bugReportTypes";
+import { STATUS, sevById, typeById, statusById, platformById, areaById, type Report } from "./bugReportTypes";
 
 // ── Карточка репорта ───────────────────────────────────────────────────────
 export default function ReportCard({ report, isMaster, onStatusChange, onRemove }: {
@@ -11,6 +11,8 @@ export default function ReportCard({ report, isMaster, onStatusChange, onRemove 
   const sev = sevById(report.severity);
   const typ = typeById(report.report_type);
   const st = statusById(report.status);
+  const plat = platformById(report.platform);
+  const ar = areaById(report.area);
   const [statusOpen, setStatusOpen] = useState(false);
 
   const date = new Date(report.created_at).toLocaleString("ru-RU", {
@@ -34,6 +36,16 @@ export default function ReportCard({ report, isMaster, onStatusChange, onRemove 
             <span className="px-2 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name={typ.icon} size={11} /> {typ.label}
             </span>
+            {plat && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name={plat.icon} size={11} /> {plat.label}
+              </span>
+            )}
+            {ar && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)" }}>
+                <Icon name={ar.icon} size={11} /> {ar.label}
+              </span>
+            )}
           </div>
 
           {report.title && <div className="text-sm font-semibold text-white mb-0.5">{report.title}</div>}

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { crmFetch } from "@/pages/admin/crm/crmApi";
-import { STATUS, REPORT_TYPE, SEVERITY, type Report } from "./bugReportTypes";
+import { STATUS, REPORT_TYPE, SEVERITY, PLATFORM, AREA, type Report } from "./bugReportTypes";
 import FilterChip from "./FilterChip";
 import FilterRow from "./FilterRow";
 import ReportCard from "./ReportCard";
@@ -18,6 +18,8 @@ export default function BugReportPanel() {
   const [filter, setFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [areaFilter, setAreaFilter] = useState<string>("all");
 
   const load = () => {
     setLoading(true);
@@ -54,37 +56,57 @@ export default function BugReportPanel() {
       .catch(() => load());
   };
 
-  const hasActiveFilters = filter !== "all" || typeFilter !== "all" || sevFilter !== "all";
-  const resetFilters = () => { setFilter("all"); setTypeFilter("all"); setSevFilter("all"); };
+  const hasActiveFilters = filter !== "all" || typeFilter !== "all" || sevFilter !== "all"
+    || platformFilter !== "all" || areaFilter !== "all";
+  const resetFilters = () => {
+    setFilter("all"); setTypeFilter("all"); setSevFilter("all");
+    setPlatformFilter("all"); setAreaFilter("all");
+  };
 
   const filtered = reports.filter(r =>
     (filter === "all"     || r.status === filter) &&
     (typeFilter === "all" || r.report_type === typeFilter) &&
-    (sevFilter === "all"  || r.severity === sevFilter)
+    (sevFilter === "all"  || r.severity === sevFilter) &&
+    (platformFilter === "all" || r.platform === platformFilter) &&
+    (areaFilter === "all" || r.area === areaFilter)
   );
 
   // Счётчики считаем с учётом других активных фильтров
   const matchType = (r: Report) => typeFilter === "all" || r.report_type === typeFilter;
   const matchSev  = (r: Report) => sevFilter === "all"  || r.severity === sevFilter;
   const matchStatus = (r: Report) => filter === "all"   || r.status === filter;
+  const matchPlatform = (r: Report) => platformFilter === "all" || r.platform === platformFilter;
+  const matchArea = (r: Report) => areaFilter === "all" || r.area === areaFilter;
 
   const counts = STATUS.reduce((acc, s) => {
-    acc[s.id] = reports.filter(r => r.status === s.id && matchType(r) && matchSev(r)).length;
+    acc[s.id] = reports.filter(r => r.status === s.id && matchType(r) && matchSev(r) && matchPlatform(r) && matchArea(r)).length;
     return acc;
   }, {} as Record<string, number>);
-  const statusAllCount = reports.filter(r => matchType(r) && matchSev(r)).length;
+  const statusAllCount = reports.filter(r => matchType(r) && matchSev(r) && matchPlatform(r) && matchArea(r)).length;
 
   const typeCounts = REPORT_TYPE.reduce((acc, t) => {
-    acc[t.id] = reports.filter(r => r.report_type === t.id && matchStatus(r) && matchSev(r)).length;
+    acc[t.id] = reports.filter(r => r.report_type === t.id && matchStatus(r) && matchSev(r) && matchPlatform(r) && matchArea(r)).length;
     return acc;
   }, {} as Record<string, number>);
-  const typeAllCount = reports.filter(r => matchStatus(r) && matchSev(r)).length;
+  const typeAllCount = reports.filter(r => matchStatus(r) && matchSev(r) && matchPlatform(r) && matchArea(r)).length;
 
   const sevCounts = SEVERITY.reduce((acc, s) => {
-    acc[s.id] = reports.filter(r => r.severity === s.id && matchStatus(r) && matchType(r)).length;
+    acc[s.id] = reports.filter(r => r.severity === s.id && matchStatus(r) && matchType(r) && matchPlatform(r) && matchArea(r)).length;
     return acc;
   }, {} as Record<string, number>);
-  const sevAllCount = reports.filter(r => matchStatus(r) && matchType(r)).length;
+  const sevAllCount = reports.filter(r => matchStatus(r) && matchType(r) && matchPlatform(r) && matchArea(r)).length;
+
+  const platformCounts = PLATFORM.reduce((acc, p) => {
+    acc[p.id] = reports.filter(r => r.platform === p.id && matchStatus(r) && matchType(r) && matchSev(r) && matchArea(r)).length;
+    return acc;
+  }, {} as Record<string, number>);
+  const platformAllCount = reports.filter(r => matchStatus(r) && matchType(r) && matchSev(r) && matchArea(r)).length;
+
+  const areaCounts = AREA.reduce((acc, a) => {
+    acc[a.id] = reports.filter(r => r.area === a.id && matchStatus(r) && matchType(r) && matchSev(r) && matchPlatform(r)).length;
+    return acc;
+  }, {} as Record<string, number>);
+  const areaAllCount = reports.filter(r => matchStatus(r) && matchType(r) && matchSev(r) && matchPlatform(r)).length;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -130,6 +152,20 @@ export default function BugReportPanel() {
           <FilterChip label="Все" count={sevAllCount} active={sevFilter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setSevFilter("all")} />
           {SEVERITY.map(s => (
             <FilterChip key={s.id} label={s.label} count={sevCounts[s.id]} active={sevFilter === s.id} color={s.color} icon={s.icon} onClick={() => setSevFilter(s.id)} />
+          ))}
+        </FilterRow>
+
+        <FilterRow label="Платформа">
+          <FilterChip label="Все" count={platformAllCount} active={platformFilter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setPlatformFilter("all")} />
+          {PLATFORM.map(p => (
+            <FilterChip key={p.id} label={p.label} count={platformCounts[p.id]} active={platformFilter === p.id} color="#22d3ee" icon={p.icon} onClick={() => setPlatformFilter(p.id)} />
+          ))}
+        </FilterRow>
+
+        <FilterRow label="Где">
+          <FilterChip label="Все" count={areaAllCount} active={areaFilter === "all"} color="#8b5cf6" showDot={false} icon="LayoutGrid" onClick={() => setAreaFilter("all")} />
+          {AREA.map(a => (
+            <FilterChip key={a.id} label={a.label} count={areaCounts[a.id]} active={areaFilter === a.id} color="#a78bfa" icon={a.icon} onClick={() => setAreaFilter(a.id)} />
           ))}
         </FilterRow>
 

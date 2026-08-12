@@ -791,11 +791,15 @@ def handler(event: dict, context) -> dict:
             VALID_STATUSES = ["new"] + MASTER_ONLY_STATUSES
             VALID_SEVERITY = ["critical", "important", "normal", "idea"]
             VALID_TYPES = ["bug", "improvement", "idea"]
+            VALID_PLATFORMS = ["ios", "android", "desktop"]
+            VALID_AREAS = ["agent", "crm", "builder"]
+            MIN_DESCRIPTION_LEN = 50
 
             if method == "GET":
                 cur.execute(
                     f"""SELECT id, title, description, severity, report_type, status,
-                               attachments, author_id, author_name, created_at, updated_at
+                               attachments, author_id, author_name, created_at, updated_at,
+                               platform, area
                         FROM {SCHEMA}.bug_reports
                         ORDER BY created_at DESC"""
                 )
@@ -808,20 +812,30 @@ def handler(event: dict, context) -> dict:
                 description = (body.get("description") or "").strip()
                 severity = body.get("severity", "normal")
                 report_type = body.get("report_type", "bug")
+                platform = body.get("platform", "")
+                area = body.get("area", "")
                 attachments = body.get("attachments", [])
                 if severity not in VALID_SEVERITY:
                     severity = "normal"
                 if report_type not in VALID_TYPES:
                     report_type = "bug"
+                if platform not in VALID_PLATFORMS:
+                    return err("выберите платформу")
+                if area not in VALID_AREAS:
+                    return err("выберите, где обнаружена проблема")
                 if not description and not title:
                     return err("description required")
+                if len(description) < MIN_DESCRIPTION_LEN:
+                    return err(f"слишком мало описания — минимум {MIN_DESCRIPTION_LEN} символов")
+                if not any((a or {}).get("type", "").startswith("image") for a in attachments):
+                    return err("прикрепите скриншот проблемы")
                 author_name = (body.get("author_name") or "").strip()[:255]
                 cur.execute(
                     f"""INSERT INTO {SCHEMA}.bug_reports
-                        (title, description, severity, report_type, status, attachments, author_id, author_name)
-                        VALUES (%s,%s,%s,%s,'new',%s,%s,%s) RETURNING id""",
+                        (title, description, severity, report_type, status, attachments, author_id, author_name, platform, area)
+                        VALUES (%s,%s,%s,%s,'new',%s,%s,%s,%s,%s) RETURNING id""",
                     (title, description, severity, report_type,
-                     json.dumps(attachments, ensure_ascii=False), master_uid or None, author_name)
+                     json.dumps(attachments, ensure_ascii=False), master_uid or None, author_name, platform, area)
                 )
                 new_id = cur.fetchone()[0]
                 conn.commit()

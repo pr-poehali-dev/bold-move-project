@@ -2,11 +2,22 @@ import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { crmFetch, uploadFile } from "@/pages/admin/crm/crmApi";
 import func2url from "@/../backend/func2url.json";
-import { SEVERITY, REPORT_TYPE, type Attachment } from "./bugReportTypes";
+import { SEVERITY, REPORT_TYPE, PLATFORM, AREA, type Attachment } from "./bugReportTypes";
 import BugReportGuideModal from "./BugReportGuideModal";
 
 const TRANSCRIBE_URL = (func2url as Record<string, string>)["deepgram-transcribe"];
 const WHISPER_URL = (func2url as Record<string, string>)["whisper-transcribe"];
+
+const MIN_DESCRIPTION_LEN = 50;
+
+// Грубое автоопределение платформы по User-Agent — просто удобная подсказка,
+// пользователь в любом случае может поменять выбор сам.
+const detectPlatform = (): string => {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  return "desktop";
+};
 
 // ── Форма создания ─────────────────────────────────────────────────────────
 export default function BugReportForm({ onClose, onCreated, authorName }: {
@@ -15,10 +26,15 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState("normal");
   const [reportType, setReportType] = useState("bug");
+  const [platform, setPlatform] = useState<string | null>(detectPlatform());
+  const [area, setArea] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const hasImage = attachments.some(a => a.type?.startsWith("image"));
 
   // Голос
   const [isRecording, setIsRecording] = useState(false);
@@ -122,7 +138,14 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
   };
 
   const submit = async () => {
-    if (!description.trim()) { setVoiceError("Опишите проблему"); return; }
+    setFormError("");
+    if (!platform) { setFormError("Выберите платформу"); return; }
+    if (!area) { setFormError("Выберите, где обнаружена проблема"); return; }
+    if (description.trim().length < MIN_DESCRIPTION_LEN) {
+      setFormError(`Мало описания — минимум ${MIN_DESCRIPTION_LEN} символов (сейчас ${description.trim().length})`);
+      return;
+    }
+    if (!hasImage) { setFormError("Прикрепите скриншот проблемы — без него не отправить"); return; }
     setSaving(true);
     try {
       await crmFetch("bug_reports", {
@@ -130,10 +153,13 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
         body: JSON.stringify({
           description: description.trim(),
           severity, report_type: reportType,
+          platform, area,
           attachments, author_name: authorName,
         }),
       });
       onCreated();
+    } catch {
+      setFormError("Не удалось отправить репорт — попробуйте ещё раз");
     } finally {
       setSaving(false);
     }
@@ -201,8 +227,49 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
           ))}
         </div>
 
+        {/* Платформа — обязательно */}
+        <label className="text-xs font-semibold text-white/50 mb-2 block">
+          Платформа <span style={{ color: "#f97316" }}>*</span>
+        </label>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {PLATFORM.map(p => (
+            <button key={p.id} onClick={() => setPlatform(p.id)}
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition"
+              style={{
+                background: platform === p.id ? "rgba(249,115,22,0.2)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${platform === p.id ? "rgba(249,115,22,0.5)" : "rgba(255,255,255,0.08)"}`,
+                color: platform === p.id ? "#fb923c" : "rgba(255,255,255,0.6)",
+              }}>
+              <Icon name={p.icon} size={14} /> {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Где проблема — обязательно */}
+        <label className="text-xs font-semibold text-white/50 mb-2 block">
+          Где проблема <span style={{ color: "#f97316" }}>*</span>
+        </label>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {AREA.map(a => (
+            <button key={a.id} onClick={() => setArea(a.id)}
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition"
+              style={{
+                background: area === a.id ? "rgba(249,115,22,0.2)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${area === a.id ? "rgba(249,115,22,0.5)" : "rgba(255,255,255,0.08)"}`,
+                color: area === a.id ? "#fb923c" : "rgba(255,255,255,0.6)",
+              }}>
+              <Icon name={a.icon} size={14} /> {a.label}
+            </button>
+          ))}
+        </div>
+
         {/* Описание + голос */}
-        <label className="text-xs font-semibold text-white/50 mb-2 block">Что случилось?</label>
+        <label className="text-xs font-semibold text-white/50 mb-2 block flex items-center justify-between">
+          <span>Что случилось? <span style={{ color: "#f97316" }}>*</span></span>
+          <span style={{ color: description.trim().length >= MIN_DESCRIPTION_LEN ? "#10b981" : "rgba(255,255,255,0.35)" }}>
+            {description.trim().length}/{MIN_DESCRIPTION_LEN}
+          </span>
+        </label>
         <div className="relative mb-2">
           <textarea
             value={description}
@@ -230,13 +297,22 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
         {isTranscribing && <div className="text-xs text-orange-300 mb-2">Распознаю речь…</div>}
         {voiceError && <div className="text-xs text-red-400 mb-2">{voiceError}</div>}
 
-        {/* Вложения */}
+        {/* Вложения — скриншот обязателен */}
+        <label className="text-xs font-semibold text-white/50 mb-2 block">
+          Скриншот <span style={{ color: "#f97316" }}>*</span>
+        </label>
         <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleFiles} style={{ display: "none" }} />
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition mb-3 disabled:opacity-50"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px dashed rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}>
-          {uploading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Paperclip" size={16} />}
-          {uploading ? "Загрузка…" : "Прикрепить скриншот или файл"}
+          style={{
+            background: hasImage ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.05)",
+            border: `1px dashed ${hasImage ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.2)"}`,
+            color: hasImage ? "#10b981" : "rgba(255,255,255,0.7)",
+          }}>
+          {uploading
+            ? <Icon name="Loader2" size={16} className="animate-spin" />
+            : <Icon name={hasImage ? "CheckCircle2" : "Paperclip"} size={16} />}
+          {uploading ? "Загрузка…" : hasImage ? "Скриншот прикреплён" : "Прикрепить скриншот или файл"}
         </button>
         <div className="flex items-center justify-center gap-1.5 -mt-1 mb-3 text-[11px] text-white/35">
           <Icon name="Clipboard" size={12} />
@@ -261,6 +337,12 @@ export default function BugReportForm({ onClose, onCreated, authorName }: {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {formError && (
+          <div className="flex items-center gap-1.5 text-xs text-red-400 mb-2">
+            <Icon name="AlertTriangle" size={13} /> {formError}
           </div>
         )}
 

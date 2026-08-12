@@ -177,12 +177,30 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "POST bug_report without description is rejected",
+      "name": "POST bug_report without platform is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
       "body": {"severity": "normal", "report_type": "bug"},
       "expectedStatus": 400,
-      "expectedBody": {"error": "description required"},
+      "expectedBody": {"error": "выберите платформу"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST bug_report with short description is rejected",
+      "method": "POST",
+      "path": "/?r=bug_reports",
+      "body": {"severity": "normal", "report_type": "bug", "platform": "desktop", "area": "crm", "description": "коротко"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "слишком мало описания — минимум 50 символов"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST bug_report without screenshot is rejected",
+      "method": "POST",
+      "path": "/?r=bug_reports",
+      "body": {"severity": "normal", "report_type": "bug", "platform": "desktop", "area": "crm", "description": "Это очень подробное описание проблемы, которое точно длиннее пятидесяти символов для теста"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "прикрепите скриншот проблемы"},
       "bodyMatcher": "partial"
     },
     {

@@ -12,6 +12,21 @@ export const REPORT_TYPE = [
   { id: "idea",        label: "Идея",       icon: "Sparkles" },
 ];
 
+export const PLATFORM = [
+  { id: "ios",     label: "iOS",     icon: "Smartphone" },
+  { id: "android", label: "Android", icon: "Smartphone" },
+  { id: "desktop", label: "Десктоп", icon: "Monitor" },
+];
+
+export const AREA = [
+  { id: "agent",   label: "Агент",      icon: "Bot" },
+  { id: "crm",     label: "CRM",        icon: "LayoutGrid" },
+  { id: "builder", label: "Построитель", icon: "Ruler" },
+];
+
+export const platformById = (id: string) => PLATFORM.find(p => p.id === id);
+export const areaById = (id: string) => AREA.find(a => a.id === id);
+
 export const STATUS = [
   { id: "new",         label: "Новый",       color: "#3b82f6", masterOnly: false, icon: "Sparkle" },
   { id: "in_progress", label: "В работе",    color: "#f59e0b", masterOnly: true,  icon: "Loader" },
@@ -35,4 +50,6 @@ export interface Report {
   attachments: Attachment[];
   author_name: string;
   created_at: string;
+  platform: string;
+  area: string;
 }
