@@ -245,7 +245,7 @@ async def handle_connect_task(company_id: int, channel: str):
         return
 
     session_path = os.path.join(SESSIONS_DIR, f"{company_id}")
-    client = TelegramClient(session_path, API_ID, API_HASH)
+    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY)
     await client.connect()
 
     async def ask_password_and_signin() -> bool:
