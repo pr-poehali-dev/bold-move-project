@@ -54,6 +54,20 @@ SEND_POLL_SEC = int(os.environ.get("SEND_POLL_SEC", "3"))
 SESSIONS_DIR = os.environ.get("SESSIONS_DIR", "sessions")
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
+# SOCKS5-proksi dlya soedineniya s Telegram — nuzhen, kogda hoster blokiruet
+# pryamye podklyucheniya k dата-tsentram Telegram (MTProto). Esli TG_PROXY_HOST
+# ne zadan — Telethon podklyuchaetsya napryamuyu, kak ran'she.
+TG_PROXY_HOST = os.environ.get("TG_PROXY_HOST")
+TG_PROXY_PORT = int(os.environ.get("TG_PROXY_PORT", "0") or 0)
+TG_PROXY_USER = os.environ.get("TG_PROXY_USER")
+TG_PROXY_PASS = os.environ.get("TG_PROXY_PASS")
+
+TELETHON_PROXY = None
+if TG_PROXY_HOST and TG_PROXY_PORT:
+    import socks
+    TELETHON_PROXY = (socks.SOCKS5, TG_PROXY_HOST, TG_PROXY_PORT, True, TG_PROXY_USER, TG_PROXY_PASS)
+    print(f"[qr-worker] ispol'zuetsya SOCKS5-proksi {TG_PROXY_HOST}:{TG_PROXY_PORT} dlya svyazi s Telegram")
+
 # company_id -> asyncio.Task (fonovyi tsikl slushaniya + otpravki dlya etoi kompanii)
 active_clients: dict[int, TelegramClient] = {}
 active_tasks: dict[int, list[asyncio.Task]] = {}
@@ -198,7 +212,7 @@ async def start_existing_session(company_id: int, channel: str, webhook_key: str
     if company_id in active_clients:
         return
     session_path = os.path.join(SESSIONS_DIR, f"{company_id}")
-    client = TelegramClient(session_path, API_ID, API_HASH)
+    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY)
     await client.connect()
     if not await client.is_user_authorized():
         print(f"[qr-worker] company={company_id} sessiya ne avtorizovana, propuskaem (nuzhno peropodklyuchenie cherez QR)")
