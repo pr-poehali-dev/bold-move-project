@@ -152,6 +152,31 @@
       "expectedStatus": 200
     },
     {
+      "name": "POST channel-qr-start without auth is rejected",
+      "method": "POST",
+      "path": "/?r=channel-qr-start",
+      "body": {"channel": "telegram"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET channel-qr-status without auth is rejected",
+      "method": "GET",
+      "path": "/?r=channel-qr-status&channel=telegram",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET channel-qr-worker without token is rejected",
+      "method": "GET",
+      "path": "/?r=channel-qr-worker",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "неверный токен воркера"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "POST bug_report without description is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",

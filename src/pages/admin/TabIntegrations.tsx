@@ -8,6 +8,7 @@ import NotifyIntegrationCard from "./integrations/NotifyIntegrationCard";
 import ProviderSection from "./integrations/ProviderSection";
 import TelephonyUisCard from "./integrations/TelephonyUisCard";
 import LeadSourcesCards from "./integrations/LeadSourcesCards";
+import ChannelQrModal from "./integrations/ChannelQrModal";
 
 interface Props {
   isDark: boolean;
@@ -62,6 +63,12 @@ export default function TabIntegrations({ isDark }: Props) {
   const [tgLeadsBotUsername, setTgLeadsBotUsername] = useState<string | null>(null);
   const [tgLeadsError, setTgLeadsError] = useState<string | null>(null);
   const [togglingSection, setTogglingSection] = useState<string | null>(null);
+
+  // Личные аккаунты (Telegram/MAX через QR) — статус подключения и модалка с кодом.
+  // account_name — что показываем как "Подключено: имя/телефон".
+  const [accountStatus, setAccountStatus] = useState<Record<string, { connected: boolean; accountName: string | null }>>({});
+  const [qrModalChannel, setQrModalChannel] = useState<string | null>(null);
+  const [disconnectingAccount, setDisconnectingAccount] = useState<string | null>(null);
 
   // section.id → source для эндпоинта source-toggle (только те, что реально
   // останавливают приём на бэкенде — realToggle: true в integrationsConfig.ts)
@@ -216,6 +223,35 @@ export default function TabIntegrations({ isDark }: Props) {
     return () => { alive = false; };
   }, []);
 
+  // Статус личных аккаунтов (Telegram/MAX) — подключены ли уже, чтобы
+  // показывать «Подключено: ...» сразу, без ожидания клика по QR.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      for (const ch of ["telegram", "max"]) {
+        try {
+          const res = await crmFetch("channel-qr-status", {}, { channel: ch }) as
+            { status?: string; account_name?: string | null };
+          if (alive && res?.status === "connected") {
+            setAccountStatus(s => ({ ...s, [ch]: { connected: true, accountName: res.account_name ?? null } }));
+          }
+        } catch { /* тихо */ }
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const openQrModal = (channel: string) => setQrModalChannel(channel);
+
+  const disconnectAccount = async (channel: string) => {
+    setDisconnectingAccount(channel);
+    try {
+      await crmFetch("channel-qr-disconnect", { method: "POST", body: JSON.stringify({ channel }) });
+      setAccountStatus(s => ({ ...s, [channel]: { connected: false, accountName: null } }));
+    } catch { /* тихо */ }
+    setDisconnectingAccount(null);
+  };
+
   const testTelegram = async () => {
     if (!tgToken || !tgChat) return;
     setTgTesting(true); setTgTestResult(null);
@@ -317,6 +353,11 @@ export default function TabIntegrations({ isDark }: Props) {
         tgLeadsError={tgLeadsError}
         onToggleEnabled={toggleSectionEnabled}
         toggling={togglingSection === section.id}
+        accountConnected={!!(section.channel && accountStatus[section.channel]?.connected)}
+        accountName={section.channel ? accountStatus[section.channel]?.accountName ?? null : null}
+        onOpenQr={section.channel === "telegram" ? () => openQrModal(section.channel!) : undefined}
+        onDisconnectAccount={section.channel === "telegram" ? () => disconnectAccount(section.channel!) : undefined}
+        disconnectingAccount={section.channel === "telegram" && disconnectingAccount === "telegram"}
       />
     );
   };
@@ -416,6 +457,18 @@ export default function TabIntegrations({ isDark }: Props) {
           Сохраняются все введённые ключи на этой странице.
         </span>
       </div>
+
+      {qrModalChannel && (
+        <ChannelQrModal
+          channel={qrModalChannel}
+          channelLabel={qrModalChannel === "telegram" ? "Telegram" : "MAX"}
+          onClose={() => setQrModalChannel(null)}
+          onConnected={accountName => {
+            setAccountStatus(s => ({ ...s, [qrModalChannel]: { connected: true, accountName } }));
+            setTimeout(() => setQrModalChannel(null), 1200);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -23,6 +23,8 @@ export interface SectionDef {
   kind?: "fields" | "account";
   /** способ входа для kind="account": qr (Telegram) | code (MAX по номеру) */
   authMethod?: "qr" | "code";
+  /** канал для kind="account" — как называется в backend (channel-qr-*): "telegram" | "max" */
+  channel?: string;
   /** Ключ в config для тумблера вкл/выкл этой карточки (если задан — тумблер показывается) */
   enabledKey?: string;
   /** true — выключение реально останавливает приём на бэкенде; false/не задано — только визуально */
@@ -50,7 +52,7 @@ export const SECTIONS: SectionDef[] = [
     title: "Личный Telegram",
     desc: "Переписка от вашего личного аккаунта Telegram. Вход по QR-коду, как в веб-версии.",
     icon: "Send",
-    kind: "account", authMethod: "qr",
+    kind: "account", authMethod: "qr", channel: "telegram",
     providers: [{ id: "tg_personal", label: "Telegram", fields: [] }],
     enabledKey: "tg_personal_enabled", realToggle: false,
   },
@@ -59,7 +61,7 @@ export const SECTIONS: SectionDef[] = [
     title: "Личный MAX",
     desc: "Переписка от вашего личного аккаунта MAX. Вход по номеру телефона и коду.",
     icon: "MessageCircle",
-    kind: "account", authMethod: "code",
+    kind: "account", authMethod: "code", channel: "max",
     providers: [{ id: "max_personal", label: "MAX", fields: [] }],
     enabledKey: "max_personal_enabled", realToggle: false,
   },
