@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/crm-worker
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/crm-worker/venv/bin/python3 /opt/crm-worker/worker.py
 Restart=on-failure
 RestartSec=10
