@@ -3875,6 +3875,40 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
             return ok({"ok": True})
 
+        # ── MESSENGER-REGISTRY: реестр всех компаний для воркера на VPS ────────────
+        # Воркер опрашивает этот единственный эндпоинт (например раз в час) и сам
+        # подтягивает список компаний с включённой интеграцией — руками дописывать
+        # TENANTS в config.py и перезапускать процесс на VPS больше не нужно.
+        # Защита — тот же общий TG_PROXY_TOKEN, что и у channel-qr-worker (не секрет
+        # отдельной компании, воркер и так его знает).
+        if resource == "messenger-registry" and method == "GET":
+            worker_token = (event.get("headers") or {}).get("X-Worker-Token", "")
+            if not worker_token or worker_token != os.environ.get("TG_PROXY_TOKEN"):
+                return err("неверный токен воркера", 401)
+
+            cur.execute(f"""
+                SELECT company_id, config->>'_messenger_webhook_key'
+                FROM {SCHEMA}.integrations
+                WHERE config->>'messenger_enabled' = 'true' AND config->>'_messenger_webhook_key' IS NOT NULL
+            """)
+            companies = cur.fetchall()
+
+            tenants = []
+            for cid, wh_key in companies:
+                cur.execute(f"""
+                    SELECT external_id, channel, phone FROM {SCHEMA}.messenger_accounts
+                    WHERE company_id=%s AND is_active=TRUE
+                """, (cid,))
+                accounts = [{"external_id": r[0], "channel": r[1], "phone": r[2]} for r in cur.fetchall()]
+                tenants.append({
+                    "tenant_id": f"company_{cid}",
+                    "company_id": cid,
+                    "crm_base_url": SELF_FUNCTION_URL,
+                    "webhook_key": wh_key,
+                    "accounts": accounts,
+                })
+            return ok({"tenants": tenants})
+
         # ── CHANNEL-WEBHOOK: приём сообщения от воркера (Telegram/MAX) ─────────────
         # Вызывается НЕ сотрудником, а нашим воркером на VPS — авторизация через
         # секретный webhook_key (не через сессию пользователя).
