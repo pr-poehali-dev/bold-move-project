@@ -1,10 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { crmFetch } from "./crmApi";
+import { crmFetch, uploadFile } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { useCallClient } from "./useCallClient";
 import { useAutoTranscribe } from "./useAutoTranscribe";
 import { fmtMoscowDateTime } from "./timeMoscow";
+
+interface AttachmentItem {
+  type: "image" | "file" | "voice";
+  url: string;
+  filename?: string;
+  duration_sec?: number;
+}
 
 interface Touch {
   id: number;
@@ -21,16 +28,20 @@ interface Touch {
    * автоответчик/автоинформатор оператора, null — неизвестно (нет текста
    * расшифровки или звонок не состоялся). Вычисляется на бэкенде по тексту. */
   answered_by?: "human" | "voicemail" | null;
+  /** id сообщения, на которое отвечаем (реплай), только для CRM-интерфейса */
+  reply_to_id?: number | null;
 }
 
-// Достаёт ссылки на картинки из вложений сообщения.
-// Формат приходит из разных каналов, поэтому проверяем аккуратно.
-function imagesOf(attachments: unknown): string[] {
+// Достаёт вложения сообщения в типизированном виде. Формат приходит из
+// разных каналов, поэтому проверяем аккуратно.
+function attachmentsOf(attachments: unknown): AttachmentItem[] {
   if (!Array.isArray(attachments)) return [];
   return attachments
-    .filter((a): a is { type?: string; url?: string } => !!a && typeof a === "object")
-    .filter(a => a.type === "image" && typeof a.url === "string" && a.url.length > 0)
-    .map(a => a.url as string);
+    .filter((a): a is AttachmentItem => !!a && typeof a === "object" && typeof (a as AttachmentItem).url === "string")
+    .map(a => ({ ...a, type: (a.type as AttachmentItem["type"]) || "file" }));
+}
+function imagesOf(attachments: unknown): string[] {
+  return attachmentsOf(attachments).filter(a => a.type === "image").map(a => a.url);
 }
 
 interface TouchClient {
@@ -102,6 +113,22 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [flashInput, setFlashInput] = useState(false);
 
+  // Вложение к отправляемому сообщению (файл/картинка или голосовая запись) —
+  // одно за раз, как в большинстве мессенджеров для быстрого ответа.
+  const [pendingAttachment, setPendingAttachment] = useState<AttachmentItem | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Запись голосового сообщения
+  const [isRecording, setIsRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Сообщение, на которое отвечаем (реплай) — показываем цитату над полем ввода
+  const [replyTo, setReplyTo] = useState<Touch | null>(null);
+
   // Каналы, доступные для отправки текстового сообщения (звонок сюда не входит)
   const TEXT_CHANNELS = new Set(["telegram", "max", "avito"]);
 
@@ -168,30 +195,102 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
 
   const handleSend = async () => {
     const text = draft.trim();
-    if (!text || !client || sending) return;
+    const attachments = pendingAttachment ? [pendingAttachment] : [];
+    if (!text && !attachments.length) return;
+    if (!client || sending) return;
     setSending(true);
     setSendError(null);
     try {
       const d = await crmFetch("send-message", {
         method: "POST",
-        body: JSON.stringify({ client_id: client.id, channel: sendChannel, text }),
+        body: JSON.stringify({
+          client_id: client.id, channel: sendChannel, text, attachments,
+          reply_to_id: replyTo?.id ?? null,
+        }),
       }) as { touch_id?: number; created_at?: string; error?: string };
       if (d?.error) {
         setSendError(d.error);
       } else {
         setDraft("");
+        setPendingAttachment(null);
+        const sentReplyTo = replyTo?.id ?? null;
+        setReplyTo(null);
         // Оптимистично добавляем в ленту, не дожидаясь фонового опроса воркера
         setTouches(prev => [...prev, {
           id: d.touch_id ?? Date.now(),
           channel: sendChannel, direction: "out", external_id: null,
-          text, audio_url: null, duration_sec: null, attachments: null,
+          text, audio_url: null, duration_sec: null,
+          attachments: attachments.length ? attachments : null,
           status: "pending", created_at: d.created_at ?? new Date().toISOString(),
+          reply_to_id: sentReplyTo,
         }]);
       }
     } catch {
       setSendError("Не удалось связаться с сервером");
     }
     setSending(false);
+  };
+
+  // Прикрепление файла/картинки через диалог выбора
+  const handlePickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+    setUploadingFile(true);
+    setSendError(null);
+    try {
+      const url = await uploadFile(file);
+      setPendingAttachment({ type: file.type.startsWith("image/") ? "image" : "file", url, filename: file.name });
+    } catch {
+      setSendError("Не удалось загрузить файл");
+    }
+    setUploadingFile(false);
+  };
+
+  // Запись голосового сообщения (тот же приём, что и в форме баг-репорта)
+  const startVoiceRecording = async () => {
+    setSendError(null);
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setSendError("Нет доступа к микрофону");
+      return;
+    }
+    const formats = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg", ""];
+    const mimeType = formats.find(m => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    chunksRef.current = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach(tr => tr.stop());
+      if (recTimerRef.current) { clearInterval(recTimerRef.current); recTimerRef.current = null; }
+      const durationSec = recSeconds;
+      setRecSeconds(0);
+      const blob = new Blob(chunksRef.current, { type: mimeType || "audio/mp4" });
+      if (blob.size === 0) return;
+      const ext = (mimeType.split("/")[1] || "mp4").split(";")[0];
+      const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
+      setUploadingFile(true);
+      try {
+        const url = await uploadFile(file);
+        setPendingAttachment({ type: "voice", url, duration_sec: durationSec });
+      } catch {
+        setSendError("Не удалось загрузить голосовое сообщение");
+      }
+      setUploadingFile(false);
+    };
+    recorderRef.current = recorder;
+    recorder.start(500);
+    setIsRecording(true);
+    setRecSeconds(0);
+    recTimerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+  };
+
+  const stopVoiceRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setIsRecording(false);
   };
 
   // Нет ни телефона, ни истории по заявке (contactId) — показываем подсказку.
@@ -287,8 +386,18 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
             const meta = channelMeta(tt.channel);
             const out = tt.direction === "out";
             const isCall = tt.channel === "call";
+            const quoted = tt.reply_to_id ? touches.find(x => x.id === tt.reply_to_id) : null;
+            const nonImageAttachments = attachmentsOf(tt.attachments).filter(a => a.type !== "image");
             return (
-              <div key={tt.id} className={`flex ${out ? "justify-end" : "justify-start"}`}>
+              <div key={tt.id} className={`group flex items-center gap-1.5 ${out ? "justify-end" : "justify-start"}`}>
+                {/* Кнопка «Ответить» — слева от чужого сообщения, справа от своего */}
+                {!isCall && (
+                  <button onClick={() => { setReplyTo(tt); textareaRef.current?.focus(); }}
+                    className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full ${out ? "order-2" : ""}`}
+                    style={{ background: t.surface2, color: t.textMute }} title="Ответить">
+                    <Icon name="Reply" size={13} />
+                  </button>
+                )}
                 <div className="max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2"
                   style={{
                     background: out ? t.accent + "22" : t.surface2,
@@ -299,6 +408,14 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                     <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
                     <span className="text-[10px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
                   </div>
+
+                  {/* Цитата сообщения, на которое отвечаем */}
+                  {quoted && (
+                    <div className="mb-1.5 pl-2 py-1 rounded-md text-[11px] truncate"
+                      style={{ borderLeft: `2px solid ${t.accent}`, background: t.bg + "55", color: t.textMute }}>
+                      {quoted.text || (attachmentsOf(quoted.attachments).length ? "Вложение" : "Сообщение")}
+                    </div>
+                  )}
 
                   {/* Звонок */}
                   {isCall ? (
@@ -355,9 +472,24 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
                             style={{ maxHeight: 260, border: `1px solid ${t.border}` }} />
                         </a>
                       ))}
-                      <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
-                        {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
-                      </div>
+                      {/* Голосовые сообщения и обычные файлы */}
+                      {nonImageAttachments.map((a, i) => a.type === "voice" ? (
+                        <div key={i} className="mb-1.5 flex items-center gap-2">
+                          <audio controls src={a.url} className="h-8" style={{ maxWidth: 220 }} />
+                        </div>
+                      ) : (
+                        <a key={i} href={a.url} target="_blank" rel="noreferrer"
+                          className="mb-1.5 flex items-center gap-2 rounded-lg px-2.5 py-2 transition hover:brightness-110"
+                          style={{ background: t.bg + "55", border: `1px solid ${t.border}` }}>
+                          <Icon name="FileText" size={16} style={{ color: t.accentLight }} />
+                          <span className="text-xs truncate" style={{ color: t.textSub }}>{a.filename || "Файл"}</span>
+                        </a>
+                      ))}
+                      {(tt.text || !attachmentsOf(tt.attachments).length) && (
+                        <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
+                          {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
+                        </div>
+                      )}
                       <div className="flex items-center justify-end gap-1.5 mt-1">
                         {out && tt.status === "pending" && (
                           <span className="text-[10px] flex items-center gap-1" style={{ color: t.textMute }}>
@@ -381,6 +513,38 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
         <div ref={bottomRef} />
       </div>
 
+      {/* Цитата сообщения, на которое отвечаем */}
+      {replyTo && (
+        <div className="flex-shrink-0 px-3 sm:px-6 pt-2 flex items-center gap-2">
+          <div className="flex-1 min-w-0 flex items-center gap-2 rounded-lg px-2.5 py-1.5"
+            style={{ background: t.surface2, borderLeft: `2px solid ${t.accent}` }}>
+            <Icon name="Reply" size={13} style={{ color: t.accentLight }} className="flex-shrink-0" />
+            <span className="text-[11px] truncate" style={{ color: t.textMute }}>
+              {replyTo.text || (attachmentsOf(replyTo.attachments).length ? "Вложение" : "Сообщение")}
+            </span>
+          </div>
+          <button onClick={() => setReplyTo(null)} className="flex-shrink-0 p-1 rounded-full" style={{ color: t.textMute }}>
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Превью прикреплённого файла/голоса перед отправкой */}
+      {pendingAttachment && (
+        <div className="flex-shrink-0 px-3 sm:px-6 pt-2 flex items-center gap-2">
+          <div className="flex-1 min-w-0 flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: t.surface2 }}>
+            <Icon name={pendingAttachment.type === "voice" ? "Mic" : pendingAttachment.type === "image" ? "Image" : "FileText"}
+              size={14} style={{ color: t.accentLight }} className="flex-shrink-0" />
+            <span className="text-[11px] truncate" style={{ color: t.textSub }}>
+              {pendingAttachment.type === "voice" ? "Голосовое сообщение" : (pendingAttachment.filename || "Файл")}
+            </span>
+          </div>
+          <button onClick={() => setPendingAttachment(null)} className="flex-shrink-0 p-1 rounded-full" style={{ color: t.textMute }}>
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Поле ввода */}
       <div className="flex-shrink-0 px-3 sm:px-6 py-3 flex items-end gap-2" style={{ borderTop: `1px solid ${t.border}` }}>
         <select value={sendChannel} onChange={e => setSendChannel(e.target.value)}
@@ -390,6 +554,32 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
           <option value="max">MAX</option>
           <option value="avito">Avito</option>
         </select>
+
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handlePickFile} />
+        <button onClick={() => fileInputRef.current?.click()}
+          disabled={sendChannel === "avito" || uploadingFile || isRecording}
+          title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Прикрепить файл"}
+          className="flex-shrink-0 rounded-lg p-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ background: t.surface2, color: t.textSub }}>
+          <Icon name={uploadingFile ? "Loader2" : "Paperclip"} size={16} className={uploadingFile ? "animate-spin" : ""} />
+        </button>
+
+        {isRecording ? (
+          <button onClick={stopVoiceRecording}
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
+            style={{ background: "#ef444422", color: "#ef4444" }}>
+            <Icon name="Square" size={13} /> {Math.floor(recSeconds / 60)}:{String(recSeconds % 60).padStart(2, "0")}
+          </button>
+        ) : (
+          <button onClick={startVoiceRecording}
+            disabled={sendChannel === "avito" || uploadingFile || !!pendingAttachment}
+            title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Голосовое сообщение"}
+            className="flex-shrink-0 rounded-lg p-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: t.surface2, color: t.textSub }}>
+            <Icon name="Mic" size={16} />
+          </button>
+        )}
+
         <textarea ref={textareaRef} value={draft} onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -397,7 +587,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
           rows={1} placeholder="Написать сообщение…"
           className={`flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none ${flashInput ? "animate-ring-flash-red" : ""}`}
           style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, maxHeight: 120 }} />
-        <button onClick={handleSend} disabled={!draft.trim() || sending}
+        <button onClick={handleSend} disabled={(!draft.trim() && !pendingAttachment) || sending}
           className="flex-shrink-0 rounded-lg px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: t.accent, color: "#fff" }}>
           <Icon name={sending ? "Loader" : "Send"} size={16} className={sending ? "animate-spin" : ""} />

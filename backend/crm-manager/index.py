@@ -454,9 +454,12 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
         return None, "нет касаний для анализа"
 
     lines = []
+    client_replied = False  # был ли хоть один входящий контакт от клиента
     for r in rows:
         ch, direction, text, dur, created = r
         who = "Клиент" if direction == "in" else "Мы"
+        if direction == "in":
+            client_replied = True
         when = created.strftime("%d.%m %H:%M") if created else ""
         if ch == "call":
             body_txt = f"звонок {dur or 0} сек" + (f": {text}" if text else "")
@@ -469,10 +472,30 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
     if not polza_key:
         return None, "AI недоступен — нет ключа"
 
-    sys_prompt = "Отвечай только валидным JSON без markdown и пояснений."
+    sys_prompt = (
+        "Отвечай только валидным JSON без markdown и пояснений. "
+        "Ты обязан опираться СТРОГО на переданный текст истории — ни одного факта, "
+        "события, реакции или намерения сверх того, что буквально написано в истории. "
+        "Если данных недостаточно для вывода — прямо пиши об этом (например "
+        "«клиент ещё не ответил»), а не додумывай."
+    )
+    # Явно предупреждаем модель, если клиент ещё ни разу не написал/не ответил —
+    # иначе модель по умолчанию выдумывает «клиент проявил интерес» и т.п. на
+    # основании одного нашего исходящего сообщения.
+    reply_note = (
+        "ВАЖНО: в истории НЕТ ни одного входящего сообщения/звонка от клиента — "
+        "клиент ещё ни разу не ответил. Не пиши, что клиент «проявил интерес», "
+        "«откликнулся» или как-либо отреагировал — этого не было. "
+        "interest должен быть \"low\", state_summary должен честно отражать, что "
+        "мы написали первыми и ответа пока нет, key_points и risks не должны "
+        "содержать выдуманных реакций клиента."
+        if not client_replied else
+        "В истории есть хотя бы одно сообщение от клиента — используй факты из него."
+    )
     user_prompt = (
         "Ты аналитик отдела продаж. На вход — вся история общения с клиентом "
         "(звонки и переписки из разных каналов) по порядку времени.\n"
+        f"{reply_note}\n"
         "Верни ТОЛЬКО валидный JSON без markdown:\n"
         '{\n'
         '  "state_summary": "КРАТКО, 1-3 предложения (до 300 знаков): что нужно клиенту, на чём остановились, что мешает сделке. Без воды и вступлений.",\n'
@@ -485,8 +508,9 @@ def run_client_analysis(cur, conn, client_id, client_phone=None, client_name=Non
         '  "risks": ["риск1", "риск2"],\n'
         '  "key_points": ["важный факт о клиенте 1", "..."]\n'
         '}\n'
-        "Правила: опирайся только на факты из истории, не выдумывай. "
-        "Рекомендация должна быть практичной и конкретной.\n\n"
+        "Правила: опирайся ТОЛЬКО на факты, буквально присутствующие в истории. "
+        "Запрещено приписывать клиенту интерес, эмоции или действия, которых нет в "
+        "тексте истории. Рекомендация должна быть практичной и конкретной.\n\n"
         f"История общения с клиентом{' ' + client_name if client_name else ''} ({client_phone or ''}):\n{history_text}"
     )
     payload = json.dumps({
@@ -3099,7 +3123,7 @@ def handler(event: dict, context) -> dict:
                 # вебхуком завершения по external_id) — в ленте не показываем.
                 cur.execute(f"""
                     SELECT id, channel, direction, external_id, text, audio_url,
-                           duration_sec, attachments, status, created_at
+                           duration_sec, attachments, status, created_at, reply_to_id
                     FROM {SCHEMA}.touch_events
                     WHERE client_id=%s AND status != 'hidden'
                     ORDER BY created_at ASC, id ASC
@@ -3109,6 +3133,7 @@ def handler(event: dict, context) -> dict:
                     "text": r[4], "audio_url": r[5], "duration_sec": r[6],
                     "attachments": r[7], "status": r[8], "created_at": r[9],
                     "answered_by": (detect_call_answered_by(r[4], r[6], r[8]) if r[1] == "call" else None),
+                    "reply_to_id": r[10],
                 } for r in cur.fetchall()]
 
                 # Последний детальный ИИ-анализ клиента (для вкладки «Аналитика»)
@@ -4749,10 +4774,20 @@ def handler(event: dict, context) -> dict:
             phone_q   = body.get("phone")
             channel   = body.get("channel")
             text      = (body.get("text") or "").strip()
-            if not channel or not text:
-                return err("channel и text обязательны")
+            # Вложения: список [{type: "image"|"file"|"voice", url, filename?, duration_sec?}].
+            # Сообщение должно содержать текст ИЛИ хотя бы одно вложение.
+            attachments = body.get("attachments") or []
+            if not isinstance(attachments, list):
+                attachments = []
+            # На какое сообщение отвечаем (реплай) — только визуальная привязка внутри
+            # CRM (цитата в интерфейсе), в сам канал (Telegram/Avito) реплай не уходит.
+            reply_to_id = body.get("reply_to_id")
+            if not channel or (not text and not attachments):
+                return err("channel и (text или attachments) обязательны")
             if channel not in ("telegram", "max", "avito", "whatsapp"):
                 return err("unknown channel")
+            if channel == "avito" and attachments:
+                return err("Avito пока не поддерживает отправку вложений", 400)
 
             if client_id:
                 cur.execute(
@@ -4803,10 +4838,12 @@ def handler(event: dict, context) -> dict:
                     out_external_id = f"avito_{sent_msg_id}"
 
             cur.execute(f"""
-                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, status)
-                VALUES (%s, %s, 'out', %s, %s, %s)
+                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status, reply_to_id)
+                VALUES (%s, %s, 'out', %s, %s, %s, %s, %s)
                 RETURNING id, created_at
-            """, (client_id, channel, out_external_id, text, initial_status))
+            """, (client_id, channel, out_external_id, text,
+                  json.dumps(attachments, ensure_ascii=False) if attachments else None, initial_status,
+                  reply_to_id))
             new_row = cur.fetchone()
             conn.commit()
 
@@ -4836,7 +4873,7 @@ def handler(event: dict, context) -> dict:
                 return err("неверный ключ", 401)
 
             cur.execute(f"""
-                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone
+                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone, te.attachments
                 FROM {SCHEMA}.touch_events te
                 JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
                 WHERE tc.company_id=%s AND te.channel=%s AND te.direction='out' AND te.status='pending'
@@ -4844,7 +4881,7 @@ def handler(event: dict, context) -> dict:
                 LIMIT 20
             """, (owner_id, channel_q))
             items = []
-            for touch_id, cid, text, channel_ids, phone in cur.fetchall():
+            for touch_id, cid, text, channel_ids, phone, attachments in cur.fetchall():
                 external_chat_id = (channel_ids or {}).get(channel_q)
                 # Нет привязки — но есть телефон: воркер попробует найти клиента в
                 # Telegram/MAX по номеру (написать первым). Без ни того ни другого
@@ -4858,6 +4895,7 @@ def handler(event: dict, context) -> dict:
                     "external_chat_id": external_chat_id,
                     "phone": phone,
                     "text": text,
+                    "attachments": attachments or [],
                 })
             return ok({"messages": items})
 

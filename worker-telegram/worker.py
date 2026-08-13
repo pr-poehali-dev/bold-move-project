@@ -36,6 +36,7 @@ Nastroika - cherez peremennye okruzheniya (fail .env ryadom):
 """
 
 import os
+import io
 import asyncio
 import requests
 from telethon import TelegramClient, events
@@ -134,6 +135,29 @@ def send_to_crm(webhook_key: str, company_id: int, payload: dict):
         print(f"[crm-in c={company_id}] oshibka otpravki: {e}")
 
 
+async def send_attachments(client: TelegramClient, entity, attachments: list, caption: str):
+    """Skachivaet vlozheniya po CDN-URL (oni uzhe zagruzheny na nash S3 cherez
+    backend "upload") i otpravlyaet ih v Telegram cherez Telethon send_file.
+    Golosovoe soobschenie otpravlyaem s voice_note=True — Telegram pokazyvaet
+    ego kak audio-volnu, a ne kak obychnyi audio-fail."""
+    for i, att in enumerate(attachments):
+        url = att.get("url")
+        if not url:
+            continue
+        kind = att.get("type") or "file"
+        filename = att.get("filename") or url.rsplit("/", 1)[-1]
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        buf = io.BytesIO(resp.content)
+        buf.name = filename
+        is_last = i == len(attachments) - 1
+        await client.send_file(
+            entity, buf,
+            voice_note=(kind == "voice"),
+            caption=(caption if caption and is_last else None),
+        )
+
+
 def get_pending_messages(webhook_key: str, company_id: int):
     try:
         resp = requests.get(
@@ -229,6 +253,7 @@ async def run_company_session(company_id: int, webhook_key: str, client: Telegra
                 for msg in messages:
                     touch_id = msg["touch_id"]
                     text = msg["text"]
+                    attachments = msg.get("attachments") or []
                     external_chat_id = msg.get("external_chat_id")
                     phone = msg.get("phone")
                     try:
@@ -244,7 +269,10 @@ async def run_company_session(company_id: int, webhook_key: str, client: Telegra
                                 print(f"[tg-out c={company_id}] telefon {phone} ne naiden v Telegram, touch_id={touch_id}")
                                 mark_sent(webhook_key, company_id, touch_id, False)
                                 continue
-                        await client.send_message(entity, text)
+                        if attachments:
+                            await send_attachments(client, entity, attachments, text)
+                        else:
+                            await client.send_message(entity, text)
                         print(f"[tg-out c={company_id}] otpravleno touch_id={touch_id} -> {external_chat_id or phone}")
                         mark_sent(webhook_key, company_id, touch_id, True,
                                   channel="telegram", external_chat_id=found_chat_id if not external_chat_id else None)
