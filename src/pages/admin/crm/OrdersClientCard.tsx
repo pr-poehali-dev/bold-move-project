@@ -9,6 +9,7 @@ import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
 import { SubstatusPicker } from "./SubstatusPicker";
+import { fmtMoscowDateTime } from "./timeMoscow";
 
 function Metric({ label, value, color, icon }: { label: string; value: string; color?: string; icon?: string }) {
   const t = useTheme();
@@ -175,6 +176,13 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     style={{ background: "#f9731620", color: "#f97316" }}>
                     <Icon name="ExternalLink" size={9} /> Avito
                   </button>
+                )}
+                {c.next_call_date && !isDone && !isCancelled && (
+                  <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                    title="Дата и время следующего звонка клиенту"
+                    style={{ background: "#3b82f620", color: "#60a5fa" }}>
+                    <Icon name="PhoneCall" size={9} /> {fmtMoscowDateTime(c.next_call_date)}
+                  </span>
                 )}
                 {c.has_missed_call && (
                   <span
