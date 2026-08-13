@@ -75,10 +75,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   // В contactMode (карточка открыта из списка «Клиенты», без привязки к одной
   // заявке) — это неприменимо, закрываем как раньше. На финальном этапе
   // воронки (done/cancelled — заявка завершена или отменена) звонить больше
-  // некому — модалку тоже не показываем.
+  // некому — модалку тоже не показываем. Сервисные заявки (мелкие доделки/
+  // переделки) — тоже без модалки: там не ведут воронку продаж со звонками.
   const isFinalStage = orderData.status === "done" || orderData.status === "cancelled";
   const requestClose = () => {
-    if (contactMode || isLocalCard || isFinalStage) { onClose(); return; }
+    if (contactMode || isLocalCard || isFinalStage || orderData.is_service) { onClose(); return; }
     setConfirmClose(true);
   };
   const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean; comment_order?: string; comment_measure?: string; comment_install?: string }) => {
