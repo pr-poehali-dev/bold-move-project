@@ -3437,6 +3437,444 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
             return ok({"password": password})
 
+        # ═══════════════════════════════════════════════════════════════════════════
+        # МЕССЕНДЖЕРЫ (ЛИНИИ): несколько Telegram/MAX-аккаунтов на компанию.
+        # Воркер на VPS обслуживает сразу много компаний — сам приходит за работой
+        # (pull-модель, открытых портов у воркера нет). Ключ компании отдельный от
+        # старого _channel_webhook_key (тот — для одиночного QR-входа, не трогаем).
+        # ═══════════════════════════════════════════════════════════════════════════
+
+        # ── MESSENGER-CONFIG: ключ компании + адрес CRM для настройки воркера ──────
+        if resource == "messenger-config":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = dict(row[0]) if row and row[0] else {}
+
+            if method == "GET":
+                return ok({
+                    "webhook_key": cfg.get("_messenger_webhook_key"),
+                    "base_url": SELF_FUNCTION_URL,
+                    "enabled": cfg.get("messenger_enabled") == "true",
+                })
+
+            if method == "POST":
+                if body.get("regenerate") or not cfg.get("_messenger_webhook_key"):
+                    cfg["_messenger_webhook_key"] = uuid.uuid4().hex
+                if "enabled" in body:
+                    cfg["messenger_enabled"] = "true" if body.get("enabled") else "false"
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
+                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
+                conn.commit()
+                return ok({"webhook_key": cfg.get("_messenger_webhook_key"), "base_url": SELF_FUNCTION_URL})
+
+            return err("unknown method")
+
+        # ── MESSENGER-ACCOUNTS-LIST: список линий компании (экран настроек) ────────
+        if resource == "messenger-accounts-list" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            cur.execute(f"""
+                SELECT id, channel, title, external_id, phone, is_active, auth_status,
+                       auth_payload, account_name, created_at
+                FROM {SCHEMA}.messenger_accounts
+                WHERE company_id=%s
+                ORDER BY sort_order, id
+            """, (owner_id,))
+            items = [{
+                "id": r[0], "channel": r[1], "title": r[2], "external_id": r[3],
+                "phone": r[4], "is_active": r[5], "auth_status": r[6],
+                "auth_payload": r[7] if r[6] in ("qr_ready", "password_requested", "error") else None,
+                "account_name": r[8], "created_at": r[9],
+            } for r in cur.fetchall()]
+            return ok({"accounts": items})
+
+        # ── MESSENGER-ACCOUNT-SAVE: создать/обновить линию ──────────────────────────
+        if resource == "messenger-account-save" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            acc_id = body.get("id")
+            channel_v = body.get("channel")
+            title_v = (body.get("title") or "").strip()
+            phone_v = (body.get("phone") or "").strip() or None
+            is_active_v = body.get("is_active", True)
+
+            if not acc_id:
+                if channel_v not in ("telegram", "max"):
+                    return err("channel должен быть telegram или max")
+                if not title_v:
+                    return err("title обязателен")
+                if channel_v == "max" and not phone_v:
+                    return err("для MAX номер телефона обязателен")
+                external_id_v = body.get("external_id") or f"line_{uuid.uuid4().hex[:10]}"
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.messenger_accounts
+                        (company_id, channel, title, external_id, phone, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (owner_id, channel_v, title_v, external_id_v, phone_v, is_active_v))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+            else:
+                cur.execute(f"SELECT id FROM {SCHEMA}.messenger_accounts WHERE id=%s AND company_id=%s", (acc_id, owner_id))
+                if not cur.fetchone():
+                    return err("линия не найдена", 404)
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.messenger_accounts
+                    SET title=COALESCE(%s, title), phone=COALESCE(%s, phone), is_active=COALESCE(%s, is_active)
+                    WHERE id=%s AND company_id=%s
+                """, (title_v or None, phone_v, is_active_v, acc_id, owner_id))
+                conn.commit()
+                return ok({"id": acc_id})
+
+        # ── MESSENGER-ACCOUNT-DELETE: удалить линию (история сообщений остаётся) ───
+        if resource == "messenger-account-delete" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            acc_id = body.get("id")
+            if not acc_id:
+                return err("id обязателен")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events SET account_id=NULL WHERE account_id=%s
+            """, (acc_id,))
+            cur.execute(f"""
+                DELETE FROM {SCHEMA}.messenger_accounts WHERE id=%s AND company_id=%s
+            """, (acc_id, owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── MESSENGER-ACCOUNT-AUTH-START: запросить вход по линии ──────────────────
+        if resource == "messenger-account-auth-start" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            acc_id = body.get("id")
+            if not acc_id:
+                return err("id обязателен")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.messenger_accounts
+                SET auth_status='requested', auth_payload=NULL, auth_value=NULL, auth_updated_at=NOW()
+                WHERE id=%s AND company_id=%s
+            """, (acc_id, owner_id))
+            if cur.rowcount == 0:
+                return err("линия не найдена", 404)
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── MESSENGER-ACCOUNT-AUTH-SUBMIT: сотрудник ввёл код/пароль ────────────────
+        if resource == "messenger-account-auth-submit" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            acc_id = body.get("id")
+            value_v = (body.get("value") or "").strip()
+            if not acc_id or not value_v:
+                return err("id и value обязательны")
+            cur.execute(f"""
+                SELECT auth_status FROM {SCHEMA}.messenger_accounts WHERE id=%s AND company_id=%s
+            """, (acc_id, owner_id))
+            row = cur.fetchone()
+            if not row:
+                return err("линия не найдена", 404)
+            cur_status = row[0]
+            next_status = "code_submitted" if cur_status == "code_requested" else \
+                          "password_submitted" if cur_status == "password_requested" else None
+            if not next_status:
+                return err("линия сейчас не ждёт код/пароль", 400)
+            cur.execute(f"""
+                UPDATE {SCHEMA}.messenger_accounts
+                SET auth_status=%s, auth_value=%s, auth_updated_at=NOW()
+                WHERE id=%s AND company_id=%s
+            """, (next_status, value_v, acc_id, owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── MESSENGER-ACCOUNT-AUTH-CANCEL: сбросить статус авторизации ──────────────
+        if resource == "messenger-account-auth-cancel" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+            acc_id = body.get("id")
+            if not acc_id:
+                return err("id обязателен")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.messenger_accounts
+                SET auth_status='none', auth_payload=NULL, auth_value=NULL, auth_updated_at=NOW()
+                WHERE id=%s AND company_id=%s
+            """, (acc_id, owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── Проверка ключа воркера (X-Webhook-Key) для всех worker_* ниже ──────────
+        def _messenger_worker_owner():
+            """Возвращает owner_id, если X-Webhook-Key совпал с ключом компании, иначе None."""
+            company_id_q = qs.get("company_id")
+            wh_key = (event.get("headers") or {}).get("X-Webhook-Key", "")
+            if not company_id_q or not wh_key:
+                return None
+            try:
+                oid = int(company_id_q)
+            except ValueError:
+                return None
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (oid,))
+            r = cur.fetchone()
+            cfg_w = r[0] if r else None
+            if not cfg_w or cfg_w.get("_messenger_webhook_key") != wh_key:
+                return None
+            return oid
+
+        # ── WORKER-ACCOUNTS: список активных линий компании (для воркера) ──────────
+        if resource == "worker-accounts" and method == "GET":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            cur.execute(f"""
+                SELECT external_id, channel, phone FROM {SCHEMA}.messenger_accounts
+                WHERE company_id=%s AND is_active=TRUE
+            """, (owner_id,))
+            items = [{"external_id": r[0], "channel": r[1], "phone": r[2]} for r in cur.fetchall()]
+            return ok({"accounts": items})
+
+        # ── WORKER-AUTH-PENDING: линии, ожидающие действий по авторизации ──────────
+        if resource == "worker-auth-pending" and method == "GET":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            cur.execute(f"""
+                SELECT id, external_id, channel, phone, auth_status, auth_value
+                FROM {SCHEMA}.messenger_accounts
+                WHERE company_id=%s AND auth_status NOT IN ('none', 'authorized')
+            """, (owner_id,))
+            items = [{
+                "id": r[0], "external_id": r[1], "channel": r[2], "phone": r[3],
+                "auth_status": r[4], "auth_value": r[5],
+            } for r in cur.fetchall()]
+            return ok({"accounts": items})
+
+        # ── WORKER-AUTH-UPDATE: воркер отчитывается о ходе авторизации линии ───────
+        if resource == "worker-auth-update" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            acc_id = body.get("id")
+            status_v = body.get("status")
+            payload_v = body.get("payload")
+            valid_statuses = ("connecting", "qr_ready", "code_requested", "password_requested",
+                               "authorized", "error")
+            if not acc_id or status_v not in valid_statuses:
+                return err("id и валидный status обязательны")
+            if status_v == "authorized":
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.messenger_accounts
+                    SET auth_status='authorized', auth_payload=NULL, auth_value=NULL,
+                        account_name=%s, auth_updated_at=NOW()
+                    WHERE id=%s AND company_id=%s
+                """, (payload_v, acc_id, owner_id))
+            else:
+                # consume_value: воркер подтверждает, что забрал введённый код/пароль —
+                # затираем auth_value, чтобы не отдать его повторно по ошибке.
+                if body.get("consume_value"):
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.messenger_accounts
+                        SET auth_status=%s, auth_payload=%s, auth_value=NULL, auth_updated_at=NOW()
+                        WHERE id=%s AND company_id=%s
+                    """, (status_v, payload_v, acc_id, owner_id))
+                else:
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.messenger_accounts
+                        SET auth_status=%s, auth_payload=%s, auth_updated_at=NOW()
+                        WHERE id=%s AND company_id=%s
+                    """, (status_v, payload_v, acc_id, owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── WORKER-INCOMING: новое сообщение от воркера → лента «Касания» ──────────
+        if resource == "worker-incoming" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+
+            channel_v = body.get("channel")
+            phone_v = body.get("phone")
+            chat_id_v = body.get("chat_id")
+            external_msg_id_v = body.get("external_msg_id")
+            text_v = body.get("text")
+            reply_to_ext_v = body.get("reply_to_external_msg_id")
+            external_id_v = body.get("external_id")  # какая линия приняла сообщение
+
+            if channel_v not in ("telegram", "max"):
+                return err("unknown channel")
+            if not phone_v and not chat_id_v:
+                return err("phone или chat_id обязателен")
+
+            account_id_v = None
+            if external_id_v:
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.messenger_accounts WHERE company_id=%s AND external_id=%s
+                """, (owner_id, external_id_v))
+                arow = cur.fetchone()
+                account_id_v = arow[0] if arow else None
+
+            # Матчинг клиента: сначала по телефону, иначе по chat_id из прошлой переписки
+            client_row = None
+            if phone_v:
+                norm = normalize_phone(phone_v)
+                if norm:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s", (norm, owner_id))
+                    client_row = cur.fetchone()
+                    if not client_row:
+                        cur.execute(
+                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
+                            (owner_id, norm, body.get("name")))
+                        client_row = cur.fetchone()
+                        conn.commit()
+            if not client_row and chat_id_v:
+                cur.execute(
+                    f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND channel_ids->>%s = %s",
+                    (owner_id, channel_v, str(chat_id_v)))
+                client_row = cur.fetchone()
+                if not client_row:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) VALUES (%s, %s, %s::jsonb) RETURNING id",
+                        (owner_id, body.get("name"), json.dumps({channel_v: str(chat_id_v)})))
+                    client_row = cur.fetchone()
+                    conn.commit()
+            if not client_row:
+                return err("не удалось определить клиента", 400)
+            client_id_v = client_row[0]
+
+            if chat_id_v:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients
+                    SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
+                    WHERE id=%s
+                """, (json.dumps({channel_v: str(chat_id_v)}), client_id_v))
+                conn.commit()
+
+            reply_to_id_v = None
+            if reply_to_ext_v:
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.touch_events WHERE channel=%s AND external_id=%s
+                """, (channel_v, reply_to_ext_v))
+                rrow = cur.fetchone()
+                reply_to_id_v = rrow[0] if rrow else None
+
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.touch_events
+                        (client_id, channel, direction, external_id, text, status, reply_to_id, account_id)
+                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s)
+                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v))
+                conn.commit()
+            except psycopg2.errors.UniqueViolation:
+                conn.rollback()
+                return ok({"duplicate": True, "client_id": client_id_v})
+
+            return ok({"client_id": client_id_v})
+
+        # ── WORKER-PENDING: очередь исходящих для воркера (линии/мессенджеры) ──────
+        if resource == "worker-pending" and method == "GET":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            channel_q = qs.get("channel")
+            cur.execute(f"""
+                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone, ma.external_id
+                FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                LEFT JOIN {SCHEMA}.messenger_accounts ma ON ma.id = te.account_id
+                WHERE tc.company_id=%s AND te.direction='out' AND te.status='pending'
+                      {"AND te.channel=%s" if channel_q else ""}
+                ORDER BY te.created_at ASC
+                LIMIT 20
+            """, (owner_id, channel_q) if channel_q else (owner_id,))
+            rows = cur.fetchall()
+            ids = [r[0] for r in rows]
+            items = []
+            for touch_id, cid, text, channel_ids, phone, ext_line in rows:
+                items.append({
+                    "touch_id": touch_id,
+                    "client_id": cid,
+                    "chat_id": (channel_ids or {}).get(qs.get("channel", "")) if channel_q else None,
+                    "phone": phone,
+                    "text": text,
+                    "line_external_id": ext_line,
+                })
+            if ids:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_events SET status='sending' WHERE id = ANY(%s)
+                """, (ids,))
+                conn.commit()
+            return ok({"messages": items})
+
+        # ── WORKER-MARK-SENT: воркер подтверждает отправку/ошибку ──────────────────
+        if resource == "worker-mark-sent" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            touch_id_v = body.get("message_id")
+            ok_v = body.get("ok")
+            if not touch_id_v:
+                return err("message_id обязателен")
+            if ok_v:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_events SET status='sent', external_id=COALESCE(%s, external_id)
+                    WHERE id=%s
+                """, (body.get("external_msg_id"), touch_id_v))
+            else:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_events SET status='error' WHERE id=%s
+                """, (touch_id_v,))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── WORKER-MARK-READ: собеседник прочитал сообщение(я) ──────────────────────
+        if resource == "worker-mark-read" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            channel_v = body.get("channel")
+            chat_id_v = body.get("chat_id")
+            if not channel_v or not chat_id_v:
+                return err("channel и chat_id обязательны")
+            cur.execute(f"""
+                SELECT tc.id FROM {SCHEMA}.touch_clients tc
+                WHERE tc.company_id=%s AND tc.channel_ids->>%s = %s
+            """, (owner_id, channel_v, str(chat_id_v)))
+            crow = cur.fetchone()
+            if crow:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_events SET status='received'
+                    WHERE client_id=%s AND channel=%s AND direction='out' AND status='sent'
+                """, (crow[0], channel_v))
+                conn.commit()
+            return ok({"ok": True})
+
         # ── CHANNEL-WEBHOOK: приём сообщения от воркера (Telegram/MAX) ─────────────
         # Вызывается НЕ сотрудником, а нашим воркером на VPS — авторизация через
         # секретный webhook_key (не через сессию пользователя).

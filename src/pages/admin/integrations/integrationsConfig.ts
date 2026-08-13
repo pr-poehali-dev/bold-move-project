@@ -46,25 +46,6 @@ export const GROUPS: { id: string; title: string; desc: string }[] = [
 ];
 
 export const SECTIONS: SectionDef[] = [
-  // ── Личные аккаунты (через VPS-воркер, вход по QR/номеру) ──
-  {
-    id: "tg_personal", group: "accounts",
-    title: "Личный Telegram",
-    desc: "Переписка от вашего личного аккаунта Telegram. Вход по QR-коду, как в веб-версии.",
-    icon: "Send",
-    kind: "account", authMethod: "qr", channel: "telegram",
-    providers: [{ id: "tg_personal", label: "Telegram", fields: [] }],
-    enabledKey: "tg_personal_enabled", realToggle: false,
-  },
-  {
-    id: "max_personal", group: "accounts",
-    title: "Личный MAX",
-    desc: "Переписка от вашего личного аккаунта MAX. Вход по номеру телефона и коду.",
-    icon: "MessageCircle",
-    kind: "account", authMethod: "code", channel: "max",
-    providers: [{ id: "max_personal", label: "MAX", fields: [] }],
-    enabledKey: "max_personal_enabled", realToggle: false,
-  },
   // ── Боты (уведомления по токену) ──
   {
     id: "tg_bot", group: "bots",
