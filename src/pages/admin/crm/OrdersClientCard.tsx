@@ -129,10 +129,10 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   const age = stageDuration(c.created_at);
                   if (!onStage && !age) return null;
                   return (
-                    <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
-                      style={{ background: t.surface2, border: `1px solid ${t.border}` }}
+                    <span className="inline-flex items-center gap-1 text-[10px] rounded-md font-semibold leading-none flex-shrink-0"
+                      style={{ background: t.surface2, border: `1px solid ${t.border}`, height: 20, padding: "0 7px", boxSizing: "border-box" }}
                       title={`На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
-                      <Icon name="Clock" size={9} style={{ color: t.accentLight }} />
+                      <Icon name="Clock" size={10} style={{ color: t.accentLight }} />
                       {onStage && <span style={{ color: t.text }}>{onStage}</span>}
                       {onStage && age && <span style={{ color: t.textMute }}>/</span>}
                       {age && <span style={{ color: t.textSub }}>{age}</span>}

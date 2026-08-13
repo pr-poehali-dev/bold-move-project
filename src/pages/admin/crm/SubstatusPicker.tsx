@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import type React from "react";
 import { useTheme } from "./themeContext";
 import type { Substatus } from "./ordersTabsShared";
 
@@ -22,7 +23,14 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
   const t = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const sizeCls = dense ? "text-[9px] px-1.5 py-0.5" : "text-[10px] px-1.5 py-0.5";
+  // dense — компактный вариант рядом с бейджем времени (⏱ 3ч/3ч) в строке с номером
+  // заявки. Задаём высоту ЯВНО и через inline-flex+leading-none — иначе <button> по
+  // умолчанию выше и смещён вниз относительно соседнего <span> (бейдж времени), даже
+  // при одинаковых text-size/padding: у кнопки своя высота строки в браузере.
+  const sizeCls = dense
+    ? "inline-flex items-center justify-center text-[10px] font-semibold leading-none flex-shrink-0"
+    : "text-[10px] px-1.5 py-0.5";
+  const denseStyle: React.CSSProperties = dense ? { height: 20, padding: "0 7px", boxSizing: "border-box" } : {};
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +45,7 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
   if (options.length === 0) {
     return (
       <span className={`${sizeCls} rounded-md font-medium flex-shrink-0`}
-        style={{ background: fallbackColor + "20", color: fallbackColor }}>
+        style={{ background: fallbackColor + "20", color: fallbackColor, ...denseStyle }}>
         {fallbackLabel}
       </span>
     );
@@ -52,9 +60,10 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
         onClick={() => setOpen(v => !v)}
         title="Изменить подстатус"
         className={`${sizeCls} rounded-md font-semibold transition hover:opacity-80`}
-        style={active
-          ? { background: color, color: "#fff" }
-          : { background: color + "20", color }}>
+        style={{
+          ...(active ? { background: color, color: "#fff" } : { background: color + "20", color }),
+          ...denseStyle,
+        }}>
         {label}
       </button>
 
