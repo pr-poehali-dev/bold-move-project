@@ -1,3 +1,4 @@
+# redeploy-marker: 1786609864
 """Генерация изображения по промпту через OpenAI DALL-E 3, сохранение в S3."""
 
 import json

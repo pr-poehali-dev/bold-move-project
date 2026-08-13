@@ -1,3 +1,4 @@
+# redeploy-marker: 1786609864
 """Обучение AI: сохраняет исправления менеджера в ai_prices.client_changes. v4"""
 
 import json

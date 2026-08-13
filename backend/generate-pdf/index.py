@@ -1,3 +1,4 @@
+# redeploy-marker: 1786609864
 """Генерирует PDF-смету — современный деловой стиль."""
 
 import json, os, base64, io, re, requests, boto3

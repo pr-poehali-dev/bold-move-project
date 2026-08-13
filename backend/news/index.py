@@ -1,3 +1,4 @@
+# redeploy-marker: 1786609864
 """
 News API — CRUD для новостей экосистемы AI-potolki.
 GET  /             — список опубликованных (публично)

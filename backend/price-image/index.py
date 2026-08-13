@@ -1,3 +1,4 @@
+# redeploy-marker: 1786609864
 """Загрузка картинок для товаров и категорий прайса.
 GET /upload?type=item&id=42 или type=category&category=Полотна
 PUT /upload?type=item&id=42 — загрузить картинку (base64 в теле)
