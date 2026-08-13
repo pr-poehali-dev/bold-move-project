@@ -733,6 +733,11 @@ def handler(event: dict, context) -> dict:
     method = event.get("httpMethod", "GET")
     qs = event.get("queryStringParameters") or {}
     resource = qs.get("r", "")
+    # Воркер мессенджеров (VPS) ходит через ?action=worker_accounts (подчёркивания),
+    # а не ?r=worker-accounts (дефисы) — поддерживаем оба варианта одним маппингом,
+    # чтобы не переписывать сам воркер под наш стиль именования.
+    if not resource and qs.get("action"):
+        resource = qs["action"].replace("_", "-")
     body = {}
     if event.get("body"):
         try:
@@ -3632,21 +3637,30 @@ def handler(event: dict, context) -> dict:
 
         # ── Проверка ключа воркера (X-Webhook-Key) для всех worker_* ниже ──────────
         def _messenger_worker_owner():
-            """Возвращает owner_id, если X-Webhook-Key совпал с ключом компании, иначе None."""
-            company_id_q = qs.get("company_id")
+            """Возвращает owner_id по X-Webhook-Key. company_id в адресе необязателен —
+            ключ уникален на компанию, воркер может присылать только заголовок."""
             wh_key = (event.get("headers") or {}).get("X-Webhook-Key", "")
-            if not company_id_q or not wh_key:
+            if not wh_key:
                 return None
-            try:
-                oid = int(company_id_q)
-            except ValueError:
-                return None
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (oid,))
+            company_id_q = qs.get("company_id")
+            if company_id_q:
+                try:
+                    oid = int(company_id_q)
+                except ValueError:
+                    return None
+                cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (oid,))
+                r = cur.fetchone()
+                cfg_w = r[0] if r else None
+                if not cfg_w or cfg_w.get("_messenger_webhook_key") != wh_key:
+                    return None
+                return oid
+            # company_id не передан — находим компанию по одному только ключу
+            cur.execute(f"""
+                SELECT company_id FROM {SCHEMA}.integrations
+                WHERE config->>'_messenger_webhook_key' = %s
+            """, (wh_key,))
             r = cur.fetchone()
-            cfg_w = r[0] if r else None
-            if not cfg_w or cfg_w.get("_messenger_webhook_key") != wh_key:
-                return None
-            return oid
+            return r[0] if r else None
 
         # ── WORKER-ACCOUNTS: список активных линий компании (для воркера) ──────────
         if resource == "worker-accounts" and method == "GET":
@@ -3804,11 +3818,12 @@ def handler(event: dict, context) -> dict:
                 return err("неверный ключ", 401)
             channel_q = qs.get("channel")
             cur.execute(f"""
-                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone, ma.external_id
+                SELECT te.id, te.client_id, te.text, te.channel, tc.channel_ids, tc.phone, ma.external_id
                 FROM {SCHEMA}.touch_events te
                 JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
                 LEFT JOIN {SCHEMA}.messenger_accounts ma ON ma.id = te.account_id
                 WHERE tc.company_id=%s AND te.direction='out' AND te.status='pending'
+                      AND te.channel IN ('telegram', 'max')
                       {"AND te.channel=%s" if channel_q else ""}
                 ORDER BY te.created_at ASC
                 LIMIT 20
@@ -3816,14 +3831,17 @@ def handler(event: dict, context) -> dict:
             rows = cur.fetchall()
             ids = [r[0] for r in rows]
             items = []
-            for touch_id, cid, text, channel_ids, phone, ext_line in rows:
+            for touch_id, cid, text, msg_channel, channel_ids, phone, ext_line in rows:
                 items.append({
+                    "message_id": touch_id,
                     "touch_id": touch_id,
                     "client_id": cid,
-                    "chat_id": (channel_ids or {}).get(qs.get("channel", "")) if channel_q else None,
+                    "channel": msg_channel,
+                    "chat_id": (channel_ids or {}).get(msg_channel),
                     "phone": phone,
                     "text": text,
                     "line_external_id": ext_line,
+                    "external_id": ext_line,
                 })
             if ids:
                 cur.execute(f"""
@@ -3846,6 +3864,21 @@ def handler(event: dict, context) -> dict:
                     UPDATE {SCHEMA}.touch_events SET status='sent', external_id=COALESCE(%s, external_id)
                     WHERE id=%s
                 """, (body.get("external_msg_id"), touch_id_v))
+                # MAX отдаёт chat_id только при первой успешной отправке (написали
+                # первыми по номеру) — без этого следующее входящее от клиента
+                # не свяжется с диалогом. Сохраняем в channel_ids клиента, если пришёл.
+                chat_id_v = body.get("chat_id")
+                if chat_id_v:
+                    cur.execute(f"""
+                        SELECT client_id, channel FROM {SCHEMA}.touch_events WHERE id=%s
+                    """, (touch_id_v,))
+                    trow = cur.fetchone()
+                    if trow:
+                        cur.execute(f"""
+                            UPDATE {SCHEMA}.touch_clients
+                            SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
+                            WHERE id=%s
+                        """, (json.dumps({trow[1]: str(chat_id_v)}), trow[0]))
             else:
                 cur.execute(f"""
                     UPDATE {SCHEMA}.touch_events SET status='error' WHERE id=%s
