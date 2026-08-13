@@ -185,6 +185,15 @@ export interface Client {
   measure_date: string | null;
   install_date: string | null;
   notes: string | null;
+  /** Блок «Комментарий» — 4 отдельных поля + 2 Summary (см. DrawerCommentsBlock) */
+  comment_order: string | null;
+  comment_measure: string | null;
+  comment_install: string | null;
+  comment_client: string | null;
+  /** Заполняется автоматически ИИ-анализом переписки (analyze-client) */
+  summary_comm: string | null;
+  /** Пока заполняется вручную/на будущее — отдельного ИИ-анализа состояния заказа ещё нет */
+  summary_status: string | null;
   address: string | null;
   area: number | null;
   budget: number | null;

@@ -713,6 +713,8 @@ ALL_CLIENT_FIELDS = [
     "client_name", "phone", "status", "sub_status", "client_status", "measure_date", "install_date",
     "next_call_date", "no_call_needed",
     "notes", "address", "area", "budget", "source",
+    "comment_order", "comment_measure", "comment_install", "comment_client",
+    "summary_comm", "summary_status",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "discount_pct", "discount_amount",
     "prepayment_confirmed", "prepayment_confirmed_at", "prepayment_fact",
@@ -1000,6 +1002,8 @@ def handler(event: dict, context) -> dict:
                 sql = f"""
                     SELECT lc.id, lc.session_id, lc.client_name, lc.phone, lc.status, lc.sub_status, lc.client_status,
                            lc.measure_date, lc.install_date, lc.notes, lc.address, lc.area, lc.budget, lc.source, lc.created_via, lc.created_at,
+                           lc.comment_order, lc.comment_measure, lc.comment_install, lc.comment_client,
+                           lc.summary_comm, lc.summary_status,
                            lc.contract_sum, lc.prepayment, lc.extra_payment, lc.extra_agreement_sum,
                            lc.discount_pct, lc.discount_amount,
                            lc.prepayment_confirmed, lc.prepayment_confirmed_at, lc.prepayment_fact,
@@ -1224,6 +1228,16 @@ def handler(event: dict, context) -> dict:
                     body["next_call_date"] = None
                 if body.get("next_call_date") and "no_call_needed" not in body:
                     body["no_call_needed"] = False
+
+                # Источник (source) определяется автоматически для заявок из интеграций
+                # (Avito, квиз и т.п.) — редактировать его руками можно только у заявок,
+                # созданных вручную в CRM (created_via='manual'). Тихо игнорируем попытку
+                # изменить source у остальных, не роняя весь запрос ошибкой.
+                if "source" in body:
+                    cur.execute(f"SELECT created_via FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    cv_row = cur.fetchone()
+                    if not cv_row or cv_row[0] != "manual":
+                        body.pop("source")
 
                 sets, vals = [], []
                 for f in ALL_CLIENT_FIELDS:

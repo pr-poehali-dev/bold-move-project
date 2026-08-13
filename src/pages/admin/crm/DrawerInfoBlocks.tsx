@@ -9,11 +9,27 @@ import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
 import { useCallClient } from "./useCallClient";
 
-// Источник — маркетинговый канал (Авито/ВК/Сайт), выбирается вручную, влияет на статистику.
-function SourceRow({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+// Источник — маркетинговый канал (Авито/ВК/Сайт). Для заявок из интеграций (Avito, квиз)
+// определяется автоматически и не редактируется руками — редактирование разрешено только
+// для заявок, созданных вручную в CRM (created_via === "manual").
+function SourceRow({ value, editable, onSave }: { value: string; editable: boolean; onSave: (v: string) => void }) {
   const t = useTheme();
   const { sources } = useOrderSources();
   const current = sources.find(s => s.name === value);
+
+  if (!editable) {
+    return (
+      <div className="flex items-center justify-between gap-2 py-1.5">
+        <span className="text-xs" style={{ color: "#d4d4d4" }}>Источник</span>
+        <span className="flex items-center gap-1.5 text-xs font-medium" title="Определяется автоматически — не редактируется">
+          {current && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: current.color }} />}
+          <span style={{ color: current ? current.color : t.textMute }}>{value || "Не указано"}</span>
+          <Icon name="Lock" size={10} style={{ color: t.textMute }} />
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between gap-2 py-1.5">
       <span className="text-xs" style={{ color: "#d4d4d4" }}>Источник</span>
@@ -41,29 +57,25 @@ const CREATED_VIA_LABELS: Record<string, { label: string; icon: string; color: s
   manual: { label: "CRM",         icon: "LayoutGrid",    color: "#3b82f6" },
 };
 
-function CreatedViaRow({ value, createdAt, source }: { value: string | null | undefined; createdAt?: string | null; source?: string | null }) {
-  // Заявка из интеграции Avito — показываем это вместо технического «Чат»
+// Подвал карточки — компактный вариант той же строки, для низа карточки клиента.
+export function DrawerFooterInfo({ createdVia, createdAt, source }: { createdVia: string | null | undefined; createdAt?: string | null; source?: string | null }) {
   const isAvito = (source || "").trim().toLowerCase() === "авито" || (source || "").trim().toLowerCase() === "avito";
   const info = isAvito
     ? { label: "Интеграция Avito", icon: "MessagesSquare", color: "#f97316" }
-    : (value ? CREATED_VIA_LABELS[value] : undefined);
+    : (createdVia ? CREATED_VIA_LABELS[createdVia] : undefined);
   if (!info) return null;
   const dateStr = (() => {
     if (!createdAt) return null;
     const d = new Date(createdAt);
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
   })();
   return (
-    <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-xs" style={{ color: "#d4d4d4" }}>Создано через</span>
-      <span className="flex items-center gap-1.5 text-xs font-medium rounded-md px-1.5 py-0.5"
-        style={{ background: info.color + "18", color: info.color, border: `1px solid ${info.color}30` }}
-        title="Технический канал создания заявки — не редактируется">
-        {dateStr && <span style={{ opacity: 0.75 }}>{dateStr}</span>}
-        <Icon name={info.icon} size={11} />
-        {info.label}
-      </span>
+    <div className="flex items-center justify-center gap-1.5 py-2 text-[10px]" style={{ color: "#6b7280" }}
+      title="Технический канал создания заявки — не редактируется">
+      <Icon name={info.icon} size={10} style={{ opacity: 0.6 }} />
+      <span>Создано через: {info.label}</span>
+      {dateStr && <span style={{ opacity: 0.7 }}>· {dateStr}</span>}
     </div>
   );
 }
@@ -177,7 +189,9 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
     () => loadClientExtraValues(data.id)
   );
 
-  const visibleFields = fields.filter(f => !f.hidden);
+  // «Комментарий» (builtin_notes) убран из блока «Контакты» — теперь это
+  // «Summary по коммуникациям» в новом блоке «Комментарий» (DrawerCommentsBlock).
+  const visibleFields = fields.filter(f => !f.hidden && f.id !== "builtin_notes");
 
   const saveExtraVal = (fieldId: string, value: string) => {
     const updated = { ...extraValues, [fieldId]: value };
@@ -248,9 +262,9 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
       })}
       <SourceRow
         value={data.source || ""}
+        editable={data.created_via === "manual"}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
-      <CreatedViaRow value={data.created_via} createdAt={data.created_at} source={data.source} />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );

@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
+import { DrawerFooterInfo } from "./DrawerInfoBlocks";
 import {
   BlockId, BlockDef, CustomBlockData, CustomFinRow,
   DEFAULT_BLOCKS, LS_BLOCKS, LS_HIDDEN,
@@ -372,6 +373,9 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
           onClose={() => setShowAddBlock(null)}
         />
       )}
+
+      {/* Подвал — техническая строка «Создано через», вынесена из блока «Контакты» */}
+      <DrawerFooterInfo createdVia={data.created_via} createdAt={data.created_at} source={data.source} />
     </div>
   );
 }

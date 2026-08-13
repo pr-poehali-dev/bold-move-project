@@ -12,6 +12,7 @@ import {
   DrawerContactsBlock, DrawerObjectBlock, DrawerDatesBlock,
   DrawerFilesBlock, DrawerCancelBlock, DrawerCallDatesBlock,
 } from "./DrawerInfoBlocks";
+import { DrawerCommentsBlock } from "./DrawerCommentsBlock";
 
 interface ColumnsProps {
   data: Client;
@@ -106,6 +107,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "dates":    return canFieldDates     ? <DrawerDatesBlock    {...infoProps} /> : null;
       case "call_dates": return canFieldDates   ? <DrawerCallDatesBlock {...infoProps} /> : null;
       case "notes":    return null; // notes рендерится отдельно
+      case "comments": return canFieldContacts ? <DrawerCommentsBlock data={data} saveWithLog={saveWithLog} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} /> : null;
       case "files":    return (canFiles && canFieldFiles)    ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;
       case "cancel":   return canFieldCancel   ? <DrawerCancelBlock   {...infoProps} /> : null;
       case "income":   return (canFinance && canFieldFinance) ? <DrawerIncomeBlock {...finProps} /> : null;
