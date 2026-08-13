@@ -232,17 +232,21 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   </div>
                 </div>
               )}
-              {c.next_call_date && !isDone && !isCancelled && (
-                <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
-                  title="Дата и время следующего звонка клиенту"
-                  style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa" }}>
-                  <Icon name="PhoneCall" size={9} />
-                  <div>
-                    <div className="font-medium">{fmtMoscowDateTime(c.next_call_date)}</div>
-                    <div className="opacity-60">Звонок</div>
+              {c.next_call_date && !isDone && !isCancelled && (() => {
+                const isOverdue = new Date(c.next_call_date).getTime() < Date.now();
+                const callColor = isOverdue ? "#ef4444" : "#60a5fa";
+                return (
+                  <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                    title={isOverdue ? "Звонок просрочен!" : "Дата и время следующего звонка клиенту"}
+                    style={{ background: isOverdue ? "rgba(239,68,68,0.15)" : "rgba(59,130,246,0.1)", color: callColor }}>
+                    <Icon name={isOverdue ? "PhoneMissed" : "PhoneCall"} size={9} />
+                    <div>
+                      <div className="font-medium">{fmtMoscowDateTime(c.next_call_date)}</div>
+                      <div className="opacity-60">{isOverdue ? "Просрочен" : "Звонок"}</div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
