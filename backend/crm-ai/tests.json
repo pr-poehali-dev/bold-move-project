@@ -1,0 +1,45 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST analyze-client without auth is rejected",
+      "method": "POST",
+      "path": "/?r=analyze-client",
+      "body": {"client_id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST analyze-call without auth is rejected",
+      "method": "POST",
+      "path": "/?r=analyze-call",
+      "body": {"touch_id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST transcribe-call without auth is rejected",
+      "method": "POST",
+      "path": "/?r=transcribe-call",
+      "body": {"touch_id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET unknown resource",
+      "method": "GET",
+      "path": "/?r=unknown-thing",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "unknown resource"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 import func2url from "@/../backend/func2url.json";
 
 const BASE = (func2url as Record<string, string>)["crm-manager"];
+// Медленные ИИ-операции (анализ клиента/звонка, расшифровка записи) вынесены
+// в отдельную функцию crm-ai — у неё свой (больший) таймаут, не влияющий на
+// быструю crm-manager. См. backend/crm-ai/index.py.
+const AI_BASE = (func2url as Record<string, string>)["crm-ai"];
 
 // Токен пробрасывается из AuthContext через этот setter
 let _authToken: string | null = null;
@@ -21,9 +25,9 @@ function waitForToken(ms = 3000): Promise<void> {
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export async function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
+async function fetchFrom(base: string, resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
   await waitForToken();
-  let url = `${BASE}?r=${resource}`;
+  let url = `${base}?r=${resource}`;
   if (extra) {
     Object.entries(extra).forEach(([k, v]) => { url += `&${k}=${encodeURIComponent(v)}`; });
   }
@@ -56,6 +60,16 @@ export async function crmFetch(resource: string, opts?: RequestInit, extra?: Rec
       throw e;
     }
   }
+}
+
+export async function crmFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
+  return fetchFrom(BASE, resource, opts, extra);
+}
+
+// Для analyze-client / analyze-call / transcribe-call — те же токен и логика
+// повторов, но запрос уходит в crm-ai (см. комментарий про AI_BASE выше).
+export async function crmAiFetch(resource: string, opts?: RequestInit, extra?: Record<string, string>): Promise<unknown> {
+  return fetchFrom(AI_BASE, resource, opts, extra);
 }
 
 export async function uploadFile(file: File): Promise<string> {

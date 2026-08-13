@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { crmFetch } from "./crmApi";
+import { crmFetch, crmAiFetch } from "./crmApi";
 
 // Сколько минут считаем сводку свежей — чаще не пересобираем, чтобы не тратить
 // деньги на ИИ при каждом открытии одной и той же карточки.
@@ -58,7 +58,7 @@ export function useAutoSummary(
 
         // 2. Пересобираем сводку — сервер запишет её в комментарий заявки
         doneFor.current.add(orderId);
-        const res = await crmFetch("analyze-client", {
+        const res = await crmAiFetch("analyze-client", {
           method: "POST",
           body: JSON.stringify({ client_id: d.client.id }),
         }) as { error?: string };

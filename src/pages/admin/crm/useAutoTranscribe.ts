@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { crmFetch } from "./crmApi";
+import { crmAiFetch } from "./crmApi";
 
 interface TouchLike {
   id: number;
@@ -34,7 +34,7 @@ export function useAutoTranscribe(touches: TouchLike[], onDone?: () => void) {
     inFlight.current.add(target.id);
     (async () => {
       try {
-        await crmFetch("transcribe-call", {
+        await crmAiFetch("transcribe-call", {
           method: "POST",
           body: JSON.stringify({ touch_id: target.id }),
         });

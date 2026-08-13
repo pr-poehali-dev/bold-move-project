@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { crmFetch } from "./crmApi";
+import { crmFetch, crmAiFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 
@@ -85,7 +85,7 @@ export default function DrawerAnalyticsTab({ phone, name }: Props) {
     setRebuilding(true);
     setRebuildError(null);
     try {
-      const d = await crmFetch("analyze-client", { method: "POST", body: JSON.stringify({ phone, name }) }) as
+      const d = await crmAiFetch("analyze-client", { method: "POST", body: JSON.stringify({ phone, name }) }) as
         { analysis?: Analysis; error?: string };
       if (d?.error) {
         setRebuildError(d.error);
