@@ -52,8 +52,8 @@ API_HASH = os.environ["TG_API_HASH"]
 CRM_WEBHOOK_URL = os.environ["CRM_WEBHOOK_URL"]
 CRM_WORKER_TOKEN = os.environ["CRM_WORKER_TOKEN"]
 
-NEW_TASK_POLL_SEC = int(os.environ.get("NEW_TASK_POLL_SEC", "3"))
-SEND_POLL_SEC = int(os.environ.get("SEND_POLL_SEC", "3"))
+NEW_TASK_POLL_SEC = int(os.environ.get("NEW_TASK_POLL_SEC", "30"))
+SEND_POLL_SEC = int(os.environ.get("SEND_POLL_SEC", "10"))
 SESSIONS_DIR = os.environ.get("SESSIONS_DIR", "sessions")
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
