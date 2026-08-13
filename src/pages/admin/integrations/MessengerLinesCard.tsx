@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { crmFetch } from "../crm/crmApi";
+import { copyText } from "@/lib/clipboard";
 import EnabledToggle from "./EnabledToggle";
 import LineAuthModal from "./LineAuthModal";
 
@@ -95,10 +96,12 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
     setRegenerating(false);
   };
 
-  const copy = (value: string, field: "url" | "key") => {
-    navigator.clipboard.writeText(value);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 1500);
+  const copy = async (value: string, field: "url" | "key") => {
+    const okCopy = await copyText(value);
+    if (okCopy) {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
+    }
   };
 
   const addLine = async () => {
