@@ -15,6 +15,8 @@ import {
   loadSyncedCustomCols, loadSyncedHidden, loadSyncedLabels, loadSyncedColors,
   saveSyncedLabels, saveSyncedColors, addSyncedCol, deleteSyncedCol,
 } from "./syncedCols";
+import { useStageDateGuard } from "./useStageDateGuard";
+import { StageDateConfirm } from "./StageDateConfirm";
 
 interface Props {
   clients: Client[];
@@ -53,6 +55,9 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
   const [customCols,  setCustomCols]  = useState<CustomKanbanCol[]>(() =>
     loadSyncedCustomCols().map(c => ({ id: c.id, label: c.label, color: c.color, statuses: [] }))
   );
+
+  // Смена статуса с защитой «замер/монтаж нельзя назначить без даты»
+  const stageGuard = useStageDateGuard(onStatusChange);
 
   const handleWidthChange = (w: number) => { setGlobalWidth(w); saveGlobalWidth(w); };
 
@@ -164,14 +169,9 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       return;
     }
     if (client.status === newStatus) return;
-    const prevStatus = client.status;
-    onStatusChange(client.id, newStatus);
-    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) }) as { error?: string };
-    if (res?.error) {
-      // Сервер отказал (например, нет доступа к этапу) — откатываем визуальное изменение
-      onStatusChange(client.id, prevStatus);
-      alert(res.error);
-    }
+    // Замер/монтаж нельзя назначить без даты — если её нет, сначала откроется
+    // модалка выбора даты (общая логика в useStageDateGuard).
+    await stageGuard.requestStatusChange(client, newStatus);
   };
 
   const handleNextStep = async (id: number, nextStatus: string) => {
@@ -179,14 +179,9 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
       setLocalCards(prev => { const next = prev.map(c => c.id === id ? { ...c, status: nextStatus } : c); saveLocalCards(next); return next; });
       return;
     }
-    const prevClient = clients.find(c => c.id === id);
-    const prevStatus = prevClient?.status;
-    onStatusChange(id, nextStatus);
-    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) }) as { error?: string };
-    if (res?.error && prevStatus) {
-      onStatusChange(id, prevStatus);
-      alert(res.error);
-    }
+    const client = clients.find(c => c.id === id);
+    if (!client) return;
+    await stageGuard.requestStatusChange(client, nextStatus);
   };
 
   const handleSaveSubStatus = async (id: number, subStatusId: number) => {
@@ -279,6 +274,26 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
             }
           }}
           isLocalCard={selected.id < 0}
+        />
+      )}
+
+      {/* Дата этапа — замер/монтаж нельзя назначить без даты */}
+      {stageGuard.pending && (
+        <StageDateConfirm
+          t={t}
+          nextStatus={stageGuard.pending.nextStatus}
+          currentDate={
+            stageGuard.pending.nextStatus === "measure"
+              ? stageGuard.pending.client.measure_date
+              : stageGuard.pending.client.install_date
+          }
+          currentComment={
+            stageGuard.pending.nextStatus === "measure"
+              ? stageGuard.pending.client.comment_measure
+              : stageGuard.pending.client.comment_install
+          }
+          onConfirm={stageGuard.confirmWithDate}
+          onCancel={stageGuard.cancelStageDate}
         />
       )}
     </div>

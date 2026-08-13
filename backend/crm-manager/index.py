@@ -1240,6 +1240,25 @@ def handler(event: dict, context) -> dict:
                     if not cv_row or cv_row[0] != "manual":
                         body.pop("source")
 
+                # Нельзя назначить замер/монтаж, не указав дату — иначе этап висит
+                # «назначенным», а когда именно ехать, никто не знает. Дата может
+                # прийти этим же запросом (модалка шлёт статус+дату вместе) либо уже
+                # быть сохранена в карточке ранее.
+                REQUIRED_DATE_BY_STATUS = {
+                    "measure": ("measure_date", "Укажите дату замера"),
+                    "install_scheduled": ("install_date", "Укажите дату монтажа"),
+                }
+                new_st = body.get("status")
+                if new_st in REQUIRED_DATE_BY_STATUS:
+                    date_field, err_msg = REQUIRED_DATE_BY_STATUS[new_st]
+                    date_val = body.get(date_field)
+                    if not date_val:
+                        cur.execute(f"SELECT {date_field} FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                        d_row = cur.fetchone()
+                        date_val = d_row[0] if d_row else None
+                    if not date_val:
+                        return err(err_msg)
+
                 sets, vals = [], []
                 for f in ALL_CLIENT_FIELDS:
                     if f in body:

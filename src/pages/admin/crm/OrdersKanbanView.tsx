@@ -1,5 +1,5 @@
 import type React from "react";
-import { Client, crmFetch } from "./crmApi";
+import { Client } from "./crmApi";
 import { matchesOrderSearch } from "./ordersSearch";
 import { useTheme } from "./themeContext";
 import { KanbanColumn } from "./KanbanColumn";
@@ -16,13 +16,14 @@ interface Props {
   allClients: Client[];
   search: string;
   onSearch: (v: string) => void;
-  onStatusChange: (id: number, status: string) => void;
   onSelect: (c: Client) => void;
   onNextStep: (id: number, nextStatus: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
+  /** Сменить статус с проверкой «замер/монтаж без даты» (модалка выбора даты) */
+  onRequestStatus: (client: Client, nextStatus: string) => Promise<boolean>;
 }
 
-export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange, onSelect, onNextStep, onSaveSubStatus }: Props) {
+export function OrdersKanbanView({ allClients, search, onSearch, onSelect, onNextStep, onSaveSubStatus, onRequestStatus }: Props) {
   const t = useTheme();
 
   const [colLabels, setColLabels] = useState<Record<string, string>>(loadSyncedLabels);
@@ -92,8 +93,9 @@ export function OrdersKanbanView({ allClients, search, onSearch, onStatusChange,
     if (!client) return;
     const newStatus = DROP_STATUS[colId];
     if (!newStatus || client.status === newStatus) return;
-    onStatusChange(client.id, newStatus);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: newStatus }) }, { id: String(client.id) });
+    // Замер/монтаж нельзя назначить без даты — при её отсутствии сначала
+    // откроется модалка выбора даты (общая логика в useStageDateGuard).
+    await onRequestStatus(client, newStatus);
   };
 
   return (

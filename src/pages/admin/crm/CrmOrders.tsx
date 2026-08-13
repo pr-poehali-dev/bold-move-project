@@ -15,6 +15,8 @@ import { TrashModal } from "./TrashModal";
 import { useOrdersTabsConfig } from "./useOrdersTabsConfig";
 import { useOrderActionModal } from "./useOrderActionModal";
 import { useOrdersUrlParams } from "./useOrdersUrlParams";
+import { useStageDateGuard } from "./useStageDateGuard";
+import { StageDateConfirm } from "./StageDateConfirm";
 
 interface Props {
   clients: Client[];
@@ -54,10 +56,13 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
 
   const tabsConfig = useOrdersTabsConfig();
 
+  // Смена статуса с защитой «замер/монтаж нельзя назначить без даты»:
+  // если даты нет — сначала открывается модалка выбора даты (см. useStageDateGuard).
+  const stageGuard = useStageDateGuard(onStatusChange);
   const handleNextStep = async (id: number, nextStatus: string) => {
-    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ status: nextStatus }) }, { id: String(id) }) as { error?: string };
-    if (res?.error) { alert(res.error); return; }
-    onStatusChange(id, nextStatus);
+    const client = allClients.find(c => c.id === id);
+    if (!client) return;
+    await stageGuard.requestStatusChange(client, nextStatus);
   };
 
   // Смена подстатуса прямо с карточки/бейджа (без открытия заявки) — тот же
@@ -141,10 +146,10 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           allClients={clients}
           search={search}
           onSearch={setSearch}
-          onStatusChange={onStatusChange}
           onSelect={setSelected}
           onNextStep={handleNextStep}
           onSaveSubStatus={handleSaveSubStatus}
+          onRequestStatus={stageGuard.requestStatusChange}
         />
       ) : (
         <OrdersListView
@@ -206,6 +211,26 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onClose={() => { setShowAddModal(false); setNewOrderLinkProjectId(null); }}
           onCreated={() => { onReload(); setShowAddModal(false); setNewOrderLinkProjectId(null); }}
           linkProjectId={newOrderLinkProjectId}
+        />
+      )}
+
+      {/* Дата этапа — замер/монтаж нельзя назначить без даты */}
+      {stageGuard.pending && (
+        <StageDateConfirm
+          t={t}
+          nextStatus={stageGuard.pending.nextStatus}
+          currentDate={
+            stageGuard.pending.nextStatus === "measure"
+              ? stageGuard.pending.client.measure_date
+              : stageGuard.pending.client.install_date
+          }
+          currentComment={
+            stageGuard.pending.nextStatus === "measure"
+              ? stageGuard.pending.client.comment_measure
+              : stageGuard.pending.client.comment_install
+          }
+          onConfirm={stageGuard.confirmWithDate}
+          onCancel={stageGuard.cancelStageDate}
         />
       )}
 

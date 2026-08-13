@@ -82,7 +82,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     if (contactMode || isLocalCard || isFinalStage || orderData.is_service) { onClose(); return; }
     setConfirmClose(true);
   };
-  const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean; comment_order?: string; comment_measure?: string; comment_install?: string }) => {
+  const confirmCloseSave = (patch: {
+    next_call_date: string | null; no_call_needed: boolean;
+    comment_order?: string; comment_measure?: string; comment_install?: string;
+    measure_date?: string; install_date?: string;
+  }) => {
     saveOrder(patch);
     setConfirmClose(false);
     onClose();
@@ -253,6 +257,11 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             orderData.status === "measure" || orderData.status === "measured" ? orderData.comment_measure
             : orderData.status === "new" || orderData.status === "call" ? orderData.comment_order
             : orderData.comment_install
+          }
+          currentStageDate={
+            orderData.status === "measure" ? orderData.measure_date
+            : orderData.status === "install_scheduled" ? orderData.install_date
+            : null
           }
           onConfirm={confirmCloseSave}
           onCancel={() => setConfirmClose(false)}

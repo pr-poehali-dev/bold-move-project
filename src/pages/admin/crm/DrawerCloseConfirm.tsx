@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { DateTimePickerInner } from "./DateTimePicker";
+import { stageDateRule } from "./stageDateRules";
 
 // Какое поле комментария (из блока «Комментарий» карточки клиента) относится к
 // текущему этапу воронки — чтобы менеджер мог сразу дописать пару слов по делу,
@@ -27,8 +28,14 @@ interface Props {
   currentStatus?: string;
   /** Текущий текст комментария нужного этапа — поле откроется уже с ним, можно дописать/отредактировать */
   currentStageComment?: string | null;
-  /** Сохранить выбор (next_call_date и/или no_call_needed, и опционально комментарий этапа) и закрыть карточку */
-  onConfirm: (patch: { next_call_date: string | null; no_call_needed: boolean; comment_order?: string; comment_measure?: string; comment_install?: string }) => void;
+  /** Текущая дата этапа (замера/монтажа), если статус её требует. Пустая — закрыть карточку нельзя. */
+  currentStageDate?: string | null;
+  /** Сохранить выбор (next_call_date и/или no_call_needed, и опционально комментарий/дату этапа) и закрыть карточку */
+  onConfirm: (patch: {
+    next_call_date: string | null; no_call_needed: boolean;
+    comment_order?: string; comment_measure?: string; comment_install?: string;
+    measure_date?: string; install_date?: string;
+  }) => void;
   onCancel: () => void;
 }
 
@@ -37,20 +44,33 @@ interface Props {
 // подтвердил или поправил дату следующего звонка (или отметил, что звонить не нужно).
 // Кнопка «Сохранить и закрыть» доступна ВСЕГДА (даже без изменений) — по умолчанию
 // сохраняется уже подставленное текущее значение даты/чекбокса.
-export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, currentStatus, currentStageComment, onConfirm, onCancel }: Props) {
+export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, currentStatus, currentStageComment, currentStageDate, onConfirm, onCancel }: Props) {
   const [noCall, setNoCall] = useState(!!currentNoCallNeeded);
   const [nextCall, setNextCall] = useState<string | null>(currentNextCall ?? null);
   const [comment, setComment] = useState(currentStageComment || "");
+  const [stageDate, setStageDate] = useState<string | null>(currentStageDate ?? null);
 
   const stageField = currentStatus ? STAGE_COMMENT_FIELD[currentStatus] : undefined;
+  // Если заявка стоит на этапе «замер/монтаж назначен», а даты нет — закрыть
+  // карточку нельзя, пока дату не поставят (то же правило и на сервере).
+  const dateRule = stageDateRule(currentStatus);
+  const dateMissing = !!dateRule && !stageDate;
 
   const handleSave = () => {
-    const patch: { next_call_date: string | null; no_call_needed: boolean; comment_order?: string; comment_measure?: string; comment_install?: string } = {
+    if (dateMissing) return;
+    const patch: {
+      next_call_date: string | null; no_call_needed: boolean;
+      comment_order?: string; comment_measure?: string; comment_install?: string;
+      measure_date?: string; install_date?: string;
+    } = {
       next_call_date: noCall ? null : nextCall,
       no_call_needed: noCall,
     };
     if (stageField && comment !== (currentStageComment || "")) {
       patch[stageField.key] = comment;
+    }
+    if (dateRule && stageDate && stageDate !== (currentStageDate || "")) {
+      patch[dateRule.field] = stageDate;
     }
     onConfirm(patch);
   };
@@ -93,6 +113,28 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
           </div>
         </div>
 
+        {/* Дата этапа (замер/монтаж) — обязательна, пока не заполнена, закрыть нельзя */}
+        {dateRule && (
+          <div className="px-4 pt-2.5">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Icon name={dateRule.icon} size={11} style={{ color: dateRule.color }} />
+              <span className="text-xs font-semibold" style={{ color: dateRule.color }}>
+                {dateRule.field === "measure_date" ? "Дата замера" : "Дата монтажа"}
+              </span>
+              {dateMissing && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  style={{ background: "#ef444422", color: "#ef4444" }}>
+                  обязательно
+                </span>
+              )}
+            </div>
+            <div className="rounded-xl overflow-hidden"
+              style={{ border: `1px solid ${dateMissing ? "#ef444470" : t.border}` }}>
+              <DateTimePickerInner value={stageDate} onChange={setStageDate} hideDelete compact />
+            </div>
+          </div>
+        )}
+
         {/* Комментарий к текущему этапу заявки — дозаполняется прямо тут, без похода в карточку клиента */}
         {stageField && (
           <div className="px-4 pt-2.5">
@@ -107,15 +149,17 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
           </div>
         )}
 
-        {/* Кнопки — «Сохранить и закрыть» доступна всегда, без условия disabled */}
+        {/* Кнопки. «Сохранить и закрыть» доступна всегда, кроме случая, когда
+            этап требует даты (замер/монтаж), а она не заполнена. */}
         <div className="flex gap-2 px-4 pt-3 pb-4 mt-1">
           <button onClick={onCancel}
             className="flex-1 py-2 text-sm rounded-xl font-semibold transition"
             style={{ background: t.surface2, color: t.textSub }}>
             Отмена
           </button>
-          <button onClick={handleSave}
-            className="flex-1 py-2 text-sm rounded-xl font-bold transition"
+          <button onClick={handleSave} disabled={dateMissing}
+            title={dateMissing ? "Сначала укажите дату этапа" : undefined}
+            className="flex-1 py-2 text-sm rounded-xl font-bold transition disabled:opacity-40"
             style={{ background: "#7c3aed", color: "#fff" }}>
             Сохранить и закрыть
           </button>
