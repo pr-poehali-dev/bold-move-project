@@ -16,9 +16,16 @@ interface Props {
   contactId?: number;
   /** Увеличивать при каждом запросе «поставить курсор в поле ввода» (напр. переход с другой вкладки) */
   focusSignal?: number;
+  /**
+   * Скрыть строку «телефон + Написать/Позвонить» над лентой.
+   * Нужно там, где эти же действия УЖЕ есть в шапке экрана (вкладка «Сообщения»),
+   * чтобы номер и кнопка «Позвонить» не дублировались двумя строками подряд.
+   * По умолчанию false — в карточке клиента строка показывается как раньше.
+   */
+  hideContactBar?: boolean;
 }
 
-export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }: Props) {
+export default function DrawerTouchesTab({ phone, name, contactId, focusSignal, hideContactBar }: Props) {
   const t = useTheme();
   const { call: callViaUis, calling: callingUis } = useCallClient();
   const [loading, setLoading] = useState(true);
@@ -241,6 +248,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
         callingUis={callingUis}
         onFocusDraft={focusDraft}
         onCall={callViaUis}
+        hideContactBar={hideContactBar}
       />
 
       <TouchesFeed

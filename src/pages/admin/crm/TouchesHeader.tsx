@@ -8,6 +8,8 @@ interface Props {
   callingUis: boolean;
   onFocusDraft: () => void;
   onCall: (phone: string, clientId?: number) => void;
+  /** Скрыть строку контакта (телефон + Написать/Позвонить) — когда те же кнопки уже есть в шапке экрана */
+  hideContactBar?: boolean;
 }
 
 const interestMeta: Record<string, { label: string; color: string }> = {
@@ -18,13 +20,13 @@ const interestMeta: Record<string, { label: string; color: string }> = {
 
 // Шапка вкладки «Касания»: номер телефона + кнопки «Написать»/«Позвонить»,
 // а под ней — мини-статус клиента (интерес, стадия, следующий шаг) от ИИ-анализа.
-export default function TouchesHeader({ phone, client, callingUis, onFocusDraft, onCall }: Props) {
+export default function TouchesHeader({ phone, client, callingUis, onFocusDraft, onCall, hideContactBar }: Props) {
   const t = useTheme();
 
   return (
     <>
       {/* Шапка: номер телефона + звонок — только если телефон указан */}
-      {phone ? (
+      {hideContactBar ? null : phone ? (
         <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2"
           style={{ borderBottom: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: t.textSub }}>

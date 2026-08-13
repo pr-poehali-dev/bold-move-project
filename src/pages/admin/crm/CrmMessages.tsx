@@ -235,6 +235,7 @@ export default function CrmMessages() {
                 phone={selected.phone || ""}
                 name={selected.name || undefined}
                 contactId={selected.contact_id ?? undefined}
+                hideContactBar
               />
             </div>
           </>
