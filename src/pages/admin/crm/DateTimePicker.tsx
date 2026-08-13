@@ -27,28 +27,30 @@ function parseValue(v: string | null | undefined): Date {
 
 
 // Кнопка прокрутки для скролл-столбца времени
-function ScrollColumn({ items, selected, onSelect }: {
+function ScrollColumn({ items, selected, onSelect, compact }: {
   items: number[];
   selected: number;
   onSelect: (v: number) => void;
+  compact?: boolean;
 }) {
   const t = useTheme();
   const ref = useRef<HTMLDivElement>(null);
+  const rowH = compact ? 30 : 36;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const idx = items.indexOf(selected);
-    if (idx >= 0) el.scrollTop = idx * 36 - 36;
-  }, [selected, items]);
+    if (idx >= 0) el.scrollTop = idx * rowH - rowH;
+  }, [selected, items, rowH]);
 
   return (
-    <div ref={ref} className="overflow-y-auto h-[180px]" style={{ scrollbarWidth: "none", width: 52 }}>
+    <div ref={ref} className="overflow-y-auto" style={{ scrollbarWidth: "none", width: 52, height: compact ? 144 : 180 }}>
       {items.map(v => (
         <div key={v}
           onClick={() => onSelect(v)}
           className="flex items-center justify-center text-sm font-semibold cursor-pointer rounded-xl transition"
           style={{
-            height: 36, minHeight: 36,
+            height: rowH, minHeight: rowH,
             background: selected === v ? "#7c3aed" : "transparent",
             color: selected === v ? "#fff" : t.textMute,
           }}>
@@ -70,12 +72,14 @@ interface InnerProps {
   /** Показывать кнопку «Сохранить» справа снизу (для standalone-режима внутри своей модалки) */
   showSaveButton?: boolean;
   onSaveClick?: () => void;
+  /** Уменьшенные отступы — для встраивания в компактные модалки (напр. DrawerCloseConfirm) */
+  compact?: boolean;
 }
 
 // ── Внутренности пикера (календарь + колонки часы/минуты) — без portal и без
 // собственного позиционирования. Переиспользуется и во всплывающем попапе
 // (DateTimePickerPopup), и как встроенный виджет внутри других модалок.
-export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButton, onSaveClick }: InnerProps) {
+export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButton, onSaveClick, compact }: InnerProps) {
   const t = useTheme();
   const initial = parseValue(value);
   const [viewYear,  setViewYear]  = useState(initial.getFullYear());
@@ -129,14 +133,17 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
 
   const handleDelete = () => onChange(null);
 
-  const handleToday = () => {
-    const now = new Date();
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth());
-    setSelDate(now);
-    setHour(now.getHours());
-    setMinute(now.getMinutes());
-    if (!showSaveButton) emitChange(now, now.getHours(), now.getMinutes());
+  // Быстрый выбор дня (Сегодня/Завтра/+2 дня) — время оставляем текущим,
+  // просто сдвигаем дату на offsetDays от «сейчас».
+  const handleQuickDay = (offsetDays: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+    setSelDate(d);
+    setHour(d.getHours());
+    setMinute(d.getMinutes());
+    if (!showSaveButton) emitChange(d, d.getHours(), d.getMinutes());
   };
 
   const handleSave = () => {
@@ -147,10 +154,10 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
   return (
     <div className="flex">
       {/* Левая часть — календарь */}
-      <div className="flex-1 p-4">
+      <div className={compact ? "flex-1 p-3" : "flex-1 p-4"}>
 
         {/* Навигация месяца */}
-        <div className="flex items-center justify-between mb-3">
+        <div className={`flex items-center justify-between ${compact ? "mb-2" : "mb-3"}`}>
           <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/10 transition" style={{ color: t.textMute }}>
             <Icon name="ChevronLeft" size={14} />
           </button>
@@ -186,7 +193,7 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
                 disabled={!isCur}
                 className="flex items-center justify-center text-xs font-semibold rounded-xl transition"
                 style={{
-                  height: 32,
+                  height: compact ? 28 : 32,
                   background: isSel ? "#7c3aed" : isToday ? "rgba(124,58,237,0.15)" : "transparent",
                   color: isSel ? "#fff"
                     : !isCur ? t.textMute + "40"
@@ -202,19 +209,29 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
           })}
         </div>
 
-        {/* Футер */}
-        <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: `1px solid ${t.border}` }}>
-          {!hideDelete ? (
+        {/* Футер — быстрый выбор дня (+ Удалить, если разрешено) */}
+        <div className={`flex items-center gap-1 ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderTop: `1px solid ${t.border}` }}>
+          {!hideDelete && (
             <button onClick={handleDelete}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition hover:bg-red-500/10"
+              className="text-xs font-semibold px-2 py-1.5 rounded-lg transition hover:bg-red-500/10 mr-auto"
               style={{ color: "#ef4444" }}>
               Удалить
             </button>
-          ) : <span />}
-          <button onClick={handleToday}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition hover:bg-white/5"
-            style={{ color: "#a78bfa" }}>
+          )}
+          <button onClick={() => handleQuickDay(0)}
+            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
+            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
             Сегодня
+          </button>
+          <button onClick={() => handleQuickDay(1)}
+            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
+            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
+            Завтра
+          </button>
+          <button onClick={() => handleQuickDay(2)}
+            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
+            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
+            +2 дня
           </button>
         </div>
       </div>
@@ -222,7 +239,7 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
       {/* Правая часть — время */}
       <div className="flex flex-col" style={{ borderLeft: `1px solid ${t.border}`, width: 116 }}>
         {/* Заголовок */}
-        <div className="text-center text-xs font-bold py-3 px-2" style={{ color: t.textMute, borderBottom: `1px solid ${t.border}` }}>
+        <div className={`text-center text-xs font-bold ${compact ? "py-2" : "py-3"} px-2`} style={{ color: t.textMute, borderBottom: `1px solid ${t.border}` }}>
           {pad(hour)} : {pad(minute)}
         </div>
 
@@ -230,12 +247,12 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-hidden py-2 pl-2">
             <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Час</div>
-            <ScrollColumn items={HOURS} selected={hour} onSelect={changeHour} />
+            <ScrollColumn items={HOURS} selected={hour} onSelect={changeHour} compact={compact} />
           </div>
           <div className="w-px self-stretch my-2" style={{ background: t.border }} />
           <div className="flex-1 overflow-hidden py-2 pr-2">
             <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Мин</div>
-            <ScrollColumn items={MINUTES} selected={minute} onSelect={changeMinute} />
+            <ScrollColumn items={MINUTES} selected={minute} onSelect={changeMinute} compact={compact} />
           </div>
         </div>
 

@@ -81,7 +81,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
     if (contactMode || isLocalCard || isFinalStage) { onClose(); return; }
     setConfirmClose(true);
   };
-  const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean }) => {
+  const confirmCloseSave = (patch: { next_call_date: string | null; no_call_needed: boolean; comment_order?: string; comment_measure?: string; comment_install?: string }) => {
     saveOrder(patch);
     setConfirmClose(false);
     onClose();
@@ -248,6 +248,12 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
           t={t}
           currentNextCall={orderData.next_call_date}
           currentNoCallNeeded={orderData.no_call_needed}
+          currentStatus={orderData.status}
+          currentStageComment={
+            orderData.status === "measure" || orderData.status === "measured" ? orderData.comment_measure
+            : orderData.status === "new" || orderData.status === "call" ? orderData.comment_order
+            : orderData.comment_install
+          }
           onConfirm={confirmCloseSave}
           onCancel={() => setConfirmClose(false)}
         />
