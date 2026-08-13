@@ -1,4 +1,3 @@
-import { Dispatch, SetStateAction } from "react";
 import { STATUS_LABELS, STATUS_COLORS, Client } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
@@ -16,7 +15,6 @@ interface Props {
   ordersListOpen: boolean;
   setOrdersListOpen: (v: boolean) => void;
   saveOrder: (patch: Partial<Client>) => void;
-  setComments: Dispatch<SetStateAction<{ text: string; date: string }[]>>;
   hideHidden: boolean;
   canEdit: boolean;
   canOrdersEdit: boolean;
@@ -35,7 +33,7 @@ interface Props {
 
 export function DrawerOrdersPanel({
   t, client, allClientOrders, selectedOrderId, setSelectedOrderId, orderData, setOrderData, setOrderInnerTab,
-  ordersListOpen, setOrdersListOpen, saveOrder, setComments, hideHidden,
+  ordersListOpen, setOrdersListOpen, saveOrder, hideHidden,
   canEdit, canOrdersEdit, canFinance, canFiles, canFieldContacts, canFieldAddress, canFieldDates,
   canFieldFinance, canFieldFiles, canFieldCancel, onUpdated, onGoToTouches,
 }: Props) {
@@ -176,7 +174,6 @@ export function DrawerOrdersPanel({
             client={client}
             setData={setOrderData}
             save={saveOrder}
-            setComments={setComments}
             hideHidden={hideHidden}
             canEdit={canEdit}
             canOrdersEdit={canOrdersEdit}

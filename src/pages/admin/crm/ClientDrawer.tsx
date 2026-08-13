@@ -196,7 +196,6 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               ordersListOpen={ordersListOpen}
               setOrdersListOpen={setOrdersListOpen}
               saveOrder={saveOrder}
-              setComments={() => {}}
               hideHidden={hideHidden}
               canEdit={canEdit}
               canOrdersEdit={canOrdersEdit}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useState, useRef, useEffect } from "react";
 import func2url from "@/../backend/func2url.json";
 import { Client, STATUS_LABELS, crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
@@ -27,7 +27,6 @@ interface Props {
   client: Client;
   setData: (c: Client) => void;
   save: (patch: Partial<Client>) => void;
-  setComments: Dispatch<SetStateAction<{ text: string; date: string }[]>>;
   hideHidden?: boolean;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
@@ -44,7 +43,7 @@ interface Props {
   onGoToTouches?: () => void;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, setComments, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload, onGoToTouches }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload, onGoToTouches }: Props) {
   const t = useTheme();
   const { user } = useAuth();
 
@@ -354,16 +353,12 @@ export default function DrawerInfoTab({ data, client, setData, save, setComments
         <span className="text-[11px]" style={{ color: "#ffffff30" }}>+ Добавить блок</span>
       </div>
 
-      {/* Активность — под блоками, всегда видна */}
+      {/* Активность — под блоками, всегда видна. Полностью автоматическая лента,
+          ручной ввод комментариев убран (см. ActivityFeed.tsx) */}
       <ActivityFeed
         client={data}
         extraEvents={activityLog}
         reloadKey={activityReload}
-        onAddComment={text => {
-          const ts = now();
-          setComments(prev => [...prev, { text, date: ts }]);
-          logAction("MessageSquare", "#7c3aed", `Комментарий: ${text}`);
-        }}
       />
 
       {/* Модалка добавления блока */}
