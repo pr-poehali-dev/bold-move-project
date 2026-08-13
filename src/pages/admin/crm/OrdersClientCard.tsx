@@ -4,7 +4,6 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
-import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
@@ -33,8 +32,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
   onSwipeAgent?: (client: Client) => void;
 }) {
   const t = useTheme();
-  const orderSources = useOrderSourcesCtx();
-  const src = sourceDisplay(c.source, orderSources);
   const allSubs = useSubstatuses();
   const [stepping, setStepping]             = useState(false);
   const localSubStatus = c.sub_status ?? null;
@@ -119,6 +116,18 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     </span>
                   );
                 })()}
+                {isInstall
+                  ? <InstallProgress client={clientWithSub} />
+                  : (
+                    <SubstatusPicker
+                      active={activeSub}
+                      options={subsForTab}
+                      fallbackLabel={STATUS_LABELS[c.status] || c.status}
+                      fallbackColor={STATUS_COLORS[c.status]}
+                      onSelect={subId => onSaveSubStatus?.(c.id, subId)}
+                    />
+                  )
+                }
               </div>
               <div className="flex items-center gap-1 flex-wrap mt-1">
                 {ordersCount > 1 && (
@@ -132,12 +141,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide"
                     style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
                     ДЕМО
-                  </span>
-                )}
-                {src && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                    style={{ background: src.color + "20", color: src.color }}>
-                    {src.label}
                   </span>
                 )}
                 {c.avito_chat_url && (
@@ -157,18 +160,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     <Icon name="PhoneMissed" size={9} /> Пропущен
                   </span>
                 )}
-                {isInstall
-                  ? <InstallProgress client={clientWithSub} />
-                  : (
-                    <SubstatusPicker
-                      active={activeSub}
-                      options={subsForTab}
-                      fallbackLabel={STATUS_LABELS[c.status] || c.status}
-                      fallbackColor={STATUS_COLORS[c.status]}
-                      onSelect={subId => onSaveSubStatus?.(c.id, subId)}
-                    />
-                  )
-                }
               </div>
               <div className="space-y-1 mt-1.5">
                 {c.client_name && (
