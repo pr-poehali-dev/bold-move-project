@@ -26,6 +26,9 @@ export interface Touch {
   answered_by?: "human" | "voicemail" | null;
   /** id сообщения, на которое отвечаем (реплай), только для CRM-интерфейса */
   reply_to_id?: number | null;
+  /** Имя автора сообщения — заполнено только для группового чата (кто из
+   * участников написал), в личных диалогах не используется */
+  sender_name?: string | null;
 }
 
 // Достаёт вложения сообщения в типизированном виде. Формат приходит из
@@ -48,6 +51,10 @@ export interface TouchClient {
   next_action: string | null;
   interest: string | null;
   stage: string | null;
+  /** 'private' — личный диалог, 'group'/'channel' — групповой чат Telegram */
+  chat_type?: "private" | "group" | "channel";
+  /** Название группы/канала (заполнено только для группового чата) */
+  group_title?: string | null;
 }
 
 // Канал → иконка + подпись

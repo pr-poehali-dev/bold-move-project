@@ -47,10 +47,13 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                   background: out ? t.accent + "22" : t.surface2,
                   border: `1px solid ${out ? t.accent + "40" : t.border}`,
                 }}>
-                {/* Заголовок: канал */}
+                {/* Заголовок: канал + (в групповом чате) имя автора сообщения */}
                 <div className="flex items-center gap-1 mb-1">
                   <Icon name={meta.icon} size={11} style={{ color: meta.color }} />
                   <span className="text-[10px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
+                  {tt.sender_name && (
+                    <span className="text-[10px] font-semibold" style={{ color: t.textMute }}>· {tt.sender_name}</span>
+                  )}
                 </div>
 
                 {/* Цитата сообщения, на которое отвечаем */}

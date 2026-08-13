@@ -28,4 +28,8 @@ export interface Dialog {
   favorite: boolean;
   source: string | null;
   avito_chat_url: string | null;
+  /** 'private' — личный диалог, 'group'/'channel' — групповой чат Telegram */
+  chat_type?: "private" | "group" | "channel";
+  /** Название группы/канала (заполнено только для группового чата) */
+  group_title?: string | null;
 }

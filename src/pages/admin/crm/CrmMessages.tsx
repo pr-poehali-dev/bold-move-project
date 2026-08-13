@@ -20,6 +20,9 @@ export default function CrmMessages() {
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [hiddenOpen, setHiddenOpen] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
+  // По умолчанию групповые чаты/каналы Telegram скрыты — это не переписка
+  // с клиентом, а мусор из групп, куда добавлен рабочий аккаунт.
+  const [showGroups, setShowGroups] = useState(false);
 
   const refreshHiddenCount = useCallback(async () => {
     try {
@@ -28,24 +31,26 @@ export default function CrmMessages() {
     } catch { /* тихо */ }
   }, []);
 
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (silent = false, withGroups = showGroups) => {
     if (!silent) setLoading(true);
     try {
-      const d = await crmFetch("touch-inbox") as { dialogs?: Dialog[] };
+      const extra = withGroups ? { include_groups: "1" } : undefined;
+      const d = await crmFetch("touch-inbox", undefined, extra) as { dialogs?: Dialog[] };
       setDialogs(d?.dialogs ?? []);
     } catch { /* тихо */ }
     if (!silent) setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { load(); refreshHiddenCount(); }, [load, refreshHiddenCount]);
+  useEffect(() => { load(false, showGroups); refreshHiddenCount(); }, [showGroups, refreshHiddenCount]); // eslint-disable-line react-hooks/exhaustive-deps
   // Тихий поллинг списка — новые сообщения появляются сверху сами
   useEffect(() => {
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
-      load(true);
+      load(true, showGroups);
     }, 30000);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, showGroups]);
 
   // Признак непрочитанного — ОБЩИЙ на компанию, приходит с сервера (touch_clients.last_read_at)
   const unreadFor = (d: Dialog): number => (d.unread ? 1 : 0);
@@ -116,6 +121,15 @@ export default function CrmMessages() {
             }}>
             <Icon name="Star" size={15} style={showFavOnly ? { fill: "#f59e0b" } : undefined} />
           </button>
+          <button onClick={() => setShowGroups(v => !v)} title={showGroups ? "Скрыть групповые чаты" : "Показать групповые чаты"}
+            className="flex-shrink-0 p-2 rounded-xl transition"
+            style={{
+              background: showGroups ? t.accent + "22" : t.surface2,
+              border: `1px solid ${showGroups ? t.accent : t.border}`,
+              color: showGroups ? t.accentLight : t.textMute,
+            }}>
+            <Icon name="Users" size={15} />
+          </button>
           <button onClick={() => { setHiddenOpen(true); refreshHiddenCount(); }} title="Скрытые чаты"
             className="relative flex-shrink-0 p-2 rounded-xl transition"
             style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textMute }}>
@@ -177,9 +191,12 @@ export default function CrmMessages() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold truncate flex items-center gap-1" style={{ color: t.text }}>
                   {selected.favorite && <Icon name="Star" size={12} style={{ color: "#f59e0b", fill: "#f59e0b" }} />}
-                  {selected.name || selected.phone || "Без имени"}
+                  {selected.chat_type && selected.chat_type !== "private" && <Icon name="Users" size={13} style={{ color: t.textMute }} />}
+                  {(selected.chat_type !== "private" && selected.group_title) || selected.name || selected.phone || "Без имени"}
                 </div>
-                <div className="text-[11px]" style={{ color: t.textMute }}>{selMeta.label}</div>
+                <div className="text-[11px]" style={{ color: t.textMute }}>
+                  {selMeta.label}{selected.chat_type === "group" ? " · Группа" : selected.chat_type === "channel" ? " · Канал" : ""}
+                </div>
               </div>
 
               {/* Быстрые действия */}

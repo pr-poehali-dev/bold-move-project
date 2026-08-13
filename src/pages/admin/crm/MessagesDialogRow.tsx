@@ -32,7 +32,8 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const meta = channelMeta(d.last_channel);
-  const title = d.name || d.phone || "Без имени";
+  const isGroup = d.chat_type && d.chat_type !== "private";
+  const title = (isGroup && d.group_title) || d.name || d.phone || "Без имени";
   const avito = isAvito(d);
 
   const act = (fn: (d: Dialog) => void) => (e: React.MouseEvent) => {
@@ -78,6 +79,12 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
           <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full flex items-center justify-center"
             style={{ background: t.surface, border: `1px solid ${t.border}` }}>
             <Icon name="Pin" size={9} style={{ color: t.accent }} />
+          </div>
+        )}
+        {isGroup && (
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+            style={{ background: t.surface, border: `1px solid ${t.border}` }} title="Групповой чат">
+            <Icon name="Users" size={9} style={{ color: t.textMute }} />
           </div>
         )}
       </div>

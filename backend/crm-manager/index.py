@@ -3028,7 +3028,7 @@ def handler(event: dict, context) -> dict:
                 phone_q = qs.get("phone")
                 name_q = qs.get("name")
                 cols = ("id, phone, name, state_summary, next_action, "
-                        "interest, stage, analysis_updated_at")
+                        "interest, stage, analysis_updated_at, chat_type, group_title")
 
                 if client_id:
                     # Режим по id touch_clients (обратная совместимость)
@@ -3118,13 +3118,15 @@ def handler(event: dict, context) -> dict:
                     "interest": cli[5], "stage": cli[6],
                     "analysis_updated_at": cli[7],
                     "last_read_at": last_read_at,
+                    "chat_type": cli[8], "group_title": cli[9],
                 }
                 # Лента касаний по времени. status='hidden' — технические дубли звонков
                 # (черновик click-to-call, который из-за сбоя не смог смэтчиться с
                 # вебхуком завершения по external_id) — в ленте не показываем.
+                # sender_name — кто из участников группы написал (для личных диалогов пусто).
                 cur.execute(f"""
                     SELECT id, channel, direction, external_id, text, audio_url,
-                           duration_sec, attachments, status, created_at, reply_to_id
+                           duration_sec, attachments, status, created_at, reply_to_id, sender_name
                     FROM {SCHEMA}.touch_events
                     WHERE client_id=%s AND status != 'hidden'
                     ORDER BY created_at ASC, id ASC
@@ -3134,7 +3136,7 @@ def handler(event: dict, context) -> dict:
                     "text": r[4], "audio_url": r[5], "duration_sec": r[6],
                     "attachments": r[7], "status": r[8], "created_at": r[9],
                     "answered_by": (detect_call_answered_by(r[4], r[6], r[8]) if r[1] == "call" else None),
-                    "reply_to_id": r[10],
+                    "reply_to_id": r[10], "sender_name": r[11],
                 } for r in cur.fetchall()]
 
                 # Последний детальный ИИ-анализ клиента (для вкладки «Аналитика»)
@@ -3428,6 +3430,14 @@ def handler(event: dict, context) -> dict:
             text        = body.get("text")
             external_id = body.get("external_id")   # id сообщения в канале — защита от дублей
             attachments = body.get("attachments")
+            # Личка / группа / канал — приходит от воркера (Telethon сам знает тип
+            # чата точно). Для групп/каналов group_title — название чата (это
+            # клиент в CRM, а не имя случайного участника), sender_name — кто из
+            # участников написал именно это сообщение (для отображения в ленте).
+            chat_type   = body.get("chat_type", "private")
+            group_title = body.get("group_title")
+            sender_name = body.get("sender_name")
+            is_group = chat_type != "private"
 
             if channel not in ("telegram", "max", "avito", "whatsapp"):
                 return err("unknown channel")
@@ -3436,8 +3446,10 @@ def handler(event: dict, context) -> dict:
 
             # Находим/создаём клиента: приоритет — телефон, иначе внешний id канала
             # (channel_ids — JSONB {"telegram": "12345", "max": "..."}, ищем по конкретному каналу)
+            # Группу/канал по телефону не ищем — участники группы могут писать с любых
+            # телефонов, это не карточка одного клиента, а общий чат по external_chat_id.
             client_row = None
-            if phone:
+            if phone and not is_group:
                 norm = normalize_phone(phone)
                 if norm:
                     cur.execute(
@@ -3458,10 +3470,17 @@ def handler(event: dict, context) -> dict:
                 client_row = cur.fetchone()
                 if not client_row:
                     cur.execute(
-                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) "
-                        f"VALUES (%s, %s, %s::jsonb) RETURNING id",
-                        (owner_id, name, json.dumps({channel: str(external_chat_id)})))
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids, chat_type, group_title) "
+                        f"VALUES (%s, %s, %s::jsonb, %s, %s) RETURNING id",
+                        (owner_id, group_title or name, json.dumps({channel: str(external_chat_id)}),
+                         chat_type, group_title))
                     client_row = cur.fetchone()
+                    conn.commit()
+                elif is_group and group_title:
+                    # Название группы может меняться — держим свежим при каждом сообщении.
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.touch_clients SET group_title=%s, chat_type=%s WHERE id=%s",
+                        (group_title, chat_type, client_row[0]))
                     conn.commit()
 
             client_id = client_row[0]
@@ -3479,10 +3498,10 @@ def handler(event: dict, context) -> dict:
             # Сохраняем касание (UNIQUE(channel, external_id) защищает от повторной вставки того же вебхука)
             try:
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'received')
+                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status, sender_name)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'received', %s)
                 """, (client_id, channel, direction, external_id,
-                      text, json.dumps(attachments, ensure_ascii=False) if attachments else None))
+                      text, json.dumps(attachments, ensure_ascii=False) if attachments else None, sender_name))
                 conn.commit()
             except psycopg2.errors.UniqueViolation:
                 conn.rollback()
@@ -3490,8 +3509,10 @@ def handler(event: dict, context) -> dict:
 
             # Автоматический пересбор ИИ-анализа при входящем — но не чаще раза в 10 минут
             # на клиента (если пишет несколько сообщений подряд, анализ не дублируем).
+            # Группы/каналы не анализируем — это не сделка с одним клиентом, ИИ-сводка
+            # по продажам для группового чата бессмысленна и просто тратит деньги.
             analysis = None
-            if direction == "in":
+            if direction == "in" and not is_group:
                 cur.execute(
                     f"SELECT analysis_updated_at FROM {SCHEMA}.touch_clients WHERE id=%s",
                     (client_id,))
@@ -4724,6 +4745,12 @@ def handler(event: dict, context) -> dict:
             if not owner_id:
                 return err("company not resolved", 400)
 
+            # По умолчанию групповые чаты/каналы Telegram не показываем в общем
+            # списке диалогов — это не переписка с клиентом, а мусор из групп,
+            # куда добавлен рабочий аккаунт. ?include_groups=1 — показать и их.
+            include_groups = qs.get("include_groups") == "1"
+            group_filter = "" if include_groups else "AND tc.chat_type = 'private'"
+
             cur.execute(f"""
                 SELECT tc.id, tc.name, tc.phone, tc.crm_contact_id,
                        tc.interest, tc.stage,
@@ -4731,7 +4758,8 @@ def handler(event: dict, context) -> dict:
                        (SELECT COUNT(*) FROM {SCHEMA}.touch_events te2
                         WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count,
                        tc.pinned, tc.favorite,
-                       lc.source, lc.avito_chat_url, tc.last_read_at
+                       lc.source, lc.avito_chat_url, tc.last_read_at,
+                       tc.chat_type, tc.group_title
                 FROM {SCHEMA}.touch_clients tc
                 JOIN LATERAL (
                     SELECT channel, direction, text, created_at
@@ -4741,7 +4769,7 @@ def handler(event: dict, context) -> dict:
                     LIMIT 1
                 ) le ON TRUE
                 LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = tc.crm_contact_id
-                WHERE tc.company_id = %s AND tc.hidden = FALSE
+                WHERE tc.company_id = %s AND tc.hidden = FALSE {group_filter}
                 ORDER BY tc.pinned DESC, le.created_at DESC
                 LIMIT 200
             """, (owner_id,))
@@ -4769,6 +4797,8 @@ def handler(event: dict, context) -> dict:
                     "favorite": bool(r[12]),
                     "source": r[13],
                     "avito_chat_url": r[14],
+                    "chat_type": r[16],
+                    "group_title": r[17],
                 })
             return ok({"dialogs": dialogs})
 

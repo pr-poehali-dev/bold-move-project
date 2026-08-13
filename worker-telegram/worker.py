@@ -238,12 +238,29 @@ async def run_company_session(company_id: int, webhook_key: str, client: Telegra
             "external_id": f"tg_{event.chat_id}_{event.id}",
             "external_chat_id": str(event.chat_id),
         }
+        # Lichka ili gruppa/kanal — Telethon znaet eto tochno (ne nado gadat' po
+        # znaku chat_id). Dlya gruppy/kanala dopolnitel'no shlyom nazvanie chata
+        # (ne imya otpravitelya — chtoby v CRM byla ODNA kartochka gruppy, a ne
+        # otdel'naya "kartochka klienta" na kazhdogo, kto v nej napisal) i imya
+        # KONKRETNOGO avtora soobscheniya (sender_name) — nuzhno v lente gruppy,
+        # chtoby videt' kto imenno napisal.
+        if event.is_private:
+            payload["chat_type"] = "private"
+        else:
+            payload["chat_type"] = "channel" if event.is_channel and not event.is_group else "group"
+            chat = await event.get_chat()
+            chat_title = getattr(chat, "title", None)
+            if chat_title:
+                payload["group_title"] = chat_title
+            if name:
+                payload["sender_name"] = name
         if phone:
             payload["phone"] = phone
         if name:
             payload["name"] = name
         preview = (event.raw_text or "(bez teksta)")[:80]
-        print(f"[tg-in c={company_id}] ot {name or phone or event.chat_id}: {preview}")
+        chat_label = payload.get("group_title") or name or phone or event.chat_id
+        print(f"[tg-in c={company_id}] ({payload['chat_type']}) {chat_label}: {preview}")
         send_to_crm(webhook_key, company_id, payload)
 
     async def poll_and_send_loop():
