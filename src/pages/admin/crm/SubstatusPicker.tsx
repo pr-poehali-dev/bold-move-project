@@ -55,7 +55,9 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
   const color = active?.color || fallbackColor;
 
   return (
-    <div ref={ref} className="relative inline-block flex-shrink-0" onClick={e => e.stopPropagation()}>
+    <div ref={ref}
+      className={`relative flex-shrink-0 ${dense ? "inline-flex items-center leading-none" : "inline-block"}`}
+      onClick={e => e.stopPropagation()}>
       <button
         onClick={() => setOpen(v => !v)}
         title="Изменить подстатус"
