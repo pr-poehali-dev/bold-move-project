@@ -34,12 +34,14 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
 }) {
   const t = useTheme();
   const orderSources = useOrderSourcesCtx();
-  // Бейдж источника показываем только для НЕ-Avito источников (Квиз, Рекомендация и т.п.) —
-  // для Avito источник и так виден по оранжевой кнопке «Avito» со ссылкой на диалог,
-  // дублировать бейджем не нужно.
-  const srcRaw = sourceDisplay(c.source, orderSources);
+  // Бейдж источника скрываем ТОЛЬКО когда есть кликабельная ссылка на диалог Avito
+  // (тогда источник и так виден по оранжевой кнопке «Avito», дублировать не нужно).
+  // Если источник = Авито, но ссылки нет (например, заявка заведена вручную и отмечена
+  // как «Авито» для статистики) — бейдж обязательно показываем, иначе источник
+  // визуально теряется и его не видно в отчётах.
+  const src = sourceDisplay(c.source, orderSources);
   const isAvitoSrc = (c.source || "").trim().toLowerCase() === "авито" || (c.source || "").trim().toLowerCase() === "avito";
-  const src = isAvitoSrc ? null : srcRaw;
+  const showSrcBadge = src && !(isAvitoSrc && c.avito_chat_url);
   const allSubs = useSubstatuses();
   const [stepping, setStepping]             = useState(false);
   const localSubStatus = c.sub_status ?? null;
@@ -152,10 +154,10 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     ДЕМО
                   </span>
                 )}
-                {src && (
+                {showSrcBadge && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                    style={{ background: src.color + "20", color: src.color }}>
-                    {src.label}
+                    style={{ background: src!.color + "20", color: src!.color }}>
+                    {src!.label}
                   </span>
                 )}
                 {c.avito_chat_url && (
