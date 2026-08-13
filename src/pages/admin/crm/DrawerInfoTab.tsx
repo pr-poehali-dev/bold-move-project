@@ -278,7 +278,7 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
                   v ? "Отмечено как сервис" : "Снята отметка «Сервис»",
                   "Hammer", "#14b8a6",
                 )}
-                className="h-5 w-9 data-[state=checked]:bg-teal-500"
+                className="h-5 w-9 data-[state=unchecked]:bg-white/10 data-[state=checked]:bg-teal-500"
               />
             </label>
           }>
