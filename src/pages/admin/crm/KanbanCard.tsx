@@ -139,6 +139,14 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSav
               <Icon name="ExternalLink" size={9} /> Avito
             </button>
           )}
+          {client.is_service && (
+            <span
+              title="Сервисная заявка — доделка/переделка, не новый монтаж"
+              className="flex-shrink-0 flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+              style={{ background: "#14b8a622", color: "#14b8a6", border: "1px solid #14b8a644" }}>
+              <Icon name="Hammer" size={9} /> Сервис
+            </span>
+          )}
           {client.has_missed_call && (
             <span
               title="Есть пропущенный звонок, на который ещё не перезвонили"

@@ -714,7 +714,7 @@ ALL_CLIENT_FIELDS = [
     "next_call_date", "no_call_needed",
     "notes", "address", "area", "budget", "source",
     "comment_order", "comment_measure", "comment_install", "comment_client",
-    "summary_comm", "summary_status",
+    "summary_comm", "summary_status", "is_service",
     "contract_sum", "prepayment", "extra_payment", "extra_agreement_sum",
     "discount_pct", "discount_amount",
     "prepayment_confirmed", "prepayment_confirmed_at", "prepayment_fact",
@@ -1003,7 +1003,7 @@ def handler(event: dict, context) -> dict:
                     SELECT lc.id, lc.session_id, lc.client_name, lc.phone, lc.status, lc.sub_status, lc.client_status,
                            lc.measure_date, lc.install_date, lc.notes, lc.address, lc.area, lc.budget, lc.source, lc.created_via, lc.created_at,
                            lc.comment_order, lc.comment_measure, lc.comment_install, lc.comment_client,
-                           lc.summary_comm, lc.summary_status,
+                           lc.summary_comm, lc.summary_status, lc.is_service,
                            lc.contract_sum, lc.prepayment, lc.extra_payment, lc.extra_agreement_sum,
                            lc.discount_pct, lc.discount_amount,
                            lc.prepayment_confirmed, lc.prepayment_confirmed_at, lc.prepayment_fact,
@@ -1094,8 +1094,8 @@ def handler(event: dict, context) -> dict:
                     f"""INSERT INTO {SCHEMA}.live_chats
                         (session_id, client_name, phone, status, client_status, measure_date, install_date,
                          notes, address, area, budget, source, created_via,
-                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id, next_call_date, status_changed_at)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                         contract_sum, prepayment, responsible_phone, map_link, tags, company_id, next_call_date, is_service, status_changed_at)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                         RETURNING id""",
                     (
                         body.get("session_id", f"manual_{datetime.now().timestamp()}"),
@@ -1118,6 +1118,7 @@ def handler(event: dict, context) -> dict:
                         tags,
                         final_company_id,
                         default_next_call_date(),
+                        bool(body.get("is_service", False)),
                     )
                 )
                 new_id = cur.fetchone()[0]

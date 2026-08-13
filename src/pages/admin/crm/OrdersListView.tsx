@@ -3,7 +3,7 @@ import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
 import { filterOrdersBySearch } from "./ordersSearch";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs, Substatus } from "./OrdersTabs";
@@ -98,7 +98,14 @@ export function OrdersListView({
 
   const allTabDef: TabDef = { id: ALL_TAB_ID, label: "Все", icon: "LayoutGrid", color: "#64748b", statuses: [], emptyText: "Заявок нет" };
   const currentTab = activeTab === ALL_TAB_ID ? allTabDef : allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
-  const clientsByStatus = activeTab === ALL_TAB_ID ? allClients : allClients.filter(c => currentTab.statuses.includes(c.status ?? ""));
+  // Вкладка «Сервис» фильтрует по флагу is_service (мелкие доделки/переделки),
+  // а не по статусу. Из остальных вкладок сервисные заявки исключаем, чтобы они
+  // не мешались с полноценными объектами (особенно в «Монтажах»).
+  const clientsByStatus = activeTab === SERVICE_TAB_ID
+    ? allClients.filter(c => c.is_service)
+    : activeTab === ALL_TAB_ID
+      ? allClients
+      : allClients.filter(c => !c.is_service && currentTab.statuses.includes(c.status ?? ""));
 
   // Реальные этапы (статусы) текущей вкладки — бирки показываются только когда
   // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).

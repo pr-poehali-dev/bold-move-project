@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, ALL_TAB_ID } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
 import { TabDef, Props } from "./ordersTabsShared";
 import { TabSettingsPopup } from "./OrdersTabSettingsPopup";
 
@@ -45,11 +45,18 @@ export function OrdersTabs({
   // но счётчик/сумма на самой кнопке должны отражать только реально выполненные заказы.
   const statusesForStats = (tab: TabDef) => tab.id === "done" ? ["done"] : tab.statuses;
 
-  const getRevenue = (tab: TabDef) =>
-    allClients.filter(c => statusesForStats(tab).includes(c.status)).reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
+  // Вкладка «Сервис» считается по флагу is_service (доделки/переделки), а не по статусу.
+  // Из остальных вкладок сервисные заявки исключаем — иначе они задвоятся в счётчиках
+  // и подмешают свои суммы к монтажам.
+  const clientsForTab = (tab: TabDef) =>
+    tab.id === SERVICE_TAB_ID
+      ? allClients.filter(c => c.is_service)
+      : allClients.filter(c => !c.is_service && statusesForStats(tab).includes(c.status));
 
-  const getCount = (tab: TabDef) =>
-    allClients.filter(c => statusesForStats(tab).includes(c.status)).length;
+  const getRevenue = (tab: TabDef) =>
+    clientsForTab(tab).reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
+
+  const getCount = (tab: TabDef) => clientsForTab(tab).length;
 
   const gearRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);

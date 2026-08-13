@@ -28,12 +28,20 @@ export const NEXT_LABEL: Record<string, string> = {
 // Не входит в ORDERS_TABS (не редактируется, не скрывается, всегда первый).
 export const ALL_TAB_ID = "all";
 
+// Особый таб «Сервис» — фильтрует не по статусу, а по флагу is_service:
+// мелкие доделки/переделки по уже сданному объекту. Такие заявки идут по обычным
+// статусам воронки, поэтому отдельного статуса у них нет — только признак.
+export const SERVICE_TAB_ID = "service";
+
 export const ORDERS_TABS = [
   { id: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: ["new"] as readonly string[],                                         emptyText: "Новых заявок нет" },
   { id: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] as readonly string[],                                        emptyText: "Нет заявок в работе" },
   { id: "measures", label: "Замеры",    icon: "Ruler",        color: "#f59e0b", statuses: ["measure","measured"] as readonly string[],                          emptyText: "Нет замеров" },
   { id: "installs", label: "Монтажи",   icon: "Wrench",       color: "#f97316", statuses: ["contract","prepaid","install_scheduled","install_done","extra_paid"] as readonly string[], emptyText: "Нет активных монтажей" },
   { id: "done",     label: "Финальный", icon: "CheckCircle2", color: "#10b981", statuses: ["done","cancelled"] as readonly string[],                             emptyText: "Нет завершённых заказов" },
+  // Сервис — фильтр по флагу is_service, а не по статусу (statuses пустой).
+  // Обработка этого таба особая, см. SERVICE_TAB_ID в OrdersListView/OrdersTabs.
+  { id: SERVICE_TAB_ID, label: "Сервис", icon: "Hammer", color: "#14b8a6", statuses: [] as readonly string[], emptyText: "Нет сервисных заявок" },
 ] as const;
 
 export type OrdersTabId = typeof ORDERS_TABS[number]["id"];

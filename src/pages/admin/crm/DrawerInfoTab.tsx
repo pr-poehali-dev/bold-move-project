@@ -269,6 +269,28 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
             }}
             onSaveSubStatus={v => save({ sub_status: v })}
           />
+
+          {/* Тип заявки: обычный объект или сервис (доделка/переделка).
+              Сервисные заявки уходят в отдельную вкладку «Сервис» и не мешаются в «Монтажах». */}
+          <label className="flex items-center gap-2.5 mt-2 mb-1 py-2 px-3 rounded-xl cursor-pointer transition"
+            style={{
+              background: data.is_service ? "rgba(20,184,166,0.1)" : "transparent",
+              border: `1px solid ${data.is_service ? "rgba(20,184,166,0.35)" : "transparent"}`,
+              opacity: canOrdersEdit ? 1 : 0.6,
+            }}>
+            <input type="checkbox" checked={!!data.is_service} disabled={!canOrdersEdit}
+              onChange={e => saveWithLog(
+                { is_service: e.target.checked },
+                e.target.checked ? "Отмечено как сервис" : "Снята отметка «Сервис»",
+                "Hammer", "#14b8a6",
+              )}
+              className="w-4 h-4 rounded flex-shrink-0"
+              style={{ accentColor: "#14b8a6" }} />
+            <span className="text-xs font-semibold" style={{ color: data.is_service ? "#14b8a6" : t.textSub }}>
+              Сервисная заявка
+            </span>
+            <span className="text-[11px]" style={{ color: t.textMute }}>— доделка / переделка, не новый монтаж</span>
+          </label>
         </Section>
       )}
 

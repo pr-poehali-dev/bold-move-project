@@ -154,6 +154,13 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     ДЕМО
                   </span>
                 )}
+                {c.is_service && (
+                  <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                    title="Сервисная заявка — доделка/переделка, не новый монтаж"
+                    style={{ background: "#14b8a622", color: "#14b8a6", border: "1px solid #14b8a644" }}>
+                    <Icon name="Hammer" size={9} /> Сервис
+                  </span>
+                )}
                 {showSrcBadge && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
                     style={{ background: src!.color + "20", color: src!.color }}>
