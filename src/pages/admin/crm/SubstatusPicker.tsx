@@ -11,15 +11,18 @@ interface Props {
   fallbackLabel: string;
   fallbackColor: string;
   onSelect: (id: number) => void;
+  /** Компактный размер (text-[9px], как соседний бейдж времени) — для верхней строки карточки заявки */
+  dense?: boolean;
 }
 
 // Компактный бейдж статуса/подстатуса + выпадающий список вариантов по клику.
 // Используется и в списке заявок (OrdersClientCard), и на карточках Kanban —
 // единая логика, чтобы смена подстатуса работала одинаково в обоих местах.
-export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor, onSelect }: Props) {
+export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor, onSelect, dense }: Props) {
   const t = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const sizeCls = dense ? "text-[9px] px-1.5 py-0.5" : "text-[10px] px-1.5 py-0.5";
 
   useEffect(() => {
     if (!open) return;
@@ -33,7 +36,7 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
   // Нет вариантов для выбора — просто статичный бейдж, как раньше.
   if (options.length === 0) {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+      <span className={`${sizeCls} rounded-md font-medium flex-shrink-0`}
         style={{ background: fallbackColor + "20", color: fallbackColor }}>
         {fallbackLabel}
       </span>
@@ -44,11 +47,11 @@ export function SubstatusPicker({ active, options, fallbackLabel, fallbackColor,
   const color = active?.color || fallbackColor;
 
   return (
-    <div ref={ref} className="relative inline-block" onClick={e => e.stopPropagation()}>
+    <div ref={ref} className="relative inline-block flex-shrink-0" onClick={e => e.stopPropagation()}>
       <button
         onClick={() => setOpen(v => !v)}
         title="Изменить подстатус"
-        className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold transition hover:opacity-80"
+        className={`${sizeCls} rounded-md font-semibold transition hover:opacity-80`}
         style={active
           ? { background: color, color: "#fff" }
           : { background: color + "20", color }}>
