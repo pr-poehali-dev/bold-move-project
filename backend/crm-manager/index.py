@@ -3184,6 +3184,31 @@ def handler(event: dict, context) -> dict:
                 return err("client not found", 404)
             client_id, client_phone, client_name = cli[0], cli[1], cli[2]
 
+            # Анализ свежий (моложе ANALYSIS_THROTTLE_SEC) — не тратим деньги на
+            # повторный вызов ИИ, отдаём уже посчитанный результат. Действует и на
+            # ручную кнопку «Пересобрать анализ» в UI: жать её чаще нет смысла.
+            cur.execute(
+                f"SELECT analysis_updated_at FROM {SCHEMA}.touch_clients WHERE id=%s",
+                (client_id,))
+            au_row = cur.fetchone()
+            au = au_row[0] if au_row else None
+            if au is not None and (datetime.now() - au).total_seconds() < ANALYSIS_THROTTLE_SEC:
+                cur.execute(f"""
+                    SELECT state_summary, next_action, interest, interest_label,
+                           stage, outcome, outcome_label, risks, key_points, created_at
+                    FROM {SCHEMA}.touch_client_analyses
+                    WHERE client_id=%s ORDER BY created_at DESC, id DESC LIMIT 1
+                """, (client_id,))
+                a = cur.fetchone()
+                if a:
+                    cached = {
+                        "state_summary": a[0], "next_action": a[1],
+                        "interest": a[2], "interest_label": a[3],
+                        "stage": a[4], "outcome": a[5], "outcome_label": a[6],
+                        "risks": a[7], "key_points": a[8], "created_at": a[9],
+                    }
+                    return ok({"client_id": client_id, "analysis": cached, "cached": True})
+
             analysis, err_msg = run_client_analysis(cur, conn, client_id, client_phone, client_name)
             if err_msg:
                 return err(err_msg, 400 if "нет касаний" in err_msg else 500 if "нет ключа" in err_msg else 502)
