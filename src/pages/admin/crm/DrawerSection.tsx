@@ -1,13 +1,16 @@
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 
-export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDelete, onShare, hidden, onToggleHidden }: {
+export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDelete, onShare, hidden, onToggleHidden, headerExtra }: {
   icon: string; title: string; color?: string; children: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
   onShare?: () => void;
   hidden?: boolean;
   onToggleHidden?: () => void;
+  /** Произвольный элемент справа в шапке блока (напр. компактный переключатель) —
+   *  показывается всегда, в отличие от кнопок управления, всплывающих по наведению. */
+  headerExtra?: React.ReactNode;
 }) {
   const t = useTheme();
   return (
@@ -20,6 +23,7 @@ export function Section({ icon, title, color = "#8b5cf6", children, onEdit, onDe
           <Icon name={icon} size={12} style={{ color }} />
         </div>
         <span className="text-xs font-bold uppercase tracking-wider flex-1" style={{ color }}>{title}</span>
+        {headerExtra && !hidden && <div className="flex-shrink-0">{headerExtra}</div>}
         <div className={`flex items-center gap-1 transition ${hidden ? "opacity-100" : "opacity-0 group-hover/section:opacity-100"}`}>
           {onShare && !hidden && (
             <button onClick={onShare} title="Поделиться всеми файлами"

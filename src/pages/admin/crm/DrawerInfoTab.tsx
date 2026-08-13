@@ -3,6 +3,7 @@ import func2url from "@/../backend/func2url.json";
 import { Client, STATUS_LABELS, crmFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
+import { Switch } from "@/components/ui/switch";
 import { StatusSelector } from "./StatusSelector";
 import { DrawerPLBlock } from "./DrawerPLBlock";
 import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
@@ -259,7 +260,28 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
       {(!hideHidden || !hiddenBlocks.has("status")) && (
         <Section icon="GitBranch" title="Статус воронки" color="#8b5cf6"
           onToggleHidden={canEdit ? () => toggleHidden("status") : undefined}
-          hidden={hiddenBlocks.has("status")}>
+          hidden={hiddenBlocks.has("status")}
+          headerExtra={
+            /* Тип заявки: обычный объект или сервис (доделка/переделка).
+               Сервисные заявки уходят в отдельную вкладку «Сервис» и не мешаются в «Монтажах». */
+            <label className="flex items-center gap-2 cursor-pointer select-none"
+              title="Сервис — мелкая доделка или переделка по уже сданному объекту, а не новый монтаж"
+              style={{ opacity: canOrdersEdit ? 1 : 0.5 }}>
+              <span className="text-[11px] font-semibold" style={{ color: data.is_service ? "#14b8a6" : t.textMute }}>
+                Сервис
+              </span>
+              <Switch
+                checked={!!data.is_service}
+                disabled={!canOrdersEdit}
+                onCheckedChange={v => saveWithLog(
+                  { is_service: v },
+                  v ? "Отмечено как сервис" : "Снята отметка «Сервис»",
+                  "Hammer", "#14b8a6",
+                )}
+                className="h-5 w-9 data-[state=checked]:bg-teal-500"
+              />
+            </label>
+          }>
           <StatusSelector
             status={data.status}
             subStatus={data.sub_status ?? null}
@@ -269,28 +291,6 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
             }}
             onSaveSubStatus={v => save({ sub_status: v })}
           />
-
-          {/* Тип заявки: обычный объект или сервис (доделка/переделка).
-              Сервисные заявки уходят в отдельную вкладку «Сервис» и не мешаются в «Монтажах». */}
-          <label className="flex items-center gap-2.5 mt-2 mb-1 py-2 px-3 rounded-xl cursor-pointer transition"
-            style={{
-              background: data.is_service ? "rgba(20,184,166,0.1)" : "transparent",
-              border: `1px solid ${data.is_service ? "rgba(20,184,166,0.35)" : "transparent"}`,
-              opacity: canOrdersEdit ? 1 : 0.6,
-            }}>
-            <input type="checkbox" checked={!!data.is_service} disabled={!canOrdersEdit}
-              onChange={e => saveWithLog(
-                { is_service: e.target.checked },
-                e.target.checked ? "Отмечено как сервис" : "Снята отметка «Сервис»",
-                "Hammer", "#14b8a6",
-              )}
-              className="w-4 h-4 rounded flex-shrink-0"
-              style={{ accentColor: "#14b8a6" }} />
-            <span className="text-xs font-semibold" style={{ color: data.is_service ? "#14b8a6" : t.textSub }}>
-              Сервисная заявка
-            </span>
-            <span className="text-[11px]" style={{ color: t.textMute }}>— доделка / переделка, не новый монтаж</span>
-          </label>
         </Section>
       )}
 
