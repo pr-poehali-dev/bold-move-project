@@ -177,13 +177,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     <Icon name="ExternalLink" size={9} /> Avito
                   </button>
                 )}
-                {c.next_call_date && !isDone && !isCancelled && (
-                  <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                    title="Дата и время следующего звонка клиенту"
-                    style={{ background: "#3b82f620", color: "#60a5fa" }}>
-                    <Icon name="PhoneCall" size={9} /> {fmtMoscowDateTime(c.next_call_date)}
-                  </span>
-                )}
                 {c.has_missed_call && (
                   <span
                     title="Есть пропущенный звонок, на который ещё не перезвонили"
@@ -217,8 +210,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
             </div>
           </div>
 
-          {(c.measure_date || c.install_date) && (
-            <div className="flex gap-2 mb-3">
+          {(c.measure_date || c.install_date || (c.next_call_date && !isDone && !isCancelled)) && (
+            <div className="flex gap-2 mb-3 flex-wrap">
               {c.measure_date && (
                 <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
                   style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
@@ -236,6 +229,17 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   <div>
                     <div className="font-medium">{new Date(c.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
                     <div className="opacity-60">Монтаж</div>
+                  </div>
+                </div>
+              )}
+              {c.next_call_date && !isDone && !isCancelled && (
+                <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                  title="Дата и время следующего звонка клиенту"
+                  style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa" }}>
+                  <Icon name="PhoneCall" size={9} />
+                  <div>
+                    <div className="font-medium">{fmtMoscowDateTime(c.next_call_date)}</div>
+                    <div className="opacity-60">Звонок</div>
                   </div>
                 </div>
               )}
