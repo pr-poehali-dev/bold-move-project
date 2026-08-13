@@ -13,7 +13,7 @@ export function useInboxUnread(enabled: boolean): number {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) { setCount(0); return; }
     let alive = true;
     const check = async () => {
       try {
@@ -24,7 +24,10 @@ export function useInboxUnread(enabled: boolean): number {
       } catch { /* тихо */ }
     };
     check();
-    const timer = setInterval(check, 30000);
+    const timer = setInterval(() => {
+      if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
+      check();
+    }, 30000);
     return () => { alive = false; clearInterval(timer); };
   }, [enabled]);
 

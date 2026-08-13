@@ -109,7 +109,10 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal }
   // отправленных («отправляется» → «отправлено») без перезахода на страницу.
   useEffect(() => {
     if (!phone && !contactId) return;
-    const timer = setInterval(() => { load(true); }, 30000);
+    const timer = setInterval(() => {
+      if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
+      load(true);
+    }, 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, contactId]);

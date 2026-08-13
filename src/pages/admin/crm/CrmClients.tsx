@@ -77,7 +77,10 @@ export default function CrmClients({ canEdit = true, canFinance = true, canFiles
   // Тихий поллинг списка — новые клиенты (напр. из Avito) появляются сами,
   // без ручного обновления страницы.
   useEffect(() => {
-    const timer = setInterval(() => load(true), 30000);
+    const timer = setInterval(() => {
+      if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
+      load(true);
+    }, 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, filters.statusFilter]);

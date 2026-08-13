@@ -26,6 +26,9 @@ export function useUnreadTouches(contactId: number | undefined, phone: string | 
 
   useEffect(() => {
     if (contactId == null && !phone) return;
+    // Вкладка «Переписка» уже открыта — вся история и так на экране (её
+    // опрашивает DrawerTouchesTab), повторный опрос тех же данных здесь не нужен.
+    if (active) return;
     let alive = true;
     const check = async () => {
       try {
@@ -45,7 +48,10 @@ export function useUnreadTouches(contactId: number | undefined, phone: string | 
       } catch { /* тихо */ }
     };
     check();
-    const timer = setInterval(check, 30000);
+    const timer = setInterval(() => {
+      if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
+      check();
+    }, 30000);
     return () => { alive = false; clearInterval(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId, phone, active]);

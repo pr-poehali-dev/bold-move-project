@@ -61,8 +61,10 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const safeInitialTab: CrmTab | undefined =
     initialTab && visibleTabs.some(tb => tb.id === initialTab) ? initialTab : undefined;
   const [tab, setTab] = useState<CrmTab>(safeInitialTab ?? visibleTabs[0]?.id ?? "orders");
-  // Счётчик непрочитанных для красного кружка на вкладке «Сообщения»
-  const inboxUnread = useInboxUnread(canClientsView);
+  // Счётчик непрочитанных для красного кружка на вкладке «Сообщения».
+  // Пока сама вкладка «Сообщения» открыта — не опрашиваем отдельно: там
+  // уже есть актуальный список диалогов с той же информацией (см. CrmMessages).
+  const inboxUnread = useInboxUnread(canClientsView && tab !== "messages");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -121,7 +123,10 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // сами, без ручного обновления страницы. Только пока открыта вкладка "Заказы".
   useEffect(() => {
     if (!token || tab !== "orders") return;
-    const timer = setInterval(() => loadClients(true), 30000);
+    const timer = setInterval(() => {
+      if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
+      loadClients(true);
+    }, 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, tab]);
