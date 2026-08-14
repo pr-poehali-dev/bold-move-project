@@ -1050,9 +1050,17 @@ def handler(event: dict, context) -> dict:
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     LEFT JOIN (
-                        SELECT client_id, SUM(value) AS custom_costs_total
-                        FROM {SCHEMA}.client_custom_fin_values
-                        GROUP BY client_id
+                        -- Кастомные статьи затрат заказа (Технолог, Логистика, Менеджер и т.п.),
+                        -- заведённые через "+ Добавить строку" в блоке "Затраты". Тип статьи
+                        -- (cost/income) хранится в auto_rules_v2 — джойним по company_id+key,
+                        -- чтобы случайно НЕ приплюсовать сюда кастомную статью ДОХОДА, если
+                        -- такая когда-нибудь появится (иначе прибыль в аналитике завысится).
+                        SELECT cfv.client_id, SUM(cfv.value) AS custom_costs_total
+                        FROM {SCHEMA}.client_custom_fin_values cfv
+                        JOIN {SCHEMA}.live_chats lc2 ON lc2.id = cfv.client_id
+                        LEFT JOIN {SCHEMA}.auto_rules_v2 ar ON ar.company_id = lc2.company_id AND ar.key = cfv.row_key
+                        WHERE COALESCE(ar.row_type, 'cost') = 'cost'
+                        GROUP BY cfv.client_id
                     ) cfv ON cfv.client_id = lc.id
                     LEFT JOIN (
                         -- "Последний звонок" учитывает и входящие, и исходящие (сотрудник
@@ -1627,11 +1635,27 @@ def handler(event: dict, context) -> dict:
             received_measure, received_montage, received_final = 0.0, float(r_stage[0]), float(r_stage[1])
             total_received = received_measure + received_montage + received_final
 
-            # Себестоимость
-            cur.execute(f"SELECT COALESCE(SUM(material_cost),0), COALESCE(SUM(measure_cost),0), COALESCE(SUM(install_cost),0) FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}")
+            # Себестоимость — встроенные статьи (материалы/замер/монтаж/менеджмент)
+            # + кастомные статьи затрат (Технолог, Логистика, Менеджер и т.п. — заводятся
+            # через "+ Добавить строку"). Кастомные фильтруем по row_type='cost' в auto_rules_v2,
+            # чтобы случайно НЕ приплюсовать сюда кастомную статью ДОХОДА.
+            cur.execute(f"""
+                SELECT COALESCE(SUM(lc.material_cost),0), COALESCE(SUM(lc.measure_cost),0),
+                       COALESCE(SUM(lc.install_cost),0), COALESCE(SUM(lc.management_cost),0),
+                       COALESCE((
+                           SELECT SUM(cfv.value)
+                           FROM {S}.client_custom_fin_values cfv
+                           JOIN {S}.live_chats lc2 ON lc2.id = cfv.client_id
+                           LEFT JOIN {S}.auto_rules_v2 ar ON ar.company_id = lc2.company_id AND ar.key = cfv.row_key
+                           WHERE lc2.status != 'deleted'{cid_filter.replace('company_id', 'lc2.company_id') if cid_filter else ''}
+                             AND COALESCE(ar.row_type, 'cost') = 'cost'
+                       ), 0)
+                FROM {S}.live_chats lc WHERE lc.status != 'deleted'{cid_filter}
+            """)
             r2 = cur.fetchone()
             total_material, total_measure_cost, total_install_cost = float(r2[0]), float(r2[1]), float(r2[2])
-            total_costs = total_material + total_measure_cost + total_install_cost
+            total_management, total_custom_costs = float(r2[3]), float(r2[4])
+            total_costs = total_material + total_measure_cost + total_install_cost + total_management + total_custom_costs
             total_profit = total_contract - total_costs
 
             # Причины отказов
@@ -1765,6 +1789,8 @@ def handler(event: dict, context) -> dict:
                 "total_material": total_material,
                 "total_measure_cost": total_measure_cost,
                 "total_install_cost": total_install_cost,
+                "total_management": total_management,
+                "total_custom_costs": total_custom_costs,
                 "total_costs": total_costs,
                 "total_profit": total_profit,
                 # Средние

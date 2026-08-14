@@ -63,14 +63,20 @@ export function computeStats(clients: Client[]): Stats {
   // Финансы
   let total_contract = 0, total_prepayment = 0, total_extra = 0, total_extra_agreement = 0;
   let total_material = 0, total_measure_cost = 0, total_install_cost = 0;
+  // management_cost — расход на менеджмент заказа; custom_costs_total — сумма кастомных
+  // статей затрат (Технолог, Логистика, Менеджер и т.п.), уже отфильтрованных backend'ом
+  // по row_type='cost' в поле /clients (см. crm-manager resource=="clients").
+  let total_management = 0, total_custom_costs = 0;
   for (const c of list) {
     total_contract        += num(c.contract_sum);
     total_prepayment      += num(c.prepayment);
-    total_extra           += num(c.extra_payment);
+    total_extra            += num(c.extra_payment);
     total_extra_agreement += num(c.extra_agreement_sum);
-    total_material        += num(c.material_cost);
-    total_measure_cost    += num(c.measure_cost);
-    total_install_cost    += num(c.install_cost);
+    total_material         += num(c.material_cost);
+    total_measure_cost     += num(c.measure_cost);
+    total_install_cost     += num(c.install_cost);
+    total_management       += num(c.management_cost);
+    total_custom_costs     += num(c.custom_costs_total);
   }
   // "Получено" — разбивка по стадиям, считаем только ПОДТВЕРЖДЁННЫЕ платежи (как на сервере):
   //   Замеры  — заявка ещё без договора, денег с клиента не берём (всегда 0)
@@ -89,7 +95,7 @@ export function computeStats(clients: Client[]): Stats {
   }
   const received_measure = 0;
   const total_received = received_measure + received_montage + received_final;
-  const total_costs    = total_material + total_measure_cost + total_install_cost;
+  const total_costs    = total_material + total_measure_cost + total_install_cost + total_management + total_custom_costs;
   const total_profit   = total_contract - total_costs;
 
   // Причины отказов (top-10, как на сервере)
@@ -114,7 +120,8 @@ export function computeStats(clients: Client[]): Stats {
     mLeads[mk] += 1;
     if (c.status === "done") mDone[mk] += 1;
     const rev = num(c.contract_sum);
-    const cost = num(c.material_cost) + num(c.measure_cost) + num(c.install_cost);
+    const cost = num(c.material_cost) + num(c.measure_cost) + num(c.install_cost)
+               + num(c.management_cost) + num(c.custom_costs_total);
     mRevenue[mk] += rev;
     mCosts[mk]   += cost;
     mProfit[mk]  += rev - cost;
@@ -132,6 +139,7 @@ export function computeStats(clients: Client[]): Stats {
     total_contract, total_received, received_measure, received_montage, received_final,
     total_prepayment, total_extra,
     total_material, total_measure_cost, total_install_cost,
+    total_management, total_custom_costs,
     total_costs, total_profit,
     avg_area: Math.round(avg_area * 10) / 10,
     avg_contract: Math.round(avg_contract),

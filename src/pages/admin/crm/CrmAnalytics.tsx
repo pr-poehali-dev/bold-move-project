@@ -11,19 +11,19 @@ import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, periodLabel, Stag
 import AnalyticsFilterSelect from "./AnalyticsFilterSelect";
 import PeriodRangeModal from "./PeriodRangeModal";
 
-// Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
-function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
-  const rows = loadCustomFinRows();
+// Суммирует кастомные строки ДОХОДОВ из localStorage по всем клиентам.
+// Кастомные статьи ЗАТРАТ (Технолог, Логистика, Менеджер и т.п.) уже переехали
+// в БД (client_custom_fin_values) и приходят с сервера в поле custom_costs_total
+// клиента — их считает computeStats(), здесь их суммировать НЕЛЬЗЯ (задвоение).
+function calcCustomIncomeTotal(clientIds: number[]): number {
+  const rows = loadCustomFinRows().filter(r => r.block === "income");
   let extraIncome = 0;
-  let extraCosts  = 0;
   for (const clientId of clientIds) {
     for (const row of rows) {
-      const val = Number(localStorage.getItem(`fin_row_${clientId}_${row.key}`)) || 0;
-      if (row.block === "income") extraIncome += val;
-      else extraCosts += val;
+      extraIncome += Number(localStorage.getItem(`fin_row_${clientId}_${row.key}`)) || 0;
     }
   }
-  return { extraIncome, extraCosts };
+  return extraIncome;
 }
 import AnalyticsOverview from "./AnalyticsOverview";
 import AnalyticsFinance from "./AnalyticsFinance";
@@ -60,13 +60,13 @@ export default function CrmAnalytics() {
 
   const s: Stats = useMemo(() => {
     const base = computeStats(filteredClients);
-    // Кастомные строки доходов/затрат из localStorage — по отфильтрованным заявкам
-    const { extraIncome, extraCosts } = calcCustomFinTotals(filteredClients.map(c => c.id));
+    // Кастомные строки ДОХОДОВ из localStorage — по отфильтрованным заявкам.
+    // Затраты (материалы/замер/монтаж/менеджмент/кастомные из БД) уже посчитаны в base.
+    const extraIncome = calcCustomIncomeTotal(filteredClients.map(c => c.id));
     return {
       ...base,
       total_received: base.total_received + extraIncome,
-      total_costs:    base.total_costs    + extraCosts,
-      total_profit:   base.total_profit   + extraIncome - extraCosts,
+      total_profit:   base.total_profit   + extraIncome,
     };
   }, [filteredClients]);
 
@@ -84,9 +84,11 @@ export default function CrmAnalytics() {
 
   // Pie данные
   const costPie = [
-    { name: "Материалы", value: s.total_material,     color: "#ef4444" },
-    { name: "Замеры",    value: s.total_measure_cost, color: "#f59e0b" },
-    { name: "Монтажи",   value: s.total_install_cost, color: "#f97316" },
+    { name: "Материалы",  value: s.total_material,      color: "#ef4444" },
+    { name: "Замеры",     value: s.total_measure_cost,  color: "#f59e0b" },
+    { name: "Монтажи",    value: s.total_install_cost,  color: "#f97316" },
+    { name: "Менеджмент", value: s.total_management,    color: "#8b5cf6" },
+    { name: "Прочее",     value: s.total_custom_costs,  color: "#64748b" },
   ].filter(c => c.value > 0);
 
   const statusPie = s.status_dist

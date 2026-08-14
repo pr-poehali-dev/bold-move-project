@@ -61,6 +61,8 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
               { label: "Материалы (расход)",  val: s.total_material,     cls: "font-semibold text-red-400",      neg: true },
               { label: "Замеры (расход)",     val: s.total_measure_cost, cls: "font-semibold text-red-400/70",   neg: true },
               { label: "Монтажи (расход)",    val: s.total_install_cost, cls: "font-semibold text-red-400/70",   neg: true },
+              { label: "Менеджмент (расход)", val: s.total_management,   cls: "font-semibold text-red-400/70",   neg: true },
+              { label: "Прочее (расход)",     val: s.total_custom_costs, cls: "font-semibold text-red-400/70",   neg: true },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center text-sm pb-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
                 <span style={{ color: t.textMute }}>{r.label}</span>
