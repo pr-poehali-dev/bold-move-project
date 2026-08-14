@@ -6,6 +6,10 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/crm-worker
 Environment=PYTHONUNBUFFERED=1
+# WORKER_PUSH_PORT — порт, на котором воркер слушает пуши от CRM (см. UPGRADE.md,
+# раздел "Push вместо polling"). По умолчанию 8766, менять только вместе с
+# nginx location и секретом WORKER_PUSH_URL в проекте.
+Environment=WORKER_PUSH_PORT=8766
 ExecStart=/opt/crm-worker/venv/bin/python3 /opt/crm-worker/worker.py
 Restart=on-failure
 RestartSec=10

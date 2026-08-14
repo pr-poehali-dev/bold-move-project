@@ -8,22 +8,26 @@ Telegram-akkaunt. Podklyuchenie proishodit PO QR-KODU pryamo v CRM (vkladka
 k etomu serveru.
 
 Kak eto rabotaet:
-1. Kazhdye NEW_TASK_POLL_SEC sekund worker sprashivaet u CRM (channel-qr-worker,
-   GET) - est li novye zayavki na podklyuchenie/otklyuchenie i spisok UZHE
-   podklyuchennyh kompanii (nuzhno posle perezapuska servera - sessii lezhat
-   lokalno v papke sessions/, a spisok "kto podklyuchen" - v BD CRM).
-2. Dlya novoi zayavki na podklyuchenie ("connect"):
+1. CRM SAMA "budit" vorkera pushem (POST /worker-push na etom servere,
+   port WORKER_PUSH_PORT) v moment poyavleniya novoi zadachi (novoe
+   soobschenie na otpravku, zayavka na podklyuchenie linii) — vmesto togo,
+   chtoby vorker sam postoyanno sprashival CRM "est' chto-to novoe?".
+   Fonovye tsikly (main_loop / poll_and_send_loop) prosypayutsya srazu.
+2. NEW_TASK_POLL_SEC / SEND_POLL_SEC ostalis' TOL'KO kak PODSTRAHOVKA — redkii
+   opros na sluchai, esli push po kakoi-to prichine ne doshyol (set' morgnula
+   i t.p.), chtoby zadacha ne zavisla navsegda.
+3. Dlya novoi zayavki na podklyuchenie ("connect"):
    - sozdayotsya TelegramClient s otdel'nym failom sessii sessions/{company_id}.session
    - zapraschivaetsya QR-kod (client.qr_login()), ssylka otpravlyaetsya v CRM
      (status=qr_ready) - CRM pokazyvaet eyo sotrudniku kak kartinku
    - worker zhdyot skanirovaniya (QR u Telegram zhivyot ~30 sek, poetomu
      periodicheski peregenerируем ssylku, poka polzovatel' ne otskaniruet)
    - posle uspeshnogo vhoda - soobschaet CRM status=connected + imya/nomer
-3. Dlya kazhdoi PODKLYUCHENNOI kompanii worker parallel'no:
+4. Dlya kazhdoi PODKLYUCHENNOI kompanii worker parallel'no:
    - slushaet vhodyaschie soobscheniya (peresylaet v CRM, channel-webhook)
    - oprashivaet CRM na predmet soobschenii "na otpravku" (pending-messages)
      i otpravlyaet ih cherez etot akkaunt Telegram
-4. Otklyuchenie ("disconnect") - vyhod iz akkaunta (client.log_out()), failed
+5. Otklyuchenie ("disconnect") - vyhod iz akkaunta (client.log_out()), failed
    sessii udalyaetsya, CRM soobschaetsya status=disconnected.
 
 Nastroika - cherez peremennye okruzheniya (fail .env ryadom):
@@ -33,12 +37,17 @@ Nastroika - cherez peremennye okruzheniya (fail .env ryadom):
   CRM_WEBHOOK_URL    - adres funktsii crm-manager
   CRM_WORKER_TOKEN   - sekretnyi token voркера (tot zhe, chto TG_PROXY_TOKEN
                         v sekretah proekta) - zaschischaet channel-qr-worker
+  WORKER_PUSH_PORT   - port dlya priyoma pushei ot CRM (default 8766),
+                        dolzhen sovpadat' s putyom v nginx (sm. UPGRADE.md)
 """
 
 import os
 import io
+import json
 import asyncio
+import threading
 import requests
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError, PasswordHashInvalidError
 from telethon.tl.functions.contacts import ImportContactsRequest, DeleteContactsRequest
@@ -52,10 +61,81 @@ API_HASH = os.environ["TG_API_HASH"]
 CRM_WEBHOOK_URL = os.environ["CRM_WEBHOOK_URL"]
 CRM_WORKER_TOKEN = os.environ["CRM_WORKER_TOKEN"]
 
-NEW_TASK_POLL_SEC = int(os.environ.get("NEW_TASK_POLL_SEC", "30"))
-SEND_POLL_SEC = int(os.environ.get("SEND_POLL_SEC", "10"))
+# Раньше это были ОСНОВНЫМ механизмом (воркер сам спрашивал CRM каждые
+# несколько секунд) — теперь CRM сама "будит" воркер пушем (см. PUSH_PORT
+# ниже) в момент появления новой задачи, а эти интервалы остались только
+# ПОДСТРАХОВКОЙ на случай, если пуш по какой-то причине не дошёл (сеть
+# моргнула и т.п.) — поэтому их можно держать редкими, не тратя лимит вызовов
+# облачных функций попусту.
+NEW_TASK_POLL_SEC = int(os.environ.get("NEW_TASK_POLL_SEC", "300"))
+SEND_POLL_SEC = int(os.environ.get("SEND_POLL_SEC", "300"))
 SESSIONS_DIR = os.environ.get("SESSIONS_DIR", "sessions")
 os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+# ── Приёмник пушей от CRM ────────────────────────────────────────────────────
+# Лёгкий HTTP-сервер на отдельном порту (тот же паттерн, что и tools/tg-proxy/
+# tg_proxy.py — только стандартная библиотека, без новых зависимостей).
+# Получив POST /worker-push, сразу выставляет событие — активный цикл опроса
+# (poll_and_send_loop / main_loop) просыпается немедленно, не дожидаясь своего
+# обычного интервала. Защищён тем же токеном, что и остальные эндпоинты
+# воркера (CRM_WORKER_TOKEN == TG_PROXY_TOKEN в секретах проекта).
+PUSH_PORT = int(os.environ.get("WORKER_PUSH_PORT", "8766"))
+_wake_send = threading.Event()
+_wake_tasks = threading.Event()
+
+
+class _PushHandler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        print(f"[worker-push] {self.address_string()} - {fmt % args}")
+
+    def _send_json(self, status, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path == "/health":
+            self._send_json(200, {"ok": True})
+            return
+        self._send_json(404, {"error": "not found"})
+
+    def do_POST(self):
+        if self.path != "/worker-push":
+            self._send_json(404, {"error": "not found"})
+            return
+        if self.headers.get("X-Proxy-Token") != CRM_WORKER_TOKEN:
+            self._send_json(401, {"error": "unauthorized"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(length) or b"{}")
+            reason = body.get("reason", "")
+        except Exception:
+            reason = ""
+        # qr-connect — новая заявка на подключение линии (будим main_loop),
+        # send-message — новое сообщение на отправку (будим poll_and_send_loop
+        # каждой активной компании). На всякий случай будим оба — дёшево, а
+        # реакция мгновенная в любом случае.
+        _wake_tasks.set()
+        _wake_send.set()
+        print(f"[worker-push] разбужен ({reason or 'unknown'})")
+        self._send_json(200, {"ok": True})
+
+
+def start_push_server():
+    server = ThreadingHTTPServer(("0.0.0.0", PUSH_PORT), _PushHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f"[worker-push] слушаю пуши от CRM на 0.0.0.0:{PUSH_PORT}")
+
+
+async def _sleep_or_wake(event: threading.Event, timeout_sec: int):
+    """Спит timeout_sec секунд, но просыпается раньше, если пришёл пуш."""
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, event.wait, timeout_sec)
+    event.clear()
 
 # SOCKS5-proksi dlya soedineniya s Telegram — nuzhen, kogda hoster blokiruet
 # pryamye podklyucheniya k dата-tsentram Telegram (MTProto). Esli TG_PROXY_HOST
@@ -298,7 +378,7 @@ async def run_company_session(company_id: int, webhook_key: str, client: Telegra
                         mark_sent(webhook_key, company_id, touch_id, False)
             except Exception as e:
                 print(f"[poll c={company_id}] neozhidannaya oshibka: {e}")
-            await asyncio.sleep(SEND_POLL_SEC)
+            await _sleep_or_wake(_wake_send, SEND_POLL_SEC)
 
     task = asyncio.create_task(poll_and_send_loop())
     active_tasks[company_id] = [task]
@@ -477,10 +557,11 @@ async def main_loop():
                 # Perezapusk servera — podnimaem sessiyu iz faila bez QR.
                 asyncio.create_task(start_existing_session(company_id, channel, webhook_key))
 
-        await asyncio.sleep(NEW_TASK_POLL_SEC)
+        await _sleep_or_wake(_wake_tasks, NEW_TASK_POLL_SEC)
 
 
 async def main():
+    start_push_server()
     print("[qr-worker] zapushchen, ozhidayu zayavki na podklyuchenie ot CRM...")
     await main_loop()
 

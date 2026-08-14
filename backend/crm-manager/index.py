@@ -56,6 +56,31 @@ def tg_api_request(method_path, data=None, timeout=3, retries=3):
     raise last_err
 
 
+# ── Пуш-уведомление воркеру на VPS о новой задаче ────────────────────────────
+# Раньше воркер САМ каждые несколько секунд спрашивал CRM "есть что-то новое?"
+# (polling) — это давало постоянную фоновую нагрузку на лимит вызовов облачных
+# функций, даже когда сообщений нет. Теперь CRM, наоборот, сама коротко
+# "стучится" на воркер в момент появления новой задачи (см. WORKER_PUSH_URL в
+# секретах — HTTP-приёмник на том же VPS, что и TG_PROXY_URL). Воркер, получив
+# пуш, сразу забирает задачу через уже существующие worker-pending/
+# channel-qr-worker эндпоинты — редкий фоновый polling (раз в 5 минут)
+# остаётся только как подстраховка на случай, если сеть моргнула и пуш не дошёл.
+# Если пуш не удался — НЕ бросаем исключение наружу: задача уже лежит в БД
+# со статусом pending и будет подобрана подстраховочным опросом чуть позже.
+def notify_worker_push(reason: str, timeout=3):
+    push_url = os.environ.get("WORKER_PUSH_URL")
+    proxy_token = os.environ.get("TG_PROXY_TOKEN")
+    if not push_url:
+        return
+    try:
+        payload = json.dumps({"reason": reason}).encode()
+        req = _ureq.Request(push_url, data=payload,
+                             headers={"Content-Type": "application/json", "X-Proxy-Token": proxy_token or ""},
+                             method="POST")
+        _ureq.urlopen(req, timeout=timeout)
+    except Exception as e:
+        print(f"[worker-push] не удалось разбудить воркер ({reason}): {type(e).__name__}: {e}")
+
 
 # ── Шифрование чувствительных данных интеграций (Avito Client Secret и т.п.) ──
 # Ключ CRM_ENCRYPTION_KEY хранится в секретах проекта (не в БД). Любую строку
@@ -3278,6 +3303,7 @@ def handler(event: dict, context) -> dict:
                     status='pending', action='connect', qr_url=NULL, error=NULL, updated_at=NOW()
             """, (owner_id, channel))
             conn.commit()
+            notify_worker_push("qr-connect")
             return ok({"status": "pending"})
 
         # ── CHANNEL-QR-STATUS: фронтенд опрашивает — готов ли QR / подключено ли ───
@@ -5198,6 +5224,8 @@ def handler(event: dict, context) -> dict:
                   reply_to_id, line_account_id))
             new_row = cur.fetchone()
             conn.commit()
+            if channel in ("telegram", "max") and initial_status == "pending":
+                notify_worker_push("send-message")
 
             return ok({
                 "touch_id": new_row[0],
