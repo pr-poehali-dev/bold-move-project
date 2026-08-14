@@ -26,6 +26,12 @@ function parseValue(v: string | null | undefined): Date {
 }
 
 
+// Ширина одной колонки (час/мин) в блоке времени. Задана здесь единым
+// источником правды и используется и в ScrollColumn, и в контейнере-обёртке —
+// чтобы контейнер никогда не оказывался УЖЕ содержимого (иначе браузер молча
+// обрезает цифры сбоку — именно так выглядел баг «время не влезает»).
+const TIME_COL_W = 44;
+
 // Кнопка прокрутки для скролл-столбца времени
 function ScrollColumn({ items, selected, onSelect, compact }: {
   items: number[];
@@ -35,7 +41,7 @@ function ScrollColumn({ items, selected, onSelect, compact }: {
 }) {
   const t = useTheme();
   const ref = useRef<HTMLDivElement>(null);
-  const rowH = compact ? 30 : 36;
+  const rowH = compact ? 28 : 32;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -44,7 +50,7 @@ function ScrollColumn({ items, selected, onSelect, compact }: {
   }, [selected, items, rowH]);
 
   return (
-    <div ref={ref} className="overflow-y-auto" style={{ scrollbarWidth: "none", width: 52, height: compact ? 144 : 180 }}>
+    <div ref={ref} className="overflow-y-auto" style={{ scrollbarWidth: "none", width: TIME_COL_W, height: compact ? 130 : 160, flex: "none" }}>
       {items.map(v => (
         <div key={v}
           onClick={() => onSelect(v)}
@@ -153,8 +159,10 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
 
   return (
     <div className="flex">
-      {/* Левая часть — календарь */}
-      <div className={compact ? "flex-1 p-3" : "flex-1 p-4"}>
+      {/* Левая часть — календарь. minWidth:0 — обязателен для flex-1, иначе блок
+          не сжимается уже своего содержимого и выталкивает время (114px) за
+          границы попапа — это и была причина обрезки цифр времени. */}
+      <div className={compact ? "flex-1 p-3" : "flex-1 p-4"} style={{ minWidth: 0 }}>
 
         {/* Навигация месяца */}
         <div className={`flex items-center justify-between ${compact ? "mb-2" : "mb-3"}`}>
@@ -209,8 +217,9 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
           })}
         </div>
 
-        {/* Футер — быстрый выбор дня (+ Удалить, если разрешено) */}
-        <div className={`flex items-center gap-1 ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderTop: `1px solid ${t.border}` }}>
+        {/* Футер — быстрый выбор дня (+ Удалить, если разрешено). flex-wrap — чтобы
+            кнопки переносились на вторую строку, а не обрезались, если места впритык */}
+        <div className={`flex items-center flex-wrap gap-1 ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderTop: `1px solid ${t.border}` }}>
           {!hideDelete && (
             <button onClick={handleDelete}
               className="text-xs font-semibold px-2 py-1.5 rounded-lg transition hover:bg-red-500/10 mr-auto"
@@ -236,21 +245,23 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
         </div>
       </div>
 
-      {/* Правая часть — время */}
-      <div className="flex flex-col" style={{ borderLeft: `1px solid ${t.border}`, width: 116 }}>
+      {/* Правая часть — время. Ширина = ровно 2 колонки + разделитель + отступы,
+          flex: "none" не даёт блоку сжаться уже своего содержимого (та самая
+          причина обрезки цифр — раньше ширина была меньше суммы колонок). */}
+      <div className="flex flex-col" style={{ borderLeft: `1px solid ${t.border}`, width: TIME_COL_W * 2 + 25, flex: "none" }}>
         {/* Заголовок */}
-        <div className={`text-center text-xs font-bold ${compact ? "py-2" : "py-3"} px-2`} style={{ color: t.textMute, borderBottom: `1px solid ${t.border}` }}>
+        <div className={`text-center text-xs font-bold ${compact ? "py-1.5" : "py-2"} px-2`} style={{ color: t.textMute, borderBottom: `1px solid ${t.border}` }}>
           {pad(hour)} : {pad(minute)}
         </div>
 
         {/* Колонки часы / минуты */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-hidden py-2 pl-2">
+        <div className="flex flex-1 justify-center overflow-hidden">
+          <div className="overflow-hidden py-2 pl-1.5" style={{ flex: "none" }}>
             <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Час</div>
             <ScrollColumn items={HOURS} selected={hour} onSelect={changeHour} compact={compact} />
           </div>
-          <div className="w-px self-stretch my-2" style={{ background: t.border }} />
-          <div className="flex-1 overflow-hidden py-2 pr-2">
+          <div className="w-px self-stretch my-2" style={{ background: t.border, flex: "none" }} />
+          <div className="overflow-hidden py-2 pr-1.5" style={{ flex: "none" }}>
             <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Мин</div>
             <ScrollColumn items={MINUTES} selected={minute} onSelect={changeMinute} compact={compact} />
           </div>
@@ -259,7 +270,7 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
         {/* Кнопка Сохранить — только в standalone-режиме (в попапе сохранение мгновенное по клику) */}
         {showSaveButton && (
           <button onClick={handleSave}
-            className="mx-2 mb-3 py-2 rounded-xl text-xs font-bold transition"
+            className="mx-2 mb-2 py-2 rounded-xl text-xs font-bold transition"
             style={{ background: "#7c3aed", color: "#fff" }}>
             Сохранить
           </button>
@@ -268,6 +279,10 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
     </div>
   );
 }
+
+// Ширина всплывающего попапа — подобрана впритык под compact-версию пикера
+// (календарь + 2 колонки времени), без лишнего пустого места по бокам.
+const POPUP_W = 320;
 
 interface Props {
   value: string | null | undefined;
@@ -305,7 +320,7 @@ export function DateTimePickerPopup({ value, onChange, onClose, anchorRect }: Pr
     const spaceBelow = window.innerHeight - anchorRect.bottom;
     const openUp = spaceBelow < popH + margin && anchorRect.top > popH + margin;
     const top = openUp ? anchorRect.top - popH - margin : anchorRect.bottom + margin;
-    const left = Math.min(anchorRect.left, window.innerWidth - 380);
+    const left = Math.min(anchorRect.left, window.innerWidth - POPUP_W - 8);
     popStyle.top = Math.max(8, Math.min(top, window.innerHeight - popH - 8));
     popStyle.left = Math.max(8, left);
   }
@@ -319,10 +334,10 @@ export function DateTimePickerPopup({ value, onChange, onClose, anchorRect }: Pr
         ...popStyle,
         background: t.surface,
         border: `1px solid ${t.border}`,
-        width: 360,
+        width: POPUP_W,
         boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
       }}>
-      <DateTimePickerInner value={value} onChange={handleChange} />
+      <DateTimePickerInner value={value} onChange={handleChange} compact />
     </div>,
     document.body
   );
