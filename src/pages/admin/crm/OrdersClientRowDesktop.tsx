@@ -54,8 +54,10 @@ export function OrdersClientRowDesktop({
             </span>
           )}
           {(() => {
-            const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
-            const age = stageDuration(c.created_at);
+            // Единый "якорь" времени — чтобы оба счётчика не расходились на границе минуты.
+            const now = Date.now();
+            const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at, now) : "";
+            const age = stageDuration(c.created_at, now);
             if (!onStage && !age) return null;
             return (
               <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"

@@ -95,11 +95,14 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSav
               {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
             </span>
             {(() => {
+              // Единый "якорь" текущего времени для всех трёх счётчиков — иначе на
+              // границе минуты значения расходятся (52/53/53) хотя from одинаковый.
+              const now = Date.now();
               // Последнее действие — любое касание заявки (правка карточки, звонок,
               // сообщение), приходит с бэкенда уже готовым (GREATEST по нескольким источникам).
-              const lastAction = stageDuration(client.last_activity_at);
-              const onStage = client.status !== "done" && client.status !== "cancelled" ? stageDuration(client.status_changed_at) : "";
-              const age = stageDuration(client.created_at);
+              const lastAction = stageDuration(client.last_activity_at, now);
+              const onStage = client.status !== "done" && client.status !== "cancelled" ? stageDuration(client.status_changed_at, now) : "";
+              const age = stageDuration(client.created_at, now);
               if (!lastAction && !onStage && !age) return null;
               return (
                 <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"

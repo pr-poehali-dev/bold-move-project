@@ -131,11 +131,14 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   чтобы на узких карточках (5 колонок в гриде) заголовок не обрезался
                   и источник был явно виден рядом с таймером. */}
               {(() => {
+                // Единый "якорь" текущего времени для всех трёх счётчиков — иначе на
+                // границе минуты значения расходятся (52/53/53) хотя from одинаковый.
+                const now = Date.now();
                 // Последнее действие — любое касание заявки (правка карточки, звонок,
                 // сообщение), приходит с бэкенда уже готовым (GREATEST по нескольким источникам).
-                const lastAction = stageDuration(c.last_activity_at);
-                const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
-                const age = stageDuration(c.created_at);
+                const lastAction = stageDuration(c.last_activity_at, now);
+                const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at, now) : "";
+                const age = stageDuration(c.created_at, now);
                 const hasTime = lastAction || onStage || age;
                 const hasSrc = showSrcBadge || c.avito_chat_url;
                 if (!hasTime && !hasSrc) return null;

@@ -249,11 +249,17 @@ export function fmt(n: number): string {
 
 // Компактная длительность нахождения на этапе: «5 мин», «3 ч», «2 дн».
 // from — момент входа на этап (status_changed_at). Пусто → возвращает "".
-export function stageDuration(from: string | null | undefined): string {
+// now — необязательный "якорь" текущего времени: когда в одной карточке считаем
+// НЕСКОЛЬКО таких длительностей (последнее действие / на этапе / возраст),
+// нужно передать один и тот же now во все вызовы — иначе при одинаковых from
+// (напр. только что созданная заявка) на границе минуты Date.now() успевает
+// "тикнуть" между вызовами и значения расходятся (52 мин / 53 мин / 53 мин),
+// хотя по факту в карточке ничего не менялось.
+export function stageDuration(from: string | null | undefined, now: number = Date.now()): string {
   if (!from) return "";
   const start = new Date(from).getTime();
   if (isNaN(start)) return "";
-  const mins = Math.max(0, Math.floor((Date.now() - start) / 60000));
+  const mins = Math.max(0, Math.floor((now - start) / 60000));
   if (mins < 60) return `${mins} мин`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} ч`;
