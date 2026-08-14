@@ -7,8 +7,9 @@ import { Stats, AnalyticsTab, ANALYTICS_TABS } from "./analyticsTypes";
 import { loadCustomFinRows } from "./drawerTypes";
 import { computeStats } from "./computeAnalytics";
 import { useOrderSources } from "@/hooks/useOrderSources";
-import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, StageFilter, PeriodFilter } from "./analyticsFilters";
+import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, periodLabel, StageFilter, PeriodFilter, CustomRange } from "./analyticsFilters";
 import AnalyticsFilterSelect from "./AnalyticsFilterSelect";
+import PeriodRangeModal from "./PeriodRangeModal";
 
 // Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
 function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
@@ -38,6 +39,8 @@ export default function CrmAnalytics() {
   const [sourceFilter,  setSourceFilter]  = useState<string>(""); // "" = все источники
   const [stageFilter,   setStageFilter]   = useState<StageFilter>("final"); // по умолчанию — завершённые сделки
   const [periodFilter,  setPeriodFilter]  = useState<PeriodFilter>("all");
+  const [customRange,   setCustomRange]   = useState<CustomRange | null>(null);
+  const [rangeModal,    setRangeModal]    = useState(false);
   const { sources } = useOrderSources();
 
   useEffect(() => {
@@ -49,8 +52,8 @@ export default function CrmAnalytics() {
 
   // Заявки под выбранные фильтры (источник / стадия / период). Считаем в браузере — мгновенно.
   const filteredClients = useMemo(
-    () => applyAnalyticsFilters(allClients, { source: sourceFilter, stage: stageFilter, period: periodFilter }),
-    [allClients, sourceFilter, stageFilter, periodFilter],
+    () => applyAnalyticsFilters(allClients, { source: sourceFilter, stage: stageFilter, period: periodFilter, range: customRange }),
+    [allClients, sourceFilter, stageFilter, periodFilter, customRange],
   );
 
   const recentClients = filteredClients.slice(0, 10);
@@ -121,7 +124,7 @@ export default function CrmAnalytics() {
               const parts: string[] = [];
               if (sourceFilter) parts.push(`источник «${sourceFilter}»`);
               if (stageFilter)  parts.push(STAGE_OPTIONS.find(o => o.id === stageFilter)!.label.toLowerCase());
-              if (periodFilter !== "all") parts.push(PERIOD_OPTIONS.find(o => o.id === periodFilter)!.label.toLowerCase());
+              if (periodFilter !== "all") parts.push(periodLabel(periodFilter, customRange));
               return parts.length
                 ? `${parts.join(", ")} — ${s.total_all} заявок`
                 : `Всего заявок: ${s.total_all}`;
@@ -149,10 +152,21 @@ export default function CrmAnalytics() {
           <AnalyticsFilterSelect
             icon="CalendarDays"
             value={periodFilter}
-            onChange={v => setPeriodFilter(v as PeriodFilter)}
-            options={PERIOD_OPTIONS}
+            onChange={v => { setPeriodFilter(v as PeriodFilter); setCustomRange(null); }}
+            options={periodFilter === "custom"
+              ? [...PERIOD_OPTIONS, { id: "custom", label: periodLabel("custom", customRange) }]
+              : PERIOD_OPTIONS}
             neutralValue="all"
           />
+
+          {/* Произвольный период через модалку */}
+          <button onClick={() => setRangeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
+            style={periodFilter === "custom"
+              ? { background: t.accent + "1F", color: t.accentLight, border: `1px solid ${t.accent}55` }
+              : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+            <Icon name="CalendarRange" size={13} /> Выбрать период
+          </button>
 
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
             {ANALYTICS_TABS.map((tb, i) => (
@@ -194,6 +208,15 @@ export default function CrmAnalytics() {
 
       {tab === "touches" && (
         <TouchDashboard clients={filteredClients} sourceFilter={sourceFilter} onSelectClient={setDrawerClient} />
+      )}
+
+      {/* Модалка выбора произвольного периода */}
+      {rangeModal && (
+        <PeriodRangeModal
+          initial={customRange}
+          onClose={() => setRangeModal(false)}
+          onApply={(r) => { setCustomRange(r); setPeriodFilter("custom"); setRangeModal(false); }}
+        />
       )}
 
       {/* Drawer клиента */}
