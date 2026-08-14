@@ -10,6 +10,9 @@ import { Stats, EMPTY_STATS } from "./analyticsTypes";
 const WENT_MEASURE_STATUSES = ["measure", "measured", "contract", "prepaid", "install_scheduled", "install_done", "extra_paid", "done"];
 const WENT_CONTRACT_STATUSES = ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid", "done"];
 
+// Статусы стадии "Монтаж" — договор подписан, работа идёт (как на сервере).
+const MONTAGE_STATUSES = ["contract", "prepaid", "install_scheduled", "install_done"];
+
 const num = (v: unknown): number => Number(v) || 0;
 
 // Ключ месяца "YYYY-MM" из даты создания заявки
@@ -69,7 +72,23 @@ export function computeStats(clients: Client[]): Stats {
     total_measure_cost    += num(c.measure_cost);
     total_install_cost    += num(c.install_cost);
   }
-  const total_received = total_prepayment + total_extra;
+  // "Получено" — разбивка по стадиям, считаем только ПОДТВЕРЖДЁННЫЕ платежи (как на сервере):
+  //   Замеры  — заявка ещё без договора, денег с клиента не берём (всегда 0)
+  //   Монтажи — договор подписан, работа идёт (подтверждённая предоплата)
+  //   Финал   — сделка завершена (вся подтверждённая сумма: предоплата+доплата+допсоглашение)
+  let received_montage = 0, received_final = 0;
+  for (const c of list) {
+    if (MONTAGE_STATUSES.includes(c.status) && c.prepayment_confirmed) {
+      received_montage += num(c.prepayment_fact) || num(c.prepayment);
+    }
+    if (c.status === "done") {
+      if (c.prepayment_confirmed) received_final += num(c.prepayment_fact) || num(c.prepayment);
+      if (c.extra_payment_confirmed) received_final += num(c.extra_payment_fact) || num(c.extra_payment);
+      received_final += num(c.extra_agreement_sum);
+    }
+  }
+  const received_measure = 0;
+  const total_received = received_measure + received_montage + received_final;
   const total_costs    = total_material + total_measure_cost + total_install_cost;
   const total_profit   = total_contract - total_costs;
 
@@ -110,7 +129,8 @@ export function computeStats(clients: Client[]): Stats {
   return {
     total_all, total_leads, total_orders, total_done, total_cancel,
     went_measure, went_contract, upcoming_measures, upcoming_installs,
-    total_contract, total_received, total_prepayment, total_extra,
+    total_contract, total_received, received_measure, received_montage, received_final,
+    total_prepayment, total_extra,
     total_material, total_measure_cost, total_install_cost,
     total_costs, total_profit,
     avg_area: Math.round(avg_area * 10) / 10,

@@ -36,7 +36,7 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
         return (
           <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
             <KpiCard icon="Banknote"   label="Сумма договоров" value={s.total_contract > 0 ? s.total_contract.toLocaleString("ru-RU") + " ₽" : "—"} color="#10b981" />
-            <KpiCard icon="Wallet"     label="Получено"        value={s.total_received > 0 ? s.total_received.toLocaleString("ru-RU") + " ₽" : "—"} sub="все платежи" color="#06b6d4" />
+            <KpiCard icon="Wallet"     label="Получено"        value={s.total_received > 0 ? s.total_received.toLocaleString("ru-RU") + " ₽" : "—"} sub="подтверждённые платежи" color="#06b6d4" />
             <KpiCard icon="Receipt"    label="Все затраты"     value={s.total_costs > 0 ? s.total_costs.toLocaleString("ru-RU") + " ₽" : "—"} color="#ef4444" />
             <KpiCard icon="TrendingUp" label="Прибыль"         value={s.total_profit !== 0 ? (s.total_profit > 0 ? "+" : "") + s.total_profit.toLocaleString("ru-RU") + " ₽" : "—"} color={s.total_profit >= 0 ? "#10b981" : "#ef4444"} />
             <KpiCard icon="Percent"    label="Маржа"           value={income > 0 ? `${margin}%` : "—"} sub="прибыль / доходы" color={margin >= 30 ? "#a78bfa" : margin >= 0 ? "#f59e0b" : "#ef4444"} />
@@ -54,11 +54,13 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
           </div>
           <div className="space-y-2.5">
             {[
-              { label: "Сумма договоров",    val: s.total_contract,     cls: "font-semibold text-white",        neg: false },
-              { label: "Получено",           val: s.total_received,     cls: "font-semibold text-emerald-400",  neg: false },
-              { label: "Материалы (расход)", val: s.total_material,     cls: "font-semibold text-red-400",      neg: true },
-              { label: "Замеры (расход)",    val: s.total_measure_cost, cls: "font-semibold text-red-400/70",   neg: true },
-              { label: "Монтажи (расход)",   val: s.total_install_cost, cls: "font-semibold text-red-400/70",   neg: true },
+              { label: "Сумма договоров",     val: s.total_contract,     cls: "font-semibold text-white",        neg: false },
+              { label: "Получено — Замеры",   val: s.received_measure,   cls: "font-semibold text-emerald-400",  neg: false },
+              { label: "Получено — Монтажи",  val: s.received_montage,   cls: "font-semibold text-emerald-400",  neg: false },
+              { label: "Получено — Финал",    val: s.received_final,     cls: "font-semibold text-emerald-400",  neg: false },
+              { label: "Материалы (расход)",  val: s.total_material,     cls: "font-semibold text-red-400",      neg: true },
+              { label: "Замеры (расход)",     val: s.total_measure_cost, cls: "font-semibold text-red-400/70",   neg: true },
+              { label: "Монтажи (расход)",    val: s.total_install_cost, cls: "font-semibold text-red-400/70",   neg: true },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center text-sm pb-2" style={{ borderBottom: `1px solid ${t.border2}` }}>
                 <span style={{ color: t.textMute }}>{r.label}</span>

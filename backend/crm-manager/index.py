@@ -1606,7 +1606,26 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT COALESCE(SUM(contract_sum),0), COALESCE(SUM(prepayment),0), COALESCE(SUM(extra_payment),0), COALESCE(SUM(extra_agreement_sum),0) FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}")
             r = cur.fetchone()
             total_contract, total_prepayment, total_extra, total_extra_agreement = float(r[0]), float(r[1]), float(r[2]), float(r[3])
-            total_received = total_prepayment + total_extra
+
+            # "Получено" — разбивка по стадиям, считаем только ПОДТВЕРЖДЁННЫЕ платежи:
+            #   Замеры  — заявка ещё без договора, денег с клиента не берём (всегда 0)
+            #   Монтажи — договор подписан, работа идёт (подтверждённая предоплата)
+            #   Финал   — сделка завершена (вся подтверждённая сумма: предоплата+доплата+допсоглашение)
+            MONTAGE_STATUSES = ("contract", "prepaid", "install_scheduled", "install_done")
+            cur.execute(f"""
+                SELECT
+                    COALESCE(SUM(CASE WHEN status IN {MONTAGE_STATUSES} AND prepayment_confirmed
+                                       THEN COALESCE(prepayment_fact, prepayment) ELSE 0 END), 0) AS montage_received,
+                    COALESCE(SUM(CASE WHEN status = 'done' THEN
+                                       (CASE WHEN prepayment_confirmed THEN COALESCE(prepayment_fact, prepayment) ELSE 0 END) +
+                                       (CASE WHEN extra_payment_confirmed THEN COALESCE(extra_payment_fact, extra_payment) ELSE 0 END) +
+                                       COALESCE(extra_agreement_sum, 0)
+                                  ELSE 0 END), 0) AS final_received
+                FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}
+            """)
+            r_stage = cur.fetchone()
+            received_measure, received_montage, received_final = 0.0, float(r_stage[0]), float(r_stage[1])
+            total_received = received_measure + received_montage + received_final
 
             # Себестоимость
             cur.execute(f"SELECT COALESCE(SUM(material_cost),0), COALESCE(SUM(measure_cost),0), COALESCE(SUM(install_cost),0) FROM {S}.live_chats WHERE status != 'deleted'{cid_filter}")
@@ -1736,6 +1755,9 @@ def handler(event: dict, context) -> dict:
                 # Финансы
                 "total_contract": total_contract,
                 "total_received": total_received,
+                "received_measure": received_measure,
+                "received_montage": received_montage,
+                "received_final": received_final,
                 "total_prepayment": total_prepayment,
                 "total_extra": total_extra,
                 "total_extra_agreement": total_extra_agreement,
