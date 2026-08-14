@@ -52,6 +52,9 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [authModal, setAuthModal] = useState<{ id: number; channel: string; title: string; status: AuthStatus } | null>(null);
+  // Статус линий (подключена/отвалилась) не обновляется в фоне сам по себе —
+  // только по явному нажатию пользователем кнопки "Проверить статус" (см. ниже).
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   const loadConfig = async () => {
     try {
@@ -137,6 +140,11 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
     } catch { /* тихо */ }
   };
 
+  const checkStatus = async () => {
+    setCheckingStatus(true);
+    try { await loadAccounts(); } finally { setCheckingStatus(false); }
+  };
+
   if (loading) {
     return (
       <div className="rounded-2xl p-6 flex items-center justify-center" style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
@@ -217,7 +225,15 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
             </div>
 
             <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${cardBrd}` }}>
-              <div className="text-[11px] font-bold mb-0.5" style={{ color: txt }}>Линии (общие аккаунты)</div>
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <div className="text-[11px] font-bold" style={{ color: txt }}>Линии (общие аккаунты)</div>
+                <button onClick={checkStatus} disabled={checkingStatus}
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition disabled:opacity-50 flex-shrink-0"
+                  style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6", color: txtSub }}>
+                  <Icon name="RotateCw" size={11} className={checkingStatus ? "animate-spin" : ""} />
+                  Проверить статус
+                </button>
+              </div>
               <div className="text-[10px] mb-2.5" style={{ color: txtSub }}>
                 {accounts.length === 0
                   ? "Пока нет ни одной линии. Добавьте аккаунты, с которых будут писать менеджеры."
