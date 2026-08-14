@@ -126,27 +126,48 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   )
                 }
               </div>
-              {/* Бейдж времени — ОТДЕЛЬНОЙ строкой под заголовком (а не в одном ряду с
-                  ним), чтобы на узких карточках (5 колонок в гриде) он не отжимал место
-                  у заголовка и не обрезал "Заявка №499" до "Заявка №...". */}
+              {/* Строка времени + источник — ОДНИМ рядом под заголовком (время слева,
+                  источник справа), а не в общем flex-wrap ряду с остальными бейджами,
+                  чтобы на узких карточках (5 колонок в гриде) заголовок не обрезался
+                  и источник был явно виден рядом с таймером. */}
               {(() => {
                 // Последнее действие — любое касание заявки (правка карточки, звонок,
                 // сообщение), приходит с бэкенда уже готовым (GREATEST по нескольким источникам).
                 const lastAction = stageDuration(c.last_activity_at);
                 const onStage = !isDone && !isCancelled ? stageDuration(c.status_changed_at) : "";
                 const age = stageDuration(c.created_at);
-                if (!lastAction && !onStage && !age) return null;
+                const hasTime = lastAction || onStage || age;
+                const hasSrc = showSrcBadge || c.avito_chat_url;
+                if (!hasTime && !hasSrc) return null;
                 return (
-                  <span className="inline-flex items-center gap-1 text-[10px] rounded-md font-semibold leading-none mt-1"
-                    style={{ background: t.surface2, border: `1px solid ${t.border}`, height: 20, padding: "0 7px", boxSizing: "border-box" }}
-                    title={`Последнее действие: ${lastAction || "—"} · На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
-                    <Icon name="Clock" size={10} style={{ color: t.accentLight }} />
-                    {lastAction && <span style={{ color: t.text }}>{lastAction}</span>}
-                    {lastAction && (onStage || age) && <span style={{ color: t.textMute }}>/</span>}
-                    {onStage && <span style={{ color: t.textSub }}>{onStage}</span>}
-                    {onStage && age && <span style={{ color: t.textMute }}>/</span>}
-                    {age && <span style={{ color: t.textMute }}>{age}</span>}
-                  </span>
+                  <div className="flex items-center justify-between gap-1 mt-1">
+                    {hasTime ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] rounded-md font-semibold leading-none flex-shrink-0"
+                        style={{ background: t.surface2, border: `1px solid ${t.border}`, height: 20, padding: "0 7px", boxSizing: "border-box" }}
+                        title={`Последнее действие: ${lastAction || "—"} · На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
+                        <Icon name="Clock" size={10} style={{ color: t.accentLight }} />
+                        {lastAction && <span style={{ color: t.text }}>{lastAction}</span>}
+                        {lastAction && (onStage || age) && <span style={{ color: t.textMute }}>/</span>}
+                        {onStage && <span style={{ color: t.textSub }}>{onStage}</span>}
+                        {onStage && age && <span style={{ color: t.textMute }}>/</span>}
+                        {age && <span style={{ color: t.textMute }}>{age}</span>}
+                      </span>
+                    ) : <span />}
+                    {c.avito_chat_url ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
+                        title="Открыть диалог в Avito"
+                        className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80 flex-shrink-0"
+                        style={{ background: "#f9731620", color: "#f97316" }}>
+                        <Icon name="ExternalLink" size={9} /> Avito
+                      </button>
+                    ) : showSrcBadge ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0"
+                        style={{ background: src!.color + "20", color: src!.color }}>
+                        {src!.label}
+                      </span>
+                    ) : null}
+                  </div>
                 );
               })()}
               <div className="flex items-center gap-1 flex-wrap mt-1">
@@ -169,21 +190,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     style={{ background: "#14b8a622", color: "#14b8a6", border: "1px solid #14b8a644" }}>
                     <Icon name="Hammer" size={9} /> Сервис
                   </span>
-                )}
-                {showSrcBadge && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                    style={{ background: src!.color + "20", color: src!.color }}>
-                    {src!.label}
-                  </span>
-                )}
-                {c.avito_chat_url && (
-                  <button
-                    onClick={e => { e.stopPropagation(); window.open(c.avito_chat_url!, "_blank"); }}
-                    title="Открыть диалог в Avito"
-                    className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-medium transition hover:opacity-80"
-                    style={{ background: "#f9731620", color: "#f97316" }}>
-                    <Icon name="ExternalLink" size={9} /> Avito
-                  </button>
                 )}
                 {c.has_missed_call && (
                   <span
