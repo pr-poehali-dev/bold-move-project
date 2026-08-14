@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -49,6 +49,11 @@ function ScrollColumn({ items, selected, onSelect, compact }: {
     if (idx >= 0) el.scrollTop = idx * rowH - rowH;
   }, [selected, items, rowH]);
 
+  // flex:1 + minHeight:0 — стандартный CSS-приём «прокручиваемая область внутри
+  // flex-колонки фиксированной высоты» (высоту задаёт родитель через colH).
+  // БЕЗ minHeight:0 браузер по умолчанию растягивает flex-элемент под весь его
+  // контент (все 24 часа/60 минут разом, без прокрутки) — именно так и раздуло
+  // модалку в прошлый раз.
   return (
     <div ref={ref} className="overflow-y-auto flex-1" style={{ scrollbarWidth: "none", width: TIME_COL_W, minHeight: 0 }}>
       {items.map(v => (
@@ -93,6 +98,18 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
   const [selDate,   setSelDate]   = useState<Date>(initial);
   const [hour,      setHour]      = useState(initial.getHours());
   const [minute,    setMinute]    = useState(initial.getMinutes());
+
+  // Реальная высота блока календаря (левая часть) — колонки часов/минут справа
+  // подгоняются РОВНО под неё, чтобы модалка не растягивалась под весь список
+  // (0..23 / 0..59), а время оставалось прокручиваемым окошком той же высоты,
+  // что и календарь слева (сколько бы недель ни было в текущем месяце).
+  const calRef = useRef<HTMLDivElement>(null);
+  const [colH, setColH] = useState(160);
+  useLayoutEffect(() => {
+    if (calRef.current) setColH(calRef.current.offsetHeight);
+    // Пересчитываем только когда реально может измениться число строк
+    // календаря — смена месяца (недель в сетке 4-6) или compact-режим.
+  }, [viewYear, viewMonth, compact]);
 
   // Дни в месяце
   const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=вс
@@ -161,8 +178,9 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
     <div className="flex">
       {/* Левая часть — календарь. minWidth:0 — обязателен для flex-1, иначе блок
           не сжимается уже своего содержимого и выталкивает время (114px) за
-          границы попапа — это и была причина обрезки цифр времени. */}
-      <div className={compact ? "flex-1 p-3" : "flex-1 p-4"} style={{ minWidth: 0 }}>
+          границы попапа — это и была причина обрезки цифр времени. ref — чтобы
+          измерить реальную высоту и подогнать под неё колонки времени справа. */}
+      <div ref={calRef} className={compact ? "flex-1 p-3" : "flex-1 p-4"} style={{ minWidth: 0 }}>
 
         {/* Навигация месяца */}
         <div className={`flex items-center justify-between ${compact ? "mb-2" : "mb-3"}`}>
@@ -250,18 +268,19 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
 
       {/* Правая часть — время. Ширина = ровно 2 колонки + разделитель + отступы,
           flex: "none" не даёт блоку сжаться уже своего содержимого (та самая
-          причина обрезки цифр — раньше ширина была меньше суммы колонок). */}
-      <div className="flex flex-col" style={{ borderLeft: `1px solid ${t.border}`, width: TIME_COL_W * 2 + 25, flex: "none" }}>
+          причина обрезки цифр — раньше ширина была меньше суммы колонок).
+          height: colH — ЖЁСТКО равна измеренной высоте календаря слева, чтобы
+          список часов/минут оставался прокручиваемым окошком той же высоты, а
+          не разворачивался во весь рост (0..23 / 0..59) и не раздувал модалку. */}
+      <div className="flex flex-col" style={{ borderLeft: `1px solid ${t.border}`, width: TIME_COL_W * 2 + 25, height: colH, flex: "none" }}>
         {/* Заголовок */}
-        <div className={`text-center text-xs font-bold ${compact ? "py-1.5" : "py-2"} px-2`} style={{ color: t.textMute, borderBottom: `1px solid ${t.border}` }}>
+        <div className={`text-center text-xs font-bold ${compact ? "py-1.5" : "py-2"} px-2`} style={{ color: t.textMute, borderBottom: `1px solid ${t.border}`, flex: "none" }}>
           {pad(hour)} : {pad(minute)}
         </div>
 
-        {/* Колонки часы / минуты — растягиваются на всю доступную высоту (минус
-            заголовок "чч:мм" сверху и кнопка "Сохранить" снизу, если есть), а не
-            фиксированные 130px — иначе при высоком календаре (месяц из 6 недель)
-            снизу оставалась пустая дыра под списком цифр. */}
-        <div className="flex flex-1 justify-center overflow-hidden" style={{ minHeight: 0 }}>
+        {/* Колонки часы / минуты — умещаются РОВНО в оставшуюся высоту (colH минус
+            заголовок и кнопка «Сохранить»), прокручиваются, если список не влезает. */}
+        <div className="flex justify-center overflow-hidden" style={{ flex: "1 1 0", minHeight: 0 }}>
           <div className="flex flex-col py-2 pl-1.5" style={{ flex: "none" }}>
             <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute, flex: "none" }}>Час</div>
             <ScrollColumn items={HOURS} selected={hour} onSelect={changeHour} compact={compact} />
@@ -277,7 +296,7 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
         {showSaveButton && (
           <button onClick={handleSave}
             className="mx-2 mb-2 py-2 rounded-xl text-xs font-bold transition"
-            style={{ background: "#7c3aed", color: "#fff" }}>
+            style={{ background: "#7c3aed", color: "#fff", flex: "none" }}>
             Сохранить
           </button>
         )}

@@ -1018,6 +1018,7 @@ def handler(event: dict, context) -> dict:
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
                            lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
                            lc.next_call_date, lcall.last_call_at,
+                           GREATEST(lc.updated_at, COALESCE(lact.last_touch_at, lc.updated_at)) AS last_activity_at,
                            COALESCE(missed.has_missed_call, FALSE) AS has_missed_call,
                            COALESCE(u.is_demo, FALSE) AS is_demo,
                            COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total
@@ -1038,6 +1039,17 @@ def handler(event: dict, context) -> dict:
                         WHERE te.channel='call' AND tc2.crm_contact_id IS NOT NULL
                         GROUP BY tc2.crm_contact_id
                     ) lcall ON lcall.contact_id = lc.id
+                    LEFT JOIN (
+                        -- "Последнее действие" (для счётчика в карточке) — самое свежее
+                        -- КАСАНИЕ по заявке любого рода: звонок, входящее/исходящее сообщение
+                        -- в любом канале. Итоговое значение = GREATEST(это, updated_at карточки),
+                        -- т.к. updated_at уже обновляется при любой правке полей заявки.
+                        SELECT tc4.crm_contact_id AS contact_id, MAX(te5.created_at) AS last_touch_at
+                        FROM {SCHEMA}.touch_clients tc4
+                        JOIN {SCHEMA}.touch_events te5 ON te5.client_id = tc4.id
+                        WHERE tc4.crm_contact_id IS NOT NULL
+                        GROUP BY tc4.crm_contact_id
+                    ) lact ON lact.contact_id = lc.id
                     LEFT JOIN (
                         -- Пропущенный звонок считаем "непрочитанным" в карточке, пока по нему
                         -- нет исходящего звонка/сообщения ПОЗЖЕ времени пропуска (менеджер ещё не перезвонил).

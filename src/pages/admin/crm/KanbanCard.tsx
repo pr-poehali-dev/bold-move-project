@@ -95,17 +95,22 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSav
               {localStorage.getItem(`order_title_${client.id}`) || `Заявка №${client.id}`}
             </span>
             {(() => {
+              // Последнее действие — любое касание заявки (правка карточки, звонок,
+              // сообщение), приходит с бэкенда уже готовым (GREATEST по нескольким источникам).
+              const lastAction = stageDuration(client.last_activity_at);
               const onStage = client.status !== "done" && client.status !== "cancelled" ? stageDuration(client.status_changed_at) : "";
               const age = stageDuration(client.created_at);
-              if (!onStage && !age) return null;
+              if (!lastAction && !onStage && !age) return null;
               return (
                 <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
                   style={{ background: t.surface2, border: `1px solid ${t.border}` }}
-                  title={`На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
+                  title={`Последнее действие: ${lastAction || "—"} · На этапе: ${onStage || "—"} · Возраст заявки: ${age || "—"}`}>
                   <Icon name="Clock" size={9} style={{ color: t.accentLight }} />
-                  {onStage && <span style={{ color: t.text }}>{onStage}</span>}
+                  {lastAction && <span style={{ color: t.text }}>{lastAction}</span>}
+                  {lastAction && (onStage || age) && <span style={{ color: t.textMute }}>/</span>}
+                  {onStage && <span style={{ color: t.textSub }}>{onStage}</span>}
                   {onStage && age && <span style={{ color: t.textMute }}>/</span>}
-                  {age && <span style={{ color: t.textSub }}>{age}</span>}
+                  {age && <span style={{ color: t.textMute }}>{age}</span>}
                 </span>
               );
             })()}

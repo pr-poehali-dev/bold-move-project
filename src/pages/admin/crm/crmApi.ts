@@ -232,6 +232,9 @@ export interface Client {
   status_changed_at?: string | null;
   next_call_date?: string | null;
   last_call_at?: string | null;
+  /** Самое свежее действие по заявке любого рода — правка карточки, звонок,
+   * входящее/исходящее сообщение (см. GREATEST в SQL на бэкенде). */
+  last_activity_at?: string | null;
   has_missed_call?: boolean;
   /** Менеджер отметил при закрытии карточки, что звонить клиенту больше не нужно */
   no_call_needed?: boolean;
