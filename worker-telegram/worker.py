@@ -404,6 +404,12 @@ async def start_existing_session(company_id: int, channel: str, webhook_key: str
     await client.connect()
     if not await client.is_user_authorized():
         print(f"[qr-worker] company={company_id} sessiya ne avtorizovana, propuskaem (nuzhno peropodklyuchenie cherez QR)")
+        # Раньше воркер тут молчал — CRM продолжал думать, что сессия
+        # 'connected', хотя реально сообщения никуда не уходили. Теперь явно
+        # сообщаем backend'у, что нужно новое QR-подключение — статус в
+        # интерфейсе сразу станет честным ("Требуется переподключение").
+        report_qr_status(company_id, channel, "error",
+                          error="Сессия отключена (в Telegram вышли на другом устройстве или отозвали доступ) — переподключите через QR")
         await client.disconnect()
         return
     active_clients[company_id] = client
