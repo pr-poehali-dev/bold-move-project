@@ -209,9 +209,15 @@ export default function LineAuthModal({
           </div>
         ) : waitingQr ? (
           <>
-            <div className="w-72 h-72 rounded-xl flex items-center justify-center" style={{ background: "#fff" }}>
+            <div className="w-72 h-72 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: "#fff" }}>
               {payload ? (
-                <QRCodeSVG value={payload} size={264} marginSize={2} level="M" />
+                payload.startsWith("data:image") ? (
+                  // Воркер уже прислал готовую картинку QR (PNG в base64) — показываем как есть,
+                  // повторное кодирование строки в QRCodeSVG дало бы нечитаемый "QR внутри QR".
+                  <img src={payload} alt="QR-код для входа" className="w-full h-full object-contain" />
+                ) : (
+                  <QRCodeSVG value={payload} size={264} marginSize={2} level="M" />
+                )
               ) : (
                 <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
               )}

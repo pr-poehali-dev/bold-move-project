@@ -156,9 +156,14 @@ export default function ChannelQrModal({
           </div>
         ) : (
           <>
-            <div className="w-72 h-72 rounded-xl flex items-center justify-center" style={{ background: "#fff" }}>
+            <div className="w-72 h-72 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: "#fff" }}>
               {qrUrl ? (
-                <QRCodeSVG value={qrUrl} size={264} marginSize={2} level="M" />
+                qrUrl.startsWith("data:image") ? (
+                  // Воркер прислал готовую картинку QR (PNG в base64) — показываем как есть.
+                  <img src={qrUrl} alt="QR-код для входа" className="w-full h-full object-contain" />
+                ) : (
+                  <QRCodeSVG value={qrUrl} size={264} marginSize={2} level="M" />
+                )
               ) : (
                 <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
               )}
