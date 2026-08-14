@@ -1,0 +1,1 @@
+UPDATE t_p45929761_bold_move_project.touch_events SET status='pending' WHERE id IN (1918, 1920) AND status='error';

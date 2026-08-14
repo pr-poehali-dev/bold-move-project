@@ -5146,6 +5146,22 @@ def handler(event: dict, context) -> dict:
             # очередь pending (их заберёт воркер на VPS).
             initial_status = "pending"
             out_external_id = None  # id сообщения в канале (заполняем для Avito — защита от дублей)
+            line_account_id = None  # какая именно линия (аккаунт) должна отправить — для воркера
+            if channel in ("telegram", "max"):
+                # Без привязки к конкретной линии воркер не знает, каким аккаунтом
+                # отправлять — сообщение зависало бы в pending навсегда. Берём
+                # активную авторизованную линию этого канала; если её нет — сразу
+                # понятная ошибка, а не тихое зависание.
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.messenger_accounts
+                    WHERE company_id=%s AND channel=%s AND is_active=TRUE AND auth_status='authorized'
+                    ORDER BY id LIMIT 1
+                """, (owner_id, channel))
+                line_row = cur.fetchone()
+                if not line_row:
+                    label = "Telegram" if channel == "telegram" else "MAX"
+                    return err(f"Нет подключённой линии {label} — авторизуйте линию в Интеграциях", 400)
+                line_account_id = line_row[0]
             if channel == "avito":
                 cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
                 arow = cur.fetchone()
@@ -5162,12 +5178,12 @@ def handler(event: dict, context) -> dict:
                     out_external_id = f"avito_{sent_msg_id}"
 
             cur.execute(f"""
-                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status, reply_to_id)
-                VALUES (%s, %s, 'out', %s, %s, %s, %s, %s)
+                INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status, reply_to_id, account_id)
+                VALUES (%s, %s, 'out', %s, %s, %s, %s, %s, %s)
                 RETURNING id, created_at
             """, (client_id, channel, out_external_id, text,
                   json.dumps(attachments, ensure_ascii=False) if attachments else None, initial_status,
-                  reply_to_id))
+                  reply_to_id, line_account_id))
             new_row = cur.fetchone()
             conn.commit()
 
