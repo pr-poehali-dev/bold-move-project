@@ -151,6 +151,15 @@ if TG_PROXY_HOST and TG_PROXY_PORT:
     TELETHON_PROXY = (socks.SOCKS5, TG_PROXY_HOST, TG_PROXY_PORT, True, TG_PROXY_USER, TG_PROXY_PASS)
     print(f"[qr-worker] ispol'zuetsya SOCKS5-proksi {TG_PROXY_HOST}:{TG_PROXY_PORT} dlya svyazi s Telegram")
 
+# Kanal do datatsentrov Telegram (naprjamuyu ili cherez proksi) okazalsya
+# NESTABIL'NYM — zamery pokazali poterju do 70-80% popytok podklyucheniya
+# (odni datatsentry ne otvechajut vovse, drugie — cherez raz). Pri etom hotja
+# by 1 iz 4-5 popytok obychno prohodit uspeshno, poetomu uvelichivaem chislo
+# povtorov Telethon (po umolchaniju ih vsego 5) i umenshaem zaderzhku mezhdu
+# nimi — chtoby za razumnoe vremja garantirovanno poimat' rabochee okno.
+CONNECTION_RETRIES = int(os.environ.get("CONNECTION_RETRIES", "15"))
+RETRY_DELAY = int(os.environ.get("RETRY_DELAY", "2"))
+
 # company_id -> asyncio.Task (fonovyi tsikl slushaniya + otpravki dlya etoi kompanii)
 active_clients: dict[int, TelegramClient] = {}
 active_tasks: dict[int, list[asyncio.Task]] = {}
@@ -390,7 +399,8 @@ async def start_existing_session(company_id: int, channel: str, webhook_key: str
     if company_id in active_clients:
         return
     session_path = os.path.join(SESSIONS_DIR, f"{company_id}")
-    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY)
+    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY,
+                             connection_retries=CONNECTION_RETRIES, retry_delay=RETRY_DELAY)
     await client.connect()
     if not await client.is_user_authorized():
         print(f"[qr-worker] company={company_id} sessiya ne avtorizovana, propuskaem (nuzhno peropodklyuchenie cherez QR)")
@@ -423,7 +433,8 @@ async def handle_connect_task(company_id: int, channel: str):
         return
 
     session_path = os.path.join(SESSIONS_DIR, f"{company_id}")
-    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY)
+    client = TelegramClient(session_path, API_ID, API_HASH, proxy=TELETHON_PROXY,
+                             connection_retries=CONNECTION_RETRIES, retry_delay=RETRY_DELAY)
     await client.connect()
 
     async def ask_password_and_signin() -> bool:
