@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Icon from "@/components/ui/icon";
 import { crmFetch } from "@/pages/admin/crm/crmApi";
 
-type AuthStatus =
+export type AuthStatus =
   | "none" | "requested" | "connecting" | "qr_ready"
   | "code_requested" | "code_submitted"
   | "password_requested" | "password_submitted"
@@ -22,16 +22,22 @@ interface AccountRow {
 // Опрашиваем список линий раз в 2.5 сек, ищем свою по id — так же просто и
 // надёжно, как в ChannelQrModal, но статус хранится в messenger_accounts,
 // а не в отдельной таблице channel_qr_sessions (это НОВАЯ, вторая система).
+//
+// initialStatus — статус линии на момент открытия. Если он уже "занят"
+// (например password_requested после случайного закрытия окна кликом мимо) —
+// НЕ запускаем авторизацию заново (это сбросило бы прогресс воркера), а просто
+// продолжаем опрос с того места, где пользователь ушёл.
 export default function LineAuthModal({
-  accountId, channel, title, onClose, onAuthorized,
+  accountId, channel, title, initialStatus, onClose, onAuthorized,
 }: {
   accountId: number;
   channel: string;
   title: string;
+  initialStatus?: AuthStatus;
   onClose: () => void;
   onAuthorized: (accountName: string | null) => void;
 }) {
-  const [status, setStatus] = useState<AuthStatus>("requested");
+  const [status, setStatus] = useState<AuthStatus>(initialStatus ?? "requested");
   const [payload, setPayload] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -95,8 +101,17 @@ export default function LineAuthModal({
     }
   };
 
+  // Просто продолжаем опрос без повторного auth-start, чтобы не сбросить прогресс,
+  // если линия уже что-то ждёт (например password_requested).
+  const resume = () => {
+    stopPolling();
+    pollRef.current = setInterval(poll, 2500);
+    poll();
+  };
+
   useEffect(() => {
-    start();
+    const busy = initialStatus && !["none", "authorized", "error"].includes(initialStatus);
+    if (busy) resume(); else start();
     return stopPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -107,12 +122,10 @@ export default function LineAuthModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}>
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
       <div
         className="w-full max-w-sm rounded-2xl p-5 flex flex-col items-center gap-4"
-        style={{ background: "#13131f", border: "1px solid rgba(255,255,255,0.1)" }}
-        onClick={e => e.stopPropagation()}>
+        style={{ background: "#13131f", border: "1px solid rgba(255,255,255,0.1)" }}>
 
         <div className="flex items-center justify-between w-full">
           <div className="text-sm font-bold text-white">Подключение «{title}»</div>

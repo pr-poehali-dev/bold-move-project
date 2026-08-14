@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import { crmFetch } from "../crm/crmApi";
 import { copyText } from "@/lib/clipboard";
 import EnabledToggle from "./EnabledToggle";
-import LineAuthModal from "./LineAuthModal";
+import LineAuthModal, { type AuthStatus } from "./LineAuthModal";
 
 interface Account {
   id: number;
@@ -12,7 +12,7 @@ interface Account {
   external_id: string;
   phone: string | null;
   is_active: boolean;
-  auth_status: string;
+  auth_status: AuthStatus;
   account_name: string | null;
   created_at: string;
 }
@@ -51,7 +51,7 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const [authModal, setAuthModal] = useState<{ id: number; channel: string; title: string } | null>(null);
+  const [authModal, setAuthModal] = useState<{ id: number; channel: string; title: string; status: AuthStatus } | null>(null);
 
   const loadConfig = async () => {
     try {
@@ -230,8 +230,14 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
                     const st = STATUS_LABEL[a.auth_status] || STATUS_LABEL.none;
                     const isBusy = !["none", "authorized", "error"].includes(a.auth_status);
                     return (
-                      <div key={a.id} className="flex items-center gap-2 rounded-xl px-3 py-2"
-                        style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb", border: `1px solid ${cardBrd}` }}>
+                      <div key={a.id}
+                        onClick={() => { if (isBusy) setAuthModal({ id: a.id, channel: a.channel, title: a.title, status: a.auth_status }); }}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2"
+                        style={{
+                          background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
+                          border: `1px solid ${cardBrd}`,
+                          cursor: isBusy ? "pointer" : "default",
+                        }}>
                         <Icon name={a.channel === "telegram" ? "Send" : "MessageCircle"} size={14} style={{ color: txtSub, flexShrink: 0 }} />
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-semibold truncate" style={{ color: txt }}>{a.title}</div>
@@ -244,25 +250,25 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
                           {st.text}
                         </span>
                         {a.auth_status === "authorized" ? (
-                          <button onClick={() => setAuthModal({ id: a.id, channel: a.channel, title: a.title })}
+                          <button onClick={e => { e.stopPropagation(); setAuthModal({ id: a.id, channel: a.channel, title: a.title, status: a.auth_status }); }}
                             className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 transition"
                             style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#eef2ff", color: txtSub }}>
                             Переавторизовать
                           </button>
                         ) : isBusy ? (
-                          <button onClick={() => cancelAuth(a.id)}
+                          <button onClick={e => { e.stopPropagation(); cancelAuth(a.id); }}
                             className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 transition"
                             style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
                             Отменить
                           </button>
                         ) : (
-                          <button onClick={() => setAuthModal({ id: a.id, channel: a.channel, title: a.title })}
+                          <button onClick={e => { e.stopPropagation(); setAuthModal({ id: a.id, channel: a.channel, title: a.title, status: a.auth_status }); }}
                             className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 transition"
                             style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa" }}>
                             Авторизовать
                           </button>
                         )}
-                        <button onClick={() => deleteLine(a.id)} disabled={deletingId === a.id}
+                        <button onClick={e => { e.stopPropagation(); deleteLine(a.id); }} disabled={deletingId === a.id}
                           className="p-1.5 rounded-lg flex-shrink-0 transition disabled:opacity-50"
                           style={{ color: "#ef4444" }}>
                           <Icon name="Trash2" size={13} />
@@ -318,6 +324,7 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
           accountId={authModal.id}
           channel={authModal.channel}
           title={authModal.title}
+          initialStatus={authModal.status}
           onClose={() => { setAuthModal(null); loadAccounts(); }}
           onAuthorized={() => { setAuthModal(null); loadAccounts(); }}
         />
