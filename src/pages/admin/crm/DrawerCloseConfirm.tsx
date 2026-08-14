@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
-import { DateTimePickerInner } from "./DateTimePicker";
+import { DateFieldCompact } from "./DateFieldCompact";
 import { stageDateRule } from "./stageDateRules";
 
 // Какое поле комментария (из блока «Комментарий» карточки клиента) относится к
@@ -106,11 +106,9 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
           </label>
         </div>
 
-        {/* Пикер даты/времени — активен только если чекбокс не отмечен */}
+        {/* Дата следующего звонка — компактное поле, календарь всплывает по клику */}
         <div className="px-4" style={{ opacity: noCall ? 0.35 : 1, pointerEvents: noCall ? "none" : "auto", transition: "opacity 0.15s" }}>
-          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-            <DateTimePickerInner value={nextCall} onChange={setNextCall} hideDelete compact />
-          </div>
+          <DateFieldCompact value={nextCall} onChange={setNextCall} placeholder="Дата следующего звонка" icon="PhoneCall" />
         </div>
 
         {/* Дата этапа (замер/монтаж) — обязательна, пока не заполнена, закрыть нельзя */}
@@ -128,10 +126,8 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
                 </span>
               )}
             </div>
-            <div className="rounded-xl overflow-hidden"
-              style={{ border: `1px solid ${dateMissing ? "#ef444470" : t.border}` }}>
-              <DateTimePickerInner value={stageDate} onChange={setStageDate} hideDelete compact />
-            </div>
+            <DateFieldCompact value={stageDate} onChange={setStageDate} placeholder="Выбрать дату и время"
+              icon={dateRule.icon} iconColor={dateRule.color} error={dateMissing} />
           </div>
         )}
 

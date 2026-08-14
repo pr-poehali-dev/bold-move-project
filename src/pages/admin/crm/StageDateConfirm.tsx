@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
-import { DateTimePickerInner } from "./DateTimePicker";
+import { DateFieldCompact } from "./DateFieldCompact";
 import { STAGE_DATE_RULES } from "./stageDateRules";
 
 export interface StageDatePatch {
@@ -62,9 +62,7 @@ export function StageDateConfirm({ t, nextStatus, currentDate, currentComment, o
         </div>
 
         <div className="px-4 pt-1">
-          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
-            <DateTimePickerInner value={date} onChange={setDate} hideDelete compact />
-          </div>
+          <DateFieldCompact value={date} onChange={setDate} icon={rule.icon} iconColor={rule.color} error={!date} />
         </div>
 
         <div className="px-4 pt-2.5">
