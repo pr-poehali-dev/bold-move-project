@@ -35,6 +35,16 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
   );
 
   const tooltipStyle = { backgroundColor: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, fontSize: 12 };
+  // Подсветка под курсором на графике — по умолчанию recharts рисует светло-серую
+  // плашку, которая на тёмной теме выглядит как белая подложка. Делаем её едва заметной.
+  const tooltipCursor = { fill: t.theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" };
+  // Нативные поля даты браузер красит белым — colorScheme заставляет его учитывать тему.
+  const dateInputStyle = {
+    background: t.surface2,
+    border: `1px solid ${t.border}`,
+    color: t.textSub,
+    colorScheme: t.theme,
+  } as React.CSSProperties;
 
   return (
     <div className="space-y-5">
@@ -59,11 +69,11 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
               ))}
               <input type="month" value={monthFrom} onChange={e => setMonthFrom(e.target.value)}
                 className="rounded-lg px-2 py-1 text-xs ml-2 focus:outline-none"
-                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }} />
+                style={dateInputStyle} />
               <span className="text-xs" style={{ color: t.textMute }}>—</span>
               <input type="month" value={monthTo} onChange={e => setMonthTo(e.target.value)}
                 className="rounded-lg px-2 py-1 text-xs focus:outline-none"
-                style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }} />
+                style={dateInputStyle} />
               {(monthFrom || monthTo) && (
                 <button onClick={() => { setMonthFrom(""); setMonthTo(""); }}
                   className="px-2 py-1 rounded-lg text-xs transition"
@@ -75,7 +85,7 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
             <BarChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} allowDecimals={false} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} />
               {leadsMode !== "done"  && <Bar dataKey="leads" name="Заявки"       fill="#8b5cf6" radius={[4, 4, 0, 0]} />}
               {leadsMode !== "leads" && <Bar dataKey="done"  name="Завершённые"  fill="#10b981" radius={[4, 4, 0, 0]} />}
               {leadsMode === "both"  && <Legend wrapperStyle={{ fontSize: 11, color: t.textMute }} />}
@@ -105,7 +115,7 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}к` : v} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", ""]} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: t.border, strokeWidth: 1 }} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", ""]} />
               {(revenueMode === "revenue" || revenueMode === "all") && <Line type="monotone" dataKey="revenue" name="Выручка" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />}
               {(revenueMode === "costs"   || revenueMode === "all") && <Line type="monotone" dataKey="costs"   name="Затраты" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />}
               {(revenueMode === "profit"  || revenueMode === "all") && <Line type="monotone" dataKey="profit"  name="Прибыль" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />}
