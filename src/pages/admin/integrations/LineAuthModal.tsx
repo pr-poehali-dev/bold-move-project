@@ -209,9 +209,9 @@ export default function LineAuthModal({
           </div>
         ) : waitingQr ? (
           <>
-            <div className="w-56 h-56 rounded-xl flex items-center justify-center" style={{ background: "#fff" }}>
+            <div className="w-72 h-72 rounded-xl flex items-center justify-center" style={{ background: "#fff" }}>
               {payload ? (
-                <QRCodeSVG value={payload} size={216} />
+                <QRCodeSVG value={payload} size={264} marginSize={2} level="M" />
               ) : (
                 <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
               )}
