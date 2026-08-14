@@ -8,6 +8,7 @@ import { loadCustomFinRows } from "./drawerTypes";
 import { computeStats } from "./computeAnalytics";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, StageFilter, PeriodFilter } from "./analyticsFilters";
+import AnalyticsFilterSelect from "./AnalyticsFilterSelect";
 
 // Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
 function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
@@ -35,7 +36,7 @@ export default function CrmAnalytics() {
   const [allClients,    setAllClients]    = useState<Client[]>([]);
   const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
   const [sourceFilter,  setSourceFilter]  = useState<string>(""); // "" = все источники
-  const [stageFilter,   setStageFilter]   = useState<StageFilter>("");   // "" = все стадии
+  const [stageFilter,   setStageFilter]   = useState<StageFilter>("final"); // по умолчанию — завершённые сделки
   const [periodFilter,  setPeriodFilter]  = useState<PeriodFilter>("all");
   const { sources } = useOrderSources();
 
@@ -129,44 +130,29 @@ export default function CrmAnalytics() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Фильтр по источнику заявок */}
-          <div className="relative">
-            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-              style={sourceFilter
-                ? { background: "#7c3aed18", color: "#a78bfa", border: "1px solid #7c3aed40" }
-                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-              <option value="">Все источники</option>
-              {sources.map(src => <option key={src.id} value={src.name}>{src.name}</option>)}
-            </select>
-            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: sourceFilter ? "#a78bfa" : t.textMute }} />
-          </div>
+          <AnalyticsFilterSelect
+            icon="Radio"
+            value={sourceFilter}
+            onChange={v => setSourceFilter(v)}
+            options={[{ id: "", label: "Все источники" }, ...sources.map(src => ({ id: src.name, label: src.name }))]}
+          />
 
           {/* Фильтр по стадии сделки */}
-          <div className="relative">
-            <select value={stageFilter} onChange={e => setStageFilter(e.target.value as StageFilter)}
-              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-              style={stageFilter
-                ? { background: "#06b6d418", color: "#22d3ee", border: "1px solid #06b6d440" }
-                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-              {STAGE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: stageFilter ? "#22d3ee" : t.textMute }} />
-          </div>
+          <AnalyticsFilterSelect
+            icon="GitBranch"
+            value={stageFilter}
+            onChange={v => setStageFilter(v as StageFilter)}
+            options={STAGE_OPTIONS}
+          />
 
           {/* Фильтр по периоду */}
-          <div className="relative">
-            <select value={periodFilter} onChange={e => setPeriodFilter(e.target.value as PeriodFilter)}
-              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
-              style={periodFilter !== "all"
-                ? { background: "#f59e0b18", color: "#fbbf24", border: "1px solid #f59e0b40" }
-                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-              {PERIOD_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: periodFilter !== "all" ? "#fbbf24" : t.textMute }} />
-          </div>
+          <AnalyticsFilterSelect
+            icon="CalendarDays"
+            value={periodFilter}
+            onChange={v => setPeriodFilter(v as PeriodFilter)}
+            options={PERIOD_OPTIONS}
+            neutralValue="all"
+          />
 
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
             {ANALYTICS_TABS.map((tb, i) => (
