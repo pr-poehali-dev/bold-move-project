@@ -54,8 +54,14 @@ export default function LineAuthModal({
       const res = await crmFetch("messenger-accounts-list") as { accounts?: AccountRow[] };
       const acc = res.accounts?.find(a => a.id === accountId);
       if (!acc) return;
-      setStatus(acc.auth_status);
-      if (acc.auth_payload) setPayload(acc.auth_payload);
+      // При смене статуса (например qr_ready → password_requested) старый payload
+      // от прошлого шага (base64-картинка QR) не должен "залипать" и попадать в
+      // текст пояснения — обновляем его строго вместе со статусом, без if-заглушки.
+      setStatus(prevStatus => {
+        if (prevStatus !== acc.auth_status) setPayload(acc.auth_payload ?? null);
+        else if (acc.auth_payload) setPayload(acc.auth_payload);
+        return acc.auth_status;
+      });
       if (acc.auth_status === "authorized") {
         stopPolling();
         onAuthorized(acc.account_name ?? null);
@@ -154,7 +160,9 @@ export default function LineAuthModal({
           <div className="w-full flex flex-col items-center gap-3 py-2">
             <Icon name="Lock" size={32} style={{ color: "#f59e0b" }} />
             <div className="text-xs text-center text-white/60 leading-relaxed">
-              {payload || "На аккаунте включён облачный пароль (2FA) — введите его"}
+              {payload && !payload.startsWith("data:image")
+                ? payload
+                : "На аккаунте включён облачный пароль (2FA) — введите его в поле ниже"}
             </div>
             <input
               type="password"
