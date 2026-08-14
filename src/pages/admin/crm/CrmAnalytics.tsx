@@ -7,6 +7,7 @@ import { Stats, AnalyticsTab, ANALYTICS_TABS } from "./analyticsTypes";
 import { loadCustomFinRows } from "./drawerTypes";
 import { computeStats } from "./computeAnalytics";
 import { useOrderSources } from "@/hooks/useOrderSources";
+import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, StageFilter, PeriodFilter } from "./analyticsFilters";
 
 // Суммирует кастомные строки доходов/затрат из localStorage по всем клиентам
 function calcCustomFinTotals(clientIds: number[]): { extraIncome: number; extraCosts: number } {
@@ -34,6 +35,8 @@ export default function CrmAnalytics() {
   const [allClients,    setAllClients]    = useState<Client[]>([]);
   const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
   const [sourceFilter,  setSourceFilter]  = useState<string>(""); // "" = все источники
+  const [stageFilter,   setStageFilter]   = useState<StageFilter>("");   // "" = все стадии
+  const [periodFilter,  setPeriodFilter]  = useState<PeriodFilter>("all");
   const { sources } = useOrderSources();
 
   useEffect(() => {
@@ -43,10 +46,10 @@ export default function CrmAnalytics() {
     }).catch(() => setLoading(false));
   }, []);
 
-  // Заявки выбранного источника ("" = все). Считаем всё в браузере — мгновенно.
+  // Заявки под выбранные фильтры (источник / стадия / период). Считаем в браузере — мгновенно.
   const filteredClients = useMemo(
-    () => sourceFilter ? allClients.filter(c => (c.source || "") === sourceFilter) : allClients,
-    [allClients, sourceFilter],
+    () => applyAnalyticsFilters(allClients, { source: sourceFilter, stage: stageFilter, period: periodFilter }),
+    [allClients, sourceFilter, stageFilter, periodFilter],
   );
 
   const recentClients = filteredClients.slice(0, 10);
@@ -113,7 +116,15 @@ export default function CrmAnalytics() {
         <div>
           <h2 className="text-xl font-bold" style={{ color: t.text }}>Аналитика</h2>
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>
-            {sourceFilter ? `Источник «${sourceFilter}»: ${s.total_all} заявок` : `Всего заявок: ${s.total_all}`}
+            {(() => {
+              const parts: string[] = [];
+              if (sourceFilter) parts.push(`источник «${sourceFilter}»`);
+              if (stageFilter)  parts.push(STAGE_OPTIONS.find(o => o.id === stageFilter)!.label.toLowerCase());
+              if (periodFilter !== "all") parts.push(PERIOD_OPTIONS.find(o => o.id === periodFilter)!.label.toLowerCase());
+              return parts.length
+                ? `${parts.join(", ")} — ${s.total_all} заявок`
+                : `Всего заявок: ${s.total_all}`;
+            })()}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -129,6 +140,32 @@ export default function CrmAnalytics() {
             </select>
             <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
               style={{ color: sourceFilter ? "#a78bfa" : t.textMute }} />
+          </div>
+
+          {/* Фильтр по стадии сделки */}
+          <div className="relative">
+            <select value={stageFilter} onChange={e => setStageFilter(e.target.value as StageFilter)}
+              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+              style={stageFilter
+                ? { background: "#06b6d418", color: "#22d3ee", border: "1px solid #06b6d440" }
+                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+              {STAGE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: stageFilter ? "#22d3ee" : t.textMute }} />
+          </div>
+
+          {/* Фильтр по периоду */}
+          <div className="relative">
+            <select value={periodFilter} onChange={e => setPeriodFilter(e.target.value as PeriodFilter)}
+              className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold focus:outline-none transition cursor-pointer"
+              style={periodFilter !== "all"
+                ? { background: "#f59e0b18", color: "#fbbf24", border: "1px solid #f59e0b40" }
+                : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
+              {PERIOD_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <Icon name="ChevronDown" size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: periodFilter !== "all" ? "#fbbf24" : t.textMute }} />
           </div>
 
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
