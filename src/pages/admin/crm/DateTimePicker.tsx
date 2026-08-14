@@ -50,7 +50,7 @@ function ScrollColumn({ items, selected, onSelect, compact }: {
   }, [selected, items, rowH]);
 
   return (
-    <div ref={ref} className="overflow-y-auto" style={{ scrollbarWidth: "none", width: TIME_COL_W, height: compact ? 130 : 160, flex: "none" }}>
+    <div ref={ref} className="overflow-y-auto flex-1" style={{ scrollbarWidth: "none", width: TIME_COL_W, minHeight: 0 }}>
       {items.map(v => (
         <div key={v}
           onClick={() => onSelect(v)}
@@ -217,31 +217,34 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
           })}
         </div>
 
-        {/* Футер — быстрый выбор дня (+ Удалить, если разрешено). flex-wrap — чтобы
-            кнопки переносились на вторую строку, а не обрезались, если места впритык */}
-        <div className={`flex items-center flex-wrap gap-1 ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderTop: `1px solid ${t.border}` }}>
+        {/* Футер — быстрый выбор дня ровной сеткой в 3 колонки (никогда не
+            переносится вразнобой), «Удалить» — отдельной строкой сверху, если
+            разрешено, чтобы не толкаться с быстрым выбором в одной строке. */}
+        <div className={compact ? "mt-2 pt-2" : "mt-3 pt-3"} style={{ borderTop: `1px solid ${t.border}` }}>
           {!hideDelete && (
             <button onClick={handleDelete}
-              className="text-xs font-semibold px-2 py-1.5 rounded-lg transition hover:bg-red-500/10 mr-auto"
+              className="w-full text-xs font-semibold text-left px-2 py-1.5 mb-1 rounded-lg transition hover:bg-red-500/10"
               style={{ color: "#ef4444" }}>
               Удалить
             </button>
           )}
-          <button onClick={() => handleQuickDay(0)}
-            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
-            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
-            Сегодня
-          </button>
-          <button onClick={() => handleQuickDay(1)}
-            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
-            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
-            Завтра
-          </button>
-          <button onClick={() => handleQuickDay(2)}
-            className={`text-xs font-semibold rounded-lg transition hover:bg-white/5 ${hideDelete ? "flex-1" : ""}`}
-            style={{ color: "#a78bfa", padding: compact ? "5px 8px" : "6px 12px" }}>
-            +2 дня
-          </button>
+          <div className="grid grid-cols-3 gap-1">
+            <button onClick={() => handleQuickDay(0)}
+              className="text-xs font-semibold rounded-lg transition hover:bg-white/5 text-center"
+              style={{ color: "#a78bfa", padding: compact ? "5px 4px" : "6px 8px" }}>
+              Сегодня
+            </button>
+            <button onClick={() => handleQuickDay(1)}
+              className="text-xs font-semibold rounded-lg transition hover:bg-white/5 text-center"
+              style={{ color: "#a78bfa", padding: compact ? "5px 4px" : "6px 8px" }}>
+              Завтра
+            </button>
+            <button onClick={() => handleQuickDay(2)}
+              className="text-xs font-semibold rounded-lg transition hover:bg-white/5 text-center"
+              style={{ color: "#a78bfa", padding: compact ? "5px 4px" : "6px 8px" }}>
+              +2 дня
+            </button>
+          </div>
         </div>
       </div>
 
@@ -254,15 +257,18 @@ export function DateTimePickerInner({ value, onChange, hideDelete, showSaveButto
           {pad(hour)} : {pad(minute)}
         </div>
 
-        {/* Колонки часы / минуты */}
-        <div className="flex flex-1 justify-center overflow-hidden">
-          <div className="overflow-hidden py-2 pl-1.5" style={{ flex: "none" }}>
-            <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Час</div>
+        {/* Колонки часы / минуты — растягиваются на всю доступную высоту (минус
+            заголовок "чч:мм" сверху и кнопка "Сохранить" снизу, если есть), а не
+            фиксированные 130px — иначе при высоком календаре (месяц из 6 недель)
+            снизу оставалась пустая дыра под списком цифр. */}
+        <div className="flex flex-1 justify-center overflow-hidden" style={{ minHeight: 0 }}>
+          <div className="flex flex-col py-2 pl-1.5" style={{ flex: "none" }}>
+            <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute, flex: "none" }}>Час</div>
             <ScrollColumn items={HOURS} selected={hour} onSelect={changeHour} compact={compact} />
           </div>
           <div className="w-px self-stretch my-2" style={{ background: t.border, flex: "none" }} />
-          <div className="overflow-hidden py-2 pr-1.5" style={{ flex: "none" }}>
-            <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute }}>Мин</div>
+          <div className="flex flex-col py-2 pr-1.5" style={{ flex: "none" }}>
+            <div className="text-[9px] uppercase font-bold text-center mb-1" style={{ color: t.textMute, flex: "none" }}>Мин</div>
             <ScrollColumn items={MINUTES} selected={minute} onSelect={changeMinute} compact={compact} />
           </div>
         </div>
