@@ -232,6 +232,7 @@ export default function CrmMessages() {
             <div className="flex-1 min-h-0">
               <DrawerTouchesTab
                 key={selected.client_id}
+                clientId={selected.client_id}
                 phone={selected.phone || ""}
                 name={selected.name || undefined}
                 contactId={selected.contact_id ?? undefined}

@@ -14,6 +14,9 @@ interface Props {
   name?: string;
   /** id заявки (live_chats). Нужен для каналов без телефона (Avito): история грузится по нему. */
   contactId?: number;
+  /** id записи touch_clients — приоритетный способ найти диалог, когда нет
+   * ни телефона, ни привязанной заявки (напр. чат MAX/Telegram без номера). */
+  clientId?: number;
   /** Увеличивать при каждом запросе «поставить курсор в поле ввода» (напр. переход с другой вкладки) */
   focusSignal?: number;
   /**
@@ -25,7 +28,7 @@ interface Props {
   hideContactBar?: boolean;
 }
 
-export default function DrawerTouchesTab({ phone, name, contactId, focusSignal, hideContactBar }: Props) {
+export default function DrawerTouchesTab({ phone, name, contactId, clientId, focusSignal, hideContactBar }: Props) {
   const t = useTheme();
   const { call: callViaUis, calling: callingUis } = useCallClient();
   const [loading, setLoading] = useState(true);
@@ -85,14 +88,19 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal, 
   // silent=true — фоновое обновление (поллинг): не показываем спиннер загрузки,
   // чтобы лента не «мигала» каждые несколько секунд.
   const load = async (silent = false) => {
-    // Грузим по id заявки (contact_id) — он в приоритете, чтобы не терять уже начатую
-    // переписку (напр. Avito), если у заявки позже появился телефон. Телефон передаём
-    // ТОЖЕ (если есть) — backend сам дозапишет его в найденную по заявке запись,
+    // Грузим по id записи touch_clients (clientId) — он в наивысшем приоритете:
+    // это точный, всегда существующий идентификатор диалога, включая чаты MAX/
+    // Telegram без телефона и без привязанной заявки (иначе, если у диалога нет
+    // ни phone, ни contactId, лента просто не грузится, хотя диалог есть в списке).
+    // Дальше — id заявки (contact_id), чтобы не терять уже начатую переписку
+    // (напр. Avito), если у заявки позже появился телефон. Телефон передаём
+    // ТОЖЕ (если есть) — backend сам дозапишет его в найденную запись,
     // не создавая нового клиента и не обрывая историю касаний.
-    if (!phone && !contactId) { setLoading(false); return; }
+    if (!clientId && !phone && !contactId) { setLoading(false); return; }
     if (!silent) setLoading(true);
     try {
       const extra: Record<string, string> = {};
+      if (clientId) extra.client_id = String(clientId);
       if (contactId) extra.contact_id = String(contactId);
       if (phone) extra.phone = phone;
       if (name) extra.name = name;
@@ -105,7 +113,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal, 
     if (!silent) setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId, clientId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
 
   // Звонки без расшифровки (запись есть, текста ещё нет) — расшифровываем
@@ -115,14 +123,14 @@ export default function DrawerTouchesTab({ phone, name, contactId, focusSignal, 
   // Тихий поллинг ленты — подхватывает новые сообщения от клиента и статус
   // отправленных («отправляется» → «отправлено») без перезахода на страницу.
   useEffect(() => {
-    if (!phone && !contactId) return;
+    if (!clientId && !phone && !contactId) return;
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       load(true);
     }, 30000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone, contactId]);
+  }, [phone, contactId, clientId]);
 
   const handleSend = async () => {
     const text = draft.trim();
