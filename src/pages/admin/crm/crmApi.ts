@@ -230,6 +230,10 @@ export interface Client {
   is_demo?: boolean;
   avito_chat_url?: string | null;
   status_changed_at?: string | null;
+  /** Момент фактического закрытия сделки (первый переход в 'done'). Не съезжает
+   *  при последующих правках карточки — в отличие от status_changed_at/updated_at.
+   *  Используется для денежных отчётов (период по дате получения выручки). */
+  closed_at?: string | null;
   next_call_date?: string | null;
   last_call_at?: string | null;
   /** Самое свежее действие по заявке любого рода — правка карточки, звонок,

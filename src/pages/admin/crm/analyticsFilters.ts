@@ -93,13 +93,15 @@ export function applyAnalyticsFilters(
 /** Дата, по которой заявка попадает в период.
  *  "created" — когда заявка пришла (поток лидов, «Обзор», «Касания»).
  *  "closed"  — когда сделка закрылась и деньги получены (для денег: «Финансы», «Расходы»).
- *  Для закрытых сделок берём дату монтажа, иначе дату смены статуса / последнего изменения. */
+ *  closed_at фиксируется на сервере один раз при первом переходе в 'done' и не
+ *  съезжает при последующих правках карточки (см. backend/crm-manager). Запасной
+ *  вариант (для старых записей до появления поля) — status_changed_at/updated_at. */
 export type DateBasis = "created" | "closed";
 
 export function clientPeriodDate(c: Client, basis: DateBasis): string | null | undefined {
   if (basis === "created") return c.created_at;
   if (c.status === "done") {
-    return c.install_date || c.status_changed_at || c.updated_at || c.created_at;
+    return c.closed_at || c.status_changed_at || c.updated_at || c.created_at;
   }
   return c.created_at;
 }

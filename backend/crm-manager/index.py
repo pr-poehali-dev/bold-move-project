@@ -1041,7 +1041,7 @@ def handler(event: dict, context) -> dict:
                            lc.responsible_phone, lc.map_link, lc.tags,
                            lc.photo_before_url, lc.photo_after_url, lc.document_url,
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
-                           lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at,
+                           lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at, lc.closed_at,
                            lc.next_call_date, lcall.last_call_at,
                            GREATEST(lc.updated_at, COALESCE(lact.last_touch_at, lc.updated_at)) AS last_activity_at,
                            COALESCE(missed.has_missed_call, FALSE) AS has_missed_call,
@@ -1334,6 +1334,16 @@ def handler(event: dict, context) -> dict:
                         sets.append("tags = '{}'")
                 if "status" in body:
                     sets.append("status_changed_at = NOW()")
+                    # closed_at — момент фактического закрытия сделки, для денежных отчётов
+                    # (выручка считается по месяцу получения, а не по месяцу создания заявки).
+                    # Фиксируем один раз при первом переходе в 'done' и НЕ трогаем при
+                    # повторных правках карточки, пока сделка остаётся закрытой.
+                    # Если сделку вернули из 'done' в работу — сбрасываем, чтобы при
+                    # повторном закрытии дата обновилась на актуальную.
+                    if body["status"] == "done":
+                        sets.append("closed_at = COALESCE(closed_at, NOW())")
+                    else:
+                        sets.append("closed_at = NULL")
                 vals.append(int(cid))
                 cur.execute(f"UPDATE {SCHEMA}.live_chats SET {', '.join(sets)} WHERE id = %s", vals)
 
