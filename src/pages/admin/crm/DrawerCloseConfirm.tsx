@@ -42,8 +42,9 @@ interface Props {
 // Модалка «когда позвоним клиенту в следующий раз» — показывается ПРИ КАЖДОЙ
 // попытке закрыть карточку заявки (крестиком), чтобы менеджер каждый раз явно
 // подтвердил или поправил дату следующего звонка (или отметил, что звонить не нужно).
-// Кнопка «Сохранить и закрыть» доступна ВСЕГДА (даже без изменений) — по умолчанию
-// сохраняется уже подставленное текущее значение даты/чекбокса.
+// Кнопка «Сохранить и закрыть» заблокирована, пока не заполнена дата следующего
+// звонка (или не отмечена галочка «Звонить не нужно») — точно так же, как для
+// обязательной даты этапа (замер/монтаж).
 export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, currentStatus, currentStageComment, currentStageDate, onConfirm, onCancel }: Props) {
   const [noCall, setNoCall] = useState(!!currentNoCallNeeded);
   const [nextCall, setNextCall] = useState<string | null>(currentNextCall ?? null);
@@ -54,7 +55,11 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
   // Если заявка стоит на этапе «замер/монтаж назначен», а даты нет — закрыть
   // карточку нельзя, пока дату не поставят (то же правило и на сервере).
   const dateRule = stageDateRule(currentStatus);
-  const dateMissing = !!dateRule && !stageDate;
+  const stageDateMissing = !!dateRule && !stageDate;
+  // Дата следующего звонка тоже обязательна — либо она указана, либо отмечена
+  // галочка «Звонить не нужно». Пустое и то и другое — закрыть карточку нельзя.
+  const callDateMissing = !noCall && !nextCall;
+  const dateMissing = stageDateMissing || callDateMissing;
 
   const handleSave = () => {
     if (dateMissing) return;
@@ -106,9 +111,19 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
           </label>
         </div>
 
-        {/* Дата следующего звонка — компактное поле, календарь всплывает по клику */}
-        <div className="px-4" style={{ opacity: noCall ? 0.35 : 1, pointerEvents: noCall ? "none" : "auto", transition: "opacity 0.15s" }}>
-          <DateFieldCompact value={nextCall} onChange={setNextCall} placeholder="Дата следующего звонка" icon="PhoneCall" />
+        {/* Дата следующего звонка — компактное поле, календарь всплывает по клику.
+            Обязательна, если не отмечено «Звонить не нужно» — иначе закрыть нельзя. */}
+        <div className="px-4">
+          {callDateMissing && (
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#ef444422", color: "#ef4444" }}>
+                обязательно
+              </span>
+            </div>
+          )}
+          <div style={{ opacity: noCall ? 0.35 : 1, pointerEvents: noCall ? "none" : "auto", transition: "opacity 0.15s" }}>
+            <DateFieldCompact value={nextCall} onChange={setNextCall} placeholder="Дата следующего звонка" icon="PhoneCall" error={callDateMissing} />
+          </div>
         </div>
 
         {/* Дата этапа (замер/монтаж) — обязательна, пока не заполнена, закрыть нельзя */}
@@ -145,8 +160,9 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
           </div>
         )}
 
-        {/* Кнопки. «Сохранить и закрыть» доступна всегда, кроме случая, когда
-            этап требует даты (замер/монтаж), а она не заполнена. */}
+        {/* Кнопки. «Сохранить и закрыть» заблокирована, пока не заполнена дата
+            этапа (замер/монтаж, если требуется) и дата следующего звонка (или
+            не отмечена галочка «Звонить не нужно»). */}
         <div className="flex gap-2 px-4 pt-3 pb-4 mt-1">
           <button onClick={onCancel}
             className="flex-1 py-2 text-sm rounded-xl font-semibold transition"
@@ -154,7 +170,7 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
             Отмена
           </button>
           <button onClick={handleSave} disabled={dateMissing}
-            title={dateMissing ? "Сначала укажите дату этапа" : undefined}
+            title={stageDateMissing ? "Сначала укажите дату этапа" : callDateMissing ? "Укажите дату звонка или отметьте «Звонить не нужно»" : undefined}
             className="flex-1 py-2 text-sm rounded-xl font-bold transition disabled:opacity-40"
             style={{ background: "#7c3aed", color: "#fff" }}>
             Сохранить и закрыть
