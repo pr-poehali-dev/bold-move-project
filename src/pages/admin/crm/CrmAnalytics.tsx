@@ -249,7 +249,8 @@ export default function CrmAnalytics() {
 
       {tab === "expenses" && (
         <AnalyticsExpenses
-          clients={moneyClients}
+          leadsClients={funnelSourceClients}
+          closedClients={moneyClients}
           expenses={filteredExpenses}
           categories={exp.categories}
           sources={sources}

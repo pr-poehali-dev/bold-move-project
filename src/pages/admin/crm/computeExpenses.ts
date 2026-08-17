@@ -106,7 +106,10 @@ function funnelBySource(clients: Client[]) {
   return map;
 }
 
-/** Главная таблица: одна строка = один источник, стоимость лида на каждом этапе. */
+/** Главная таблица: одна строка = один источник, стоимость лида на каждом этапе.
+ *  clients должны быть БЕЗ фильтра стадии — таблица сама показывает разбивку по
+ *  всем этапам воронки (заявки/замеры/монтажи/финал), и если список заранее
+ *  срезан по одной стадии (например «Финал»), остальные столбцы обнулятся. */
 export function computeSourceRows(clients: Client[], expenses: Expense[]): SourceRow[] {
   const funnel = funnelBySource(clients);
 
@@ -146,9 +149,15 @@ export function computeSourceRows(clients: Client[], expenses: Expense[]): Sourc
   }).sort((a, b) => b.adTotal - a.adTotal || b.leads - a.leads);
 }
 
-/** Итоги: доход минус все вложения = реальный результат по деньгам. */
+/** Итоги: доход минус все вложения = реальный результат по деньгам.
+ *  leadsClients — весь поток заявок БЕЗ фильтра стадии (иначе, например, при
+ *  активном фильтре «Финал» leads совпадёт с finals, и «Стоимость лида» станет
+ *  равна «Цене клиента» — та же ошибка, что была на графике «Воронка по месяцам»).
+ *  closedClients — список для подсчёта закрытых сделок (с учётом фильтра стадии,
+ *  если он задан осознанно). */
 export function computeExpenseSummary(
-  clients: Client[],
+  leadsClients: Client[],
+  closedClients: Client[],
   expenses: Expense[],
   opts: { income: number; dealCosts: number },
 ): ExpenseSummary {
@@ -163,8 +172,8 @@ export function computeExpenseSummary(
   const totalSpend = adTotal + salaryTotal + generalTotal + opts.dealCosts;
   const netProfit  = opts.income - totalSpend;
 
-  const leads  = clients.length;
-  const finals = clients.filter(c => c.status === "done").length;
+  const leads  = leadsClients.length;
+  const finals = closedClients.filter(c => c.status === "done").length;
 
   return {
     income: opts.income,

@@ -23,7 +23,11 @@ function KpiCard({ icon, label, value, sub, color }: { icon: string; label: stri
 }
 
 interface Props {
-  clients: Client[];
+  /** Весь поток заявок БЕЗ фильтра стадии — нужен для честной воронки по источникам
+   *  (иначе, например, при фильтре «Финал» столбец «Заявки» совпадёт с «Финал»). */
+  leadsClients: Client[];
+  /** Список для подсчёта закрытых сделок и денег — с учётом фильтра стадии, если он задан. */
+  closedClients: Client[];
   expenses: Expense[];
   categories: ExpenseCategory[];
   sources: OrderSource[];
@@ -47,7 +51,7 @@ const PIE_MODES: { id: PieMode; label: string }[] = [
 
 /** Вкладка «Расходы»: все вложения бизнеса и реальный результат по деньгам. */
 export default function AnalyticsExpenses({
-  clients, expenses, categories, sources, loading,
+  leadsClients, closedClients, expenses, categories, sources, loading,
   income, dealCosts, onCreate, onUpdate, onRemove, onAddCategory,
 }: Props) {
   const t = useTheme();
@@ -55,8 +59,8 @@ export default function AnalyticsExpenses({
   const [editing, setEditing] = useState<Expense | null>(null);
   const [pieMode, setPieMode] = useState<PieMode>("category");
 
-  const summary    = useMemo(() => computeExpenseSummary(clients, expenses, { income, dealCosts }), [clients, expenses, income, dealCosts]);
-  const sourceRows = useMemo(() => computeSourceRows(clients, expenses), [clients, expenses]);
+  const summary    = useMemo(() => computeExpenseSummary(leadsClients, closedClients, expenses, { income, dealCosts }), [leadsClients, closedClients, expenses, income, dealCosts]);
+  const sourceRows = useMemo(() => computeSourceRows(leadsClients, expenses), [leadsClients, expenses]);
   const pie        = useMemo(() => computeExpensePie(expenses, pieMode), [expenses, pieMode]);
 
   const totals = useMemo(() => sourceRows.reduce((acc, r) => ({
