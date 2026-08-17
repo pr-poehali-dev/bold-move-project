@@ -5,6 +5,7 @@ import { BlockId, CustomFinRow } from "./drawerTypes";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useCustomFinValues } from "@/hooks/useCustomFinValues";
+import { PaymentStatusBadge } from "./PaymentConfirmModal";
 
 // Статьи затрат, у которых есть собственная колонка в live_chats — их значения
 // уже добавлены в costRows напрямую из data. Остальные статьи (Менеджер, Технолог,
@@ -13,13 +14,17 @@ import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 // сохраняет сама форма затрат, а не из устаревшего localStorage.
 const BUILTIN_COST_KEYS = new Set(["material_cost", "measure_cost", "install_cost"]);
 
-export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook, customFinValuesHook }: {
+export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook, customFinValuesHook, save, onReload }: {
   data: Client;
   isHidden: boolean;
   toggleHidden: (id: BlockId) => void;
   customFinRows: CustomFinRow[];
   discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
   customFinValuesHook?: ReturnType<typeof useCustomFinValues>;
+  /** Та же функция сохранения, что и у блока "Доходы" — статусы оплат меняются
+   *  в тех же полях заказа, поэтому оба блока всегда показывают одно и то же. */
+  save?: (patch: Partial<Client>) => void;
+  onReload?: () => void;
 }) {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
@@ -81,6 +86,43 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
   const plProfit = plIncome - plCosts;
   const margin   = plIncome > 0 ? Math.round((plProfit / plIncome) * 100) : null;
   const profitColor = plProfit >= 0 ? "#10b981" : "#ef4444";
+
+  // Справочные строки о платежах — суммы и статусы берутся ИЗ ТЕХ ЖЕ полей заказа,
+  // что и в блоке "Доходы", а подтверждение идёт через тот же PaymentStatusBadge.
+  // В доход/прибыль НЕ добавляются: предоплата и доплата — это части суммы договора,
+  // иначе деньги посчитались бы дважды.
+  const paymentRows = ([
+    { field: "prepayment"    as const, label: "Предоплата", planned: Number(data.prepayment)    || 0 },
+    { field: "extra_payment" as const, label: "Доплата",    planned: Number(data.extra_payment) || 0 },
+  ]).filter(r => r.planned > 0);
+
+  const renderPaymentRows = (align: "mobile" | "desktop") =>
+    paymentRows.length > 0 && (
+      <div className={align === "desktop" ? "space-y-1.5 pt-1.5 mt-1.5" : "divide-y"}
+        style={align === "desktop"
+          ? { borderTop: `1px dashed ${t.border2}` }
+          : { borderColor: t.border2 }}>
+        {paymentRows.map(r => (
+          <div key={r.field}
+            className={align === "desktop"
+              ? "flex items-center justify-between gap-2"
+              : "flex items-center justify-between px-3 py-2"}>
+            <span className="text-xs truncate" style={{ color: t.textMute }}>{r.label}</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs whitespace-nowrap" style={{ color: t.textMute }}>{fmt(r.planned)} ₽</span>
+              <PaymentStatusBadge
+                client={data}
+                field={r.field}
+                plannedAmount={r.planned}
+                label={r.label}
+                save={save}
+                onConfirmed={() => onReload?.()}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
 
   return (
     <div className="rounded-2xl overflow-hidden group/pl" style={{ border: `1px solid ${t.border}`, opacity: isHidden ? 0.45 : 1 }}>
@@ -190,6 +232,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
                       </span>
                     </div>
                   ))}
+                  {renderPaymentRows("mobile")}
                 </div>
               </div>
             )}
@@ -253,6 +296,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
                       <span className="text-sm font-bold text-emerald-400">+{fmt(plIncome)} ₽</span>
                     </div>
                   )}
+                  {renderPaymentRows("desktop")}
                 </div>
               )}
             </div>

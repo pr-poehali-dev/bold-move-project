@@ -309,6 +309,8 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
           customFinRows={customFinRows}
           discountHistoryHook={discountHistoryHook}
           customFinValuesHook={customFinValuesHook}
+          save={save}
+          onReload={onReload}
         />
       )}
 
