@@ -10,6 +10,7 @@ import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
 import { ActivityFeed, ActivityEvent } from "./ActivityFeed";
 import { useAuth } from "@/context/AuthContext";
 import { useDiscountHistory } from "@/hooks/useDiscountHistory";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 import { AddBlockModal } from "./DrawerBlockEditor";
 import { DrawerColumns } from "./DrawerColumns";
 import { DrawerFooterInfo } from "./DrawerInfoBlocks";
@@ -92,6 +93,11 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
 
   // Единый источник истории скидок — шарится между P&L и блоком скидки
   const discountHistoryHook = useDiscountHistory(data.id);
+
+  // Единый источник кастомных статей затрат (Технолог, Логистика и т.п.) — шарится
+  // между блоком "Затраты" и блоком "P&L", чтобы новая трата сразу была видна в P&L
+  // без переоткрытия карточки (раньше у каждого блока была своя отдельная загрузка).
+  const customFinValuesHook = useCustomFinValues(data.id);
 
   // Согласованный тир сметы (для блокировки скидок при Econom)
   const [chosenTier, setChosenTier] = useState<string | null>(null);
@@ -302,6 +308,7 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
           toggleHidden={toggleHidden}
           customFinRows={customFinRows}
           discountHistoryHook={discountHistoryHook}
+          customFinValuesHook={customFinValuesHook}
         />
       )}
 
@@ -360,6 +367,7 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
         canFieldCancel={canFieldCancel}
         onReload={onReload}
         onGoToTouches={onGoToTouches}
+        customFinValuesHook={customFinValuesHook}
       />
 
       {/* Кнопка добавить блок — только на мобиле, над активностью */}

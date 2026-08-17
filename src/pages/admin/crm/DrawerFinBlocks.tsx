@@ -238,7 +238,7 @@ const BUILTIN_COST_KEYS = ["material_cost", "measure_cost", "install_cost"] as c
 
 export function DrawerCostsBlock({
   data, editingBlock, hiddenBlocks,
-  toggleHidden, setEditingBlock, saveWithLog, logAction,
+  toggleHidden, setEditingBlock, saveWithLog, logAction, customFinValuesHook,
 }: FinBlockProps) {
   const t = useTheme();
   const id: BlockId = "costs";
@@ -246,7 +246,12 @@ export function DrawerCostsBlock({
   const costsEdit = editingBlock === id;
   const { rules: autoRules, auto_mode: autoMode, loading: autoLoading, save: saveRules } = useAutoRules();
   const { history: discountHistory, totalDiscountAmount } = useDiscountHistory(data.id);
-  const { values: customValues, loading: customLoading, saveValue: saveCustomValue } = useCustomFinValues(data.id);
+  // Общий с DrawerPLBlock источник (поднят в DrawerInfoTab) — чтобы новая трата сразу
+  // была видна в P&L без переоткрытия карточки. Если хук не передан — создаём свой
+  // (на случай использования компонента отдельно, без родителя); передаём id=0,
+  // когда общий хук уже есть, чтобы не делать лишний параллельный запрос.
+  const ownCustomFinValues = useCustomFinValues(customFinValuesHook ? 0 : data.id);
+  const { values: customValues, loading: customLoading, saveValue: saveCustomValue } = customFinValuesHook ?? ownCustomFinValues;
   const [showRules, setShowRules] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
 

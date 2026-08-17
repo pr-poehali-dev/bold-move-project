@@ -3,6 +3,7 @@ import type React from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Client } from "./crmApi";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 import { BlockId, BlockDef, CustomBlockData, CustomFinRow } from "./drawerTypes";
 import { DraggableBlock } from "./DrawerBlockEditor";
 import { DrawerTagsBlock } from "./DrawerTagsBlock";
@@ -55,6 +56,9 @@ interface ColumnsProps {
   onReload?: () => void;
   /** Перейти на вкладку «Касания» и поставить курсор в поле ввода (иконка «написать» у телефона) */
   onGoToTouches?: () => void;
+  /** Общий с DrawerPLBlock источник кастомных статей затрат — чтобы новая трата
+   * сразу была видна в P&L без переоткрытия карточки. */
+  customFinValuesHook?: ReturnType<typeof useCustomFinValues>;
 }
 
 export function DrawerColumns(props: ColumnsProps) {
@@ -66,7 +70,7 @@ export function DrawerColumns(props: ColumnsProps) {
     canFinance = true, canFiles = true,
     canFieldContacts = true, canFieldAddress = true, canFieldDates = true,
     canFieldFinance = true, canFieldFiles = true, canFieldCancel = true,
-    onReload, onGoToTouches,
+    onReload, onGoToTouches, customFinValuesHook,
   } = props;
   const t = useTheme();
 
@@ -79,7 +83,7 @@ export function DrawerColumns(props: ColumnsProps) {
     data, editingBlock, hiddenBlocks, rowVisibility, customFinRows,
     toggleHidden, setEditingBlock, save, saveWithLog, logAction,
     toggleRowVisibility, addCustomFinRow, deleteCustomFinRow, updateCustomFinRow,
-    onReload,
+    onReload, customFinValuesHook,
   };
 
   // ── renderBlock ──────────────────────────────────────────────────────────────

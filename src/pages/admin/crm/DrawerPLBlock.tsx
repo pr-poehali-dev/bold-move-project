@@ -13,12 +13,13 @@ import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 // сохраняет сама форма затрат, а не из устаревшего localStorage.
 const BUILTIN_COST_KEYS = new Set(["material_cost", "measure_cost", "install_cost"]);
 
-export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook }: {
+export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, discountHistoryHook, customFinValuesHook }: {
   data: Client;
   isHidden: boolean;
   toggleHidden: (id: BlockId) => void;
   customFinRows: CustomFinRow[];
   discountHistoryHook?: ReturnType<typeof useDiscountHistory>;
+  customFinValuesHook?: ReturnType<typeof useCustomFinValues>;
 }) {
   const t = useTheme();
   const fmt = (n: number) => n.toLocaleString("ru-RU");
@@ -27,11 +28,16 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
 
   // Кастомные статьи затрат (Менеджер, Технолог, Логистика и т.п., добавленные
   // через "+ Добавить строку" в блоке "Затраты") — читаем из того же источника
-  // (БД client_custom_fin_values), куда их сохраняет сама форма затрат.
+  // (БД client_custom_fin_values), куда их сохраняет сама форма затрат. Хук общий
+  // с DrawerCostsBlock (поднят в DrawerInfoTab) — новая трата видна тут же.
   const { rules: autoRules } = useAutoRules();
-  const { values: customCostValues } = useCustomFinValues(data.id);
+  const ownCustomFinValues = useCustomFinValues(customFinValuesHook ? 0 : data.id);
+  const { values: customCostValues } = customFinValuesHook ?? ownCustomFinValues;
+  // Прибыль должна учитывать РЕАЛЬНО потраченные деньги, даже если статью скрыли
+  // из отображения в блоке "Затраты" (visible=false) — деньги от этого никуда не
+  // делись, скрытие влияет только на список, не на факт затрат.
   const customCostRows = autoRules
-    .filter(r => r.row_type === "cost" && r.visible !== false && !BUILTIN_COST_KEYS.has(r.key))
+    .filter(r => r.row_type === "cost" && !BUILTIN_COST_KEYS.has(r.key))
     .map(r => ({ label: r.label, value: Number(customCostValues[r.key]) || 0 }))
     .filter(r => r.value > 0);
 

@@ -1,4 +1,5 @@
 import { Client } from "./crmApi";
+import { useCustomFinValues } from "@/hooks/useCustomFinValues";
 import { BlockId, CustomFinRow } from "./drawerTypes";
 
 export const LS_FIN_LABELS = "crm_fin_row_labels";
@@ -29,4 +30,6 @@ export interface FinBlockProps {
   deleteCustomFinRow: (key: string) => void;
   updateCustomFinRow: (key: string, label: string) => void;
   onReload?: () => void;
+  /** Общий с DrawerPLBlock источник кастомных статей затрат (Технолог, Логистика и т.п.) */
+  customFinValuesHook?: ReturnType<typeof useCustomFinValues>;
 }
