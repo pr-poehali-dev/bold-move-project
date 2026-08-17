@@ -88,10 +88,26 @@ export default function AnalyticsExpenses({
   );
 
   const cell = "px-3 py-2.5 text-xs whitespace-nowrap";
-  // Визуальное разделение воронки на смысловые зоны: Заявки/Замеры (0–5) | Монтажи (6–7) | Финал (8–10).
-  // Жирная граница слева у первой колонки каждой новой зоны.
-  const groupBorder = (i: number): React.CSSProperties =>
-    i === 6 || i === 8 ? { borderLeft: `2px solid ${t.border}` } : {};
+
+  // Воронка разбита на 4 смысловые зоны, у каждой свой цвет и своя граница.
+  // Индексы колонок: 0 Источник | 1 Расход | 2-3 Заявки | 4-5 Замеры | 6-7 Монтажи | 8-10 Финал.
+  const ZONES = [
+    { label: "Заявки",  color: "#8b5cf6", start: 2, span: 2 },
+    { label: "Замеры",  color: "#f59e0b", start: 4, span: 2 },
+    { label: "Монтажи", color: "#f97316", start: 6, span: 2 },
+    { label: "Финал",   color: "#10b981", start: 8, span: 3 },
+  ];
+  const zoneOf = (i: number) => ZONES.find(z => i >= z.start && i < z.start + z.span);
+  // Граница слева — на первой колонке каждой зоны, в цвете самой зоны.
+  const groupBorder = (i: number): React.CSSProperties => {
+    const z = ZONES.find(zz => zz.start === i);
+    return z ? { borderLeft: `2px solid ${z.color}55` } : {};
+  };
+  // Лёгкая заливка зоны, чтобы столбцы читались группами, а не сплошной простынёй.
+  const zoneTint = (i: number): React.CSSProperties => {
+    const z = zoneOf(i);
+    return z ? { background: z.color + "0a" } : {};
+  };
 
   return (
     <div className="space-y-5">
@@ -262,51 +278,98 @@ export default function AnalyticsExpenses({
         </div>
         {sourceRows.length > 0 ? (
           <div className="overflow-x-auto -mx-2 px-2">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[980px]" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
               <thead>
-                {/* Подписи зон воронки — визуально отделяют «Заявки/Замеры» от «Монтажей» и «Финала» */}
+                {/* Ряд зон воронки: Заявки | Замеры | Монтажи | Финал — каждая своим цветом */}
                 <tr>
-                  <th className={cell} />
-                  <th colSpan={5} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute }}>Заявки и замеры</th>
-                  <th colSpan={2} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute, ...groupBorder(6) }}>Монтажи</th>
-                  <th colSpan={3} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute, ...groupBorder(8) }}>Финал</th>
+                  <th className={cell} colSpan={2} />
+                  {ZONES.map(z => (
+                    <th key={z.label} colSpan={z.span}
+                      className={`${cell} text-center text-[10px] uppercase tracking-wider font-bold`}
+                      style={{
+                        color: z.color,
+                        background: z.color + "14",
+                        borderLeft: `2px solid ${z.color}55`,
+                        borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                      }}>
+                      {z.label}
+                    </th>
+                  ))}
                 </tr>
                 <tr style={{ borderBottom: `1px solid ${t.border}` }}>
-                  {["Источник", "Расход", "Заявки", "Цена заявки", "Замеры", "Цена замера", "Монтажи", "Цена монтажа", "Финал", "Цена клиента", "Конверсия"].map((h, i) => (
-                    <th key={h} className={`${cell} font-semibold ${i === 0 ? "text-left" : "text-right"}`}
-                      style={{ color: t.textMute, ...(groupBorder(i)) }}>{h}</th>
+                  {["Источник", "Расход", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена клиента", "Конверсия"].map((h, i) => (
+                    <th key={`${h}-${i}`} className={`${cell} font-semibold ${i === 0 ? "text-left" : "text-right"}`}
+                      style={{
+                        color: zoneOf(i)?.color ?? t.textMute,
+                        ...zoneTint(i), ...groupBorder(i),
+                        borderBottom: `1px solid ${t.border}`,
+                      }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {sourceRows.map(r => (
-                  <tr key={r.source} style={{ borderBottom: `1px solid ${t.border2}` }}>
-                    <td className={`${cell} font-semibold`} style={{ color: t.text }}>{r.source}</td>
-                    <td className={`${cell} text-right`} style={{ color: t.textSub }}>{r.adTotal > 0 ? fmtMoney(r.adTotal) : "—"}</td>
-                    <td className={`${cell} text-right font-semibold`} style={{ color: t.text }}>{r.leads}</td>
-                    <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplLead)}</td>
-                    <td className={`${cell} text-right`} style={{ color: t.textSub }}>{r.measures}</td>
-                    <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplMeasure)}</td>
-                    <td className={`${cell} text-right`} style={{ color: t.textSub, ...groupBorder(6) }}>{r.montages}</td>
-                    <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplMontage)}</td>
-                    <td className={`${cell} text-right font-semibold`} style={{ color: "#34d399", ...groupBorder(8) }}>{r.finals}</td>
-                    <td className={`${cell} text-right font-semibold`} style={{ color: "#a78bfa" }}>{fmtMoney(r.cplFinal)}</td>
-                    <td className={`${cell} text-right`} style={{ color: t.textSub }}>{fmtPct(r.convFinal)}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td className={`${cell} font-bold`} style={{ color: t.text }}>Всего</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{totals.adTotal > 0 ? fmtMoney(totals.adTotal) : "—"}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{totals.leads}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.leads > 0 ? totals.adTotal / totals.leads : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{totals.measures}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.measures > 0 ? totals.adTotal / totals.measures : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text, ...groupBorder(6) }}>{totals.montages}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.montages > 0 ? totals.adTotal / totals.montages : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#34d399", ...groupBorder(8) }}>{totals.finals}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#a78bfa" }}>{fmtMoney(totals.adTotal > 0 && totals.finals > 0 ? totals.adTotal / totals.finals : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{fmtPct(totals.leads > 0 ? (totals.finals / totals.leads) * 100 : null)}</td>
-                </tr>
+                {sourceRows.map(r => {
+                  // Значения по колонкам: пары «количество / цена» для каждой зоны воронки.
+                  const cells: { v: string | number; color?: string; bold?: boolean }[] = [
+                    { v: r.leads,                 color: t.text,    bold: true },
+                    { v: fmtMoney(r.cplLead),     color: "#c4b5fd" },
+                    { v: r.measures,              color: t.text,    bold: true },
+                    { v: fmtMoney(r.cplMeasure),  color: "#fcd34d" },
+                    { v: r.montages,              color: t.text,    bold: true },
+                    { v: fmtMoney(r.cplMontage),  color: "#fdba74" },
+                    { v: r.finals,                color: "#34d399", bold: true },
+                    { v: fmtMoney(r.cplFinal),    color: "#6ee7b7" },
+                    { v: fmtPct(r.convFinal),     color: t.textSub },
+                  ];
+                  return (
+                    <tr key={r.source} style={{ borderBottom: `1px solid ${t.border2}` }}>
+                      <td className={`${cell} font-semibold`} style={{ color: t.text, borderBottom: `1px solid ${t.border2}` }}>{r.source}</td>
+                      <td className={`${cell} text-right`} style={{ color: t.textSub, borderBottom: `1px solid ${t.border2}` }}>
+                        {r.adTotal > 0 ? fmtMoney(r.adTotal) : "—"}
+                      </td>
+                      {cells.map((c, idx) => {
+                        const i = idx + 2;
+                        return (
+                          <td key={i} className={`${cell} text-right ${c.bold ? "font-semibold" : ""}`}
+                            style={{ color: c.color, ...zoneTint(i), ...groupBorder(i), borderBottom: `1px solid ${t.border2}` }}>
+                            {c.v}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+                {(() => {
+                  const cpl = (n: number) => (totals.adTotal > 0 && n > 0 ? totals.adTotal / n : null);
+                  const cells: { v: string | number; color?: string }[] = [
+                    { v: totals.leads,                    color: t.text },
+                    { v: fmtMoney(cpl(totals.leads)),     color: "#c4b5fd" },
+                    { v: totals.measures,                 color: t.text },
+                    { v: fmtMoney(cpl(totals.measures)),  color: "#fcd34d" },
+                    { v: totals.montages,                 color: t.text },
+                    { v: fmtMoney(cpl(totals.montages)),  color: "#fdba74" },
+                    { v: totals.finals,                   color: "#34d399" },
+                    { v: fmtMoney(cpl(totals.finals)),    color: "#6ee7b7" },
+                    { v: fmtPct(totals.leads > 0 ? (totals.finals / totals.leads) * 100 : null), color: t.text },
+                  ];
+                  return (
+                    <tr>
+                      <td className={`${cell} font-bold`} style={{ color: t.text }}>Всего</td>
+                      <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>
+                        {totals.adTotal > 0 ? fmtMoney(totals.adTotal) : "—"}
+                      </td>
+                      {cells.map((c, idx) => {
+                        const i = idx + 2;
+                        return (
+                          <td key={i} className={`${cell} text-right font-bold`}
+                            style={{ color: c.color, ...zoneTint(i), ...groupBorder(i) }}>
+                            {c.v}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
