@@ -17,6 +17,10 @@ export interface LeadLogEntry {
 /** Потерянной считаем заявку, по которой карточка так и не появилась. */
 export const isLostLead = (e: LeadLogEntry) => e.outcome === "error" || e.outcome === "skipped";
 
+/** Заявка, которую спас независимый канал (почта) — вебхук по ней не сработал,
+ *  но карточка всё равно создана. Это сигнал "вебхук иногда подводит", а не потеря. */
+export const isRecoveredLead = (e: LeadLogEntry) => e.outcome === "recovered";
+
 const CHANNEL_LABEL: Record<string, string> = {
   telegram_leads: "Telegram",
   leakad_webhook: "Квиз",
@@ -24,10 +28,11 @@ const CHANNEL_LABEL: Record<string, string> = {
 };
 
 const OUTCOME_META: Record<string, { label: string; color: string; icon: string }> = {
-  created:   { label: "Заявка создана",  color: "#10b981", icon: "CheckCircle2" },
-  duplicate: { label: "Повтор",          color: "#64748b", icon: "Copy" },
-  skipped:   { label: "Не распознана",   color: "#f59e0b", icon: "AlertTriangle" },
-  error:     { label: "Не сохранилась",  color: "#ef4444", icon: "XCircle" },
+  created:   { label: "Заявка создана",       color: "#10b981", icon: "CheckCircle2" },
+  duplicate: { label: "Повтор",               color: "#64748b", icon: "Copy" },
+  skipped:   { label: "Не распознана",        color: "#f59e0b", icon: "AlertTriangle" },
+  error:     { label: "Не сохранилась",       color: "#ef4444", icon: "XCircle" },
+  recovered: { label: "Спасена с почты",      color: "#f97316", icon: "LifeBuoy" },
 };
 
 const fmtTime = (iso: string) =>
@@ -50,10 +55,12 @@ function payloadText(payload: unknown): string {
   try { return JSON.stringify(payload, null, 2); } catch { return ""; }
 }
 
+type FilterKey = "all" | "lost" | "recovered";
+
 export function LeadsLogModal({ onClose }: { onClose: () => void }) {
   const [items, setItems]     = useState<LeadLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [onlyLost, setOnlyLost] = useState(false);
+  const [filter, setFilter]   = useState<FilterKey>("all");
   const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
@@ -67,7 +74,10 @@ export function LeadsLogModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const lostCount = items.filter(isLostLead).length;
-  const visible = onlyLost ? items.filter(isLostLead) : items;
+  const recoveredCount = items.filter(isRecoveredLead).length;
+  const visible = filter === "lost" ? items.filter(isLostLead)
+    : filter === "recovered" ? items.filter(isRecoveredLead)
+    : items;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 p-4 overflow-y-auto"
@@ -94,20 +104,27 @@ export function LeadsLogModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Фильтр */}
-        <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           {([
-            { key: false, label: `Все (${items.length})`, color: "#7c3aed" },
-            { key: true,  label: `Потерянные (${lostCount})`, color: "#ef4444" },
-          ] as const).map(f => (
-            <button key={String(f.key)} onClick={() => setOnlyLost(f.key)}
+            { key: "all" as const,       label: `Все (${items.length})`, color: "#7c3aed" },
+            { key: "lost" as const,      label: `Потерянные (${lostCount})`, color: "#ef4444" },
+            { key: "recovered" as const, label: `Спасены почтой (${recoveredCount})`, color: "#f97316" },
+          ]).map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition"
-              style={onlyLost === f.key
+              style={filter === f.key
                 ? { background: f.color, borderColor: f.color, color: "#fff" }
                 : { background: "transparent", borderColor: "rgba(255,255,255,0.12)", color: "#a3a3a3" }}>
               {f.label}
             </button>
           ))}
         </div>
+        {recoveredCount > 0 && (
+          <div className="px-4 py-2 text-[11px]" style={{ color: "#fdba74", background: "rgba(249,115,22,0.08)" }}>
+            <Icon name="LifeBuoy" size={11} className="inline mr-1" style={{ verticalAlign: "-1px" }} />
+            {recoveredCount} {recoveredCount === 1 ? "заявка не создалась" : "заявки/заявок не создались"} по вебхуку, но найдены и восстановлены с почты
+          </div>
+        )}
 
         {/* Список */}
         <div className="max-h-[60vh] overflow-y-auto">
@@ -117,9 +134,11 @@ export function LeadsLogModal({ onClose }: { onClose: () => void }) {
             </div>
           ) : visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12" style={{ color: "#737373" }}>
-              <Icon name={onlyLost ? "ShieldCheck" : "Inbox"} size={28} className="mb-2 opacity-30" />
+              <Icon name={filter === "lost" ? "ShieldCheck" : "Inbox"} size={28} className="mb-2 opacity-30" />
               <span className="text-sm">
-                {onlyLost ? "Потерянных заявок нет" : "Заявок пока не поступало"}
+                {filter === "lost" ? "Потерянных заявок нет"
+                  : filter === "recovered" ? "Восстановленных заявок нет"
+                  : "Заявок пока не поступало"}
               </span>
             </div>
           ) : (
@@ -127,11 +146,16 @@ export function LeadsLogModal({ onClose }: { onClose: () => void }) {
               {visible.map(e => {
                 const meta = OUTCOME_META[e.outcome || ""] || { label: e.outcome || "—", color: "#64748b", icon: "Circle" };
                 const lost = isLostLead(e);
+                const recovered = isRecoveredLead(e);
                 const isOpen = expanded === e.id;
                 const text = payloadText(e.payload);
                 return (
                   <div key={e.id} className="px-4 py-2.5"
-                    style={lost ? { background: "rgba(239,68,68,0.06)", borderLeft: "2px solid #ef4444" } : undefined}>
+                    style={lost
+                      ? { background: "rgba(239,68,68,0.06)", borderLeft: "2px solid #ef4444" }
+                      : recovered
+                      ? { background: "rgba(249,115,22,0.06)", borderLeft: "2px solid #f97316" }
+                      : undefined}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Icon name={meta.icon} size={12} style={{ color: meta.color, flexShrink: 0 }} />
                       <span className="text-xs font-semibold" style={{ color: meta.color }}>{meta.label}</span>

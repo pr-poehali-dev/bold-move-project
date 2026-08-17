@@ -5095,7 +5095,7 @@ def handler(event: dict, context) -> dict:
                 master_row = cur.fetchone()
                 master_id = master_row[0] if master_row else None
 
-            created, skipped, error_count = 0, 0, 0
+            created, skipped, error_count, recovered = 0, 0, 0, 0
             spam_folder = imap_find_spam_folder(imap)
             folders_to_check = ["INBOX"] + ([spam_folder] if spam_folder else [])
 
@@ -5111,6 +5111,7 @@ def handler(event: dict, context) -> dict:
                     if status != "OK" or not data or not data[0]:
                         continue
                     for eid in data[0].split():
+                        log_id = None
                         try:
                             status, msg_data = imap.fetch(eid, "(RFC822)")
                             if status != "OK" or not msg_data or not msg_data[0]:
@@ -5119,10 +5120,43 @@ def handler(event: dict, context) -> dict:
                             message_id = msg.get("Message-ID") or f"emlid_{uuid.uuid4().hex}"
                             text = _extract_email_text(msg)
                             lead = parse_tg_lead_text(text) if text else None
+
+                            # Журналируем ЛЮБОЕ письмо от отправителя заявок сразу — это
+                            # независимая от вебхука копия, по ней и делаем сверку ниже.
+                            log_id = log_incoming_lead(
+                                conn, "email_leads",
+                                {"message_id": message_id, "text": text},
+                                company_id=master_id, parsed_phone=(lead or {}).get("phone"),
+                            )
+
                             if not lead:
                                 imap.store(eid, "+FLAGS", "\\Seen")
+                                finish_incoming_lead(conn, log_id, "skipped", error="не распознано как заявка")
                                 skipped += 1
                                 continue
+
+                            # ── Сверка с вебхуком ──────────────────────────────────
+                            # Если заявка с этим телефоном уже пришла через вебхук
+                            # (leakad/Telegram) за последние 3 суток — письмо только
+                            # ПОДТВЕРЖДАЕТ, что вебхук сработал, вторую карточку не
+                            # создаём. Если совпадения нет — вебхук, скорее всего,
+                            # не сработал, и заявку нужно завести именно из письма
+                            # (помечаем как "recovered", чтобы это было явно видно).
+                            cur.execute(f"""
+                                SELECT id FROM {SCHEMA}.live_chats
+                                WHERE phone = %s AND created_via IN ('leakad_webhook','telegram_leads')
+                                  AND created_at > NOW() - INTERVAL '3 days'
+                                ORDER BY created_at DESC LIMIT 1
+                            """, (lead["phone"],))
+                            matched = cur.fetchone()
+                            if matched:
+                                imap.store(eid, "+FLAGS", "\\Seen")
+                                finish_incoming_lead(conn, log_id, "duplicate",
+                                                      client_id=matched[0],
+                                                      error="уже создана вебхуком — подтверждение по почте")
+                                skipped += 1
+                                continue
+                            is_recovered = True
 
                             session_id = f"emaillead_{hashlib.sha256(message_id.encode()).hexdigest()[:32]}"
                             notes_parts = []
@@ -5132,6 +5166,8 @@ def handler(event: dict, context) -> dict:
                                 notes_parts.append(f"Срок: {lead['term']}")
                             if lead["contact_via"]:
                                 notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
+                            if is_recovered:
+                                notes_parts.append("⚠️ Восстановлено с почты — не найдено по вебхуку (возможно, он не сработал)")
                             notes = "\n".join(notes_parts) if notes_parts else None
 
                             cur.execute(f"""
@@ -5147,11 +5183,16 @@ def handler(event: dict, context) -> dict:
                             imap.store(eid, "+FLAGS", "\\Seen")
                             if new_row:
                                 created += 1
+                                recovered += 1
+                                finish_incoming_lead(conn, log_id, "recovered", client_id=new_row[0],
+                                                      error="создано из письма — не найдено по вебхуку")
                             else:
                                 skipped += 1
-                        except Exception:
+                                finish_incoming_lead(conn, log_id, "duplicate")
+                        except Exception as e:
                             conn.rollback()
                             error_count += 1
+                            finish_incoming_lead(conn, log_id, "error", error=str(e)[:300])
                             continue
             finally:
                 try:
@@ -5159,7 +5200,7 @@ def handler(event: dict, context) -> dict:
                 except Exception:
                     pass
 
-            return ok({"created": created, "skipped": skipped, "errors": error_count})
+            return ok({"created": created, "skipped": skipped, "errors": error_count, "recovered": recovered})
 
         # ── LEAKAD-WEBHOOK: заявки с leakad.ru напрямую по вебхуку (без задержек
         # почты). Реальный формат (уточнён поддержкой leakad 10.08): JSON с полями
