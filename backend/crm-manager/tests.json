@@ -245,6 +245,38 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "GET expenses list",
+      "method": "GET",
+      "path": "/?r=expenses",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST expense without amount is rejected",
+      "method": "POST",
+      "path": "/?r=expenses",
+      "body": {"comment": "test"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "amount required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "DELETE expense without id is rejected",
+      "method": "DELETE",
+      "path": "/?r=expenses",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST expense category without name is rejected",
+      "method": "POST",
+      "path": "/?r=expense-categories",
+      "body": {"color": "#fff"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "name required"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET email-leads-poll wrong key is rejected",
       "method": "GET",
       "path": "/?r=email-leads-poll&key=wrong",

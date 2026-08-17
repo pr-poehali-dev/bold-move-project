@@ -1578,6 +1578,160 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"ok": True})
 
+        # ── EXPENSE CATEGORIES (Справочник статей расходов) ───────────────────
+        if resource == "expense-categories":
+            cid_filter = company_id if company_id is not None else master_uid
+
+            if method == "GET":
+                cur.execute(f"""
+                    SELECT id, name, kind, color, sort_order
+                    FROM {SCHEMA}.expense_categories
+                    WHERE company_id = %s AND is_active = TRUE
+                    ORDER BY sort_order, id
+                """, (cid_filter,))
+                rows = [{"id": r[0], "name": r[1], "kind": r[2], "color": r[3], "sort_order": r[4]} for r in cur.fetchall()]
+                if not rows:
+                    # Базовый набор статей: реклама привязывается к источнику,
+                    # остальные — общие расходы бизнеса. Пользователь правит список сам.
+                    defaults = [
+                        ("Реклама — услуга", "ad_service", "#f97316"),
+                        ("Реклама — бюджет", "ad_budget",  "#fb923c"),
+                        ("Зарплата",         "salary",     "#8b5cf6"),
+                        ("Аренда",           "general",    "#06b6d4"),
+                        ("Налоги",           "general",    "#ef4444"),
+                        ("Прочее",           "general",    "#64748b"),
+                    ]
+                    for i, (name, kind, color) in enumerate(defaults):
+                        cur.execute(f"""
+                            INSERT INTO {SCHEMA}.expense_categories (company_id, name, kind, color, sort_order)
+                            VALUES (%s,%s,%s,%s,%s) RETURNING id
+                        """, (cid_filter, name, kind, color, i))
+                        rows.append({"id": cur.fetchone()[0], "name": name, "kind": kind, "color": color, "sort_order": i})
+                    conn.commit()
+                return ok(rows)
+
+            if method == "POST":
+                name = (body.get("name") or "").strip()
+                if not name:
+                    return err("name required")
+                kind  = body.get("kind") or "general"
+                color = body.get("color") or "#f97316"
+                cur.execute(f"SELECT COALESCE(MAX(sort_order)+1,0) FROM {SCHEMA}.expense_categories WHERE company_id=%s", (cid_filter,))
+                sort_order = cur.fetchone()[0]
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.expense_categories (company_id, name, kind, color, sort_order)
+                    VALUES (%s,%s,%s,%s,%s) RETURNING id
+                """, (cid_filter, name, kind, color, sort_order))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id, "name": name, "kind": kind, "color": color, "sort_order": sort_order})
+
+            if method == "PUT":
+                cid_ = qs.get("id") or body.get("id")
+                if not cid_:
+                    return err("id required")
+                sets, vals = [], []
+                for f in ("name", "kind", "color", "sort_order"):
+                    if f in body:
+                        sets.append(f"{f}=%s"); vals.append(body[f])
+                if not sets:
+                    return err("nothing to update")
+                vals.extend([int(cid_), cid_filter])
+                cur.execute(f"UPDATE {SCHEMA}.expense_categories SET {', '.join(sets)} WHERE id=%s AND company_id=%s", vals)
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                cid_ = qs.get("id") or body.get("id")
+                if not cid_:
+                    return err("id required")
+                # Мягкое удаление: расходы прошлых периодов не теряют статью
+                cur.execute(f"UPDATE {SCHEMA}.expense_categories SET is_active=FALSE WHERE id=%s AND company_id=%s", (int(cid_), cid_filter))
+                conn.commit()
+                return ok({"ok": True})
+
+        # ── EXPENSES (Вложения: реклама, ЗП, аренда, налоги, прочее) ──────────
+        if resource == "expenses":
+            cid_filter = company_id if company_id is not None else master_uid
+
+            if method == "GET":
+                sql = f"""
+                    SELECT e.id, e.category_id, ec.name, ec.kind, ec.color,
+                           e.source_id, os.name, e.employee, e.amount, e.spent_on, e.comment
+                    FROM {SCHEMA}.expenses e
+                    LEFT JOIN {SCHEMA}.expense_categories ec ON ec.id = e.category_id
+                    LEFT JOIN {SCHEMA}.order_sources os ON os.id = e.source_id
+                    WHERE e.company_id = %s
+                """
+                params = [cid_filter]
+                if qs.get("from"):
+                    sql += " AND e.spent_on >= %s"; params.append(qs["from"])
+                if qs.get("to"):
+                    sql += " AND e.spent_on <= %s"; params.append(qs["to"])
+                sql += " ORDER BY e.spent_on DESC, e.id DESC"
+                cur.execute(sql, params)
+                return ok([{
+                    "id": r[0], "category_id": r[1], "category_name": r[2] or "Без статьи",
+                    "category_kind": r[3] or "general", "category_color": r[4] or "#64748b",
+                    "source_id": r[5], "source_name": r[6], "employee": r[7],
+                    "amount": float(r[8] or 0), "spent_on": r[9].isoformat() if r[9] else None,
+                    "comment": r[10],
+                } for r in cur.fetchall()])
+
+            if method == "POST":
+                amount = body.get("amount")
+                if amount in (None, ""):
+                    return err("amount required")
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.expenses (company_id, category_id, source_id, employee, amount, spent_on, comment, created_by)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                """, (
+                    cid_filter,
+                    int(body["category_id"]) if body.get("category_id") else None,
+                    int(body["source_id"]) if body.get("source_id") else None,
+                    (body.get("employee") or "").strip() or None,
+                    float(amount),
+                    body.get("spent_on") or datetime.now().date().isoformat(),
+                    (body.get("comment") or "").strip() or None,
+                    master_uid,
+                ))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                return ok({"id": new_id})
+
+            if method == "PUT":
+                eid = qs.get("id") or body.get("id")
+                if not eid:
+                    return err("id required")
+                sets, vals = [], []
+                if "category_id" in body:
+                    sets.append("category_id=%s"); vals.append(int(body["category_id"]) if body["category_id"] else None)
+                if "source_id" in body:
+                    sets.append("source_id=%s"); vals.append(int(body["source_id"]) if body["source_id"] else None)
+                if "employee" in body:
+                    sets.append("employee=%s"); vals.append((body.get("employee") or "").strip() or None)
+                if "amount" in body:
+                    sets.append("amount=%s"); vals.append(float(body["amount"] or 0))
+                if "spent_on" in body:
+                    sets.append("spent_on=%s"); vals.append(body["spent_on"])
+                if "comment" in body:
+                    sets.append("comment=%s"); vals.append((body.get("comment") or "").strip() or None)
+                if not sets:
+                    return err("nothing to update")
+                sets.append("updated_at=now()")
+                vals.extend([int(eid), cid_filter])
+                cur.execute(f"UPDATE {SCHEMA}.expenses SET {', '.join(sets)} WHERE id=%s AND company_id=%s", vals)
+                conn.commit()
+                return ok({"ok": True})
+
+            if method == "DELETE":
+                eid = qs.get("id") or body.get("id")
+                if not eid:
+                    return err("id required")
+                cur.execute(f"DELETE FROM {SCHEMA}.expenses WHERE id=%s AND company_id=%s", (int(eid), cid_filter))
+                conn.commit()
+                return ok({"ok": True})
+
         # ── STATS ─────────────────────────────────────────────────────────────
         if resource == "stats":
             cache_key = company_id if company_id is not None else "__master__"

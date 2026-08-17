@@ -2,6 +2,7 @@ import { PieChart, Pie, Cell } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { Stats } from "./analyticsTypes";
+import AnalyticsDynamics from "./AnalyticsDynamics";
 
 function KpiCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string | number; sub?: string; color: string }) {
   const t = useTheme();
@@ -18,12 +19,23 @@ function KpiCard({ icon, label, value, sub, color }: { icon: string; label: stri
   );
 }
 
+interface MergedMonth {
+  month: string;
+  leads: number;
+  done: number;
+  revenue: number;
+  costs: number;
+  profit: number;
+}
+
 interface Props {
   s: Stats;
   costPie: { name: string; value: number; color: string }[];
+  /** Показатели по месяцам — блок «Динамика» переехал сюда */
+  allMerged: MergedMonth[];
 }
 
-export default function AnalyticsFinance({ s, costPie }: Props) {
+export default function AnalyticsFinance({ s, costPie, allMerged }: Props) {
   const t = useTheme();
 
   return (
@@ -162,6 +174,9 @@ export default function AnalyticsFinance({ s, costPie }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Показатели во времени — переехали с бывшей вкладки «Динамика» */}
+      <AnalyticsDynamics s={s} allMerged={allMerged} />
     </div>
   );
 }

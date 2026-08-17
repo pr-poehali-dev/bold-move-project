@@ -20,12 +20,12 @@ export interface Stats {
   monthly_profit:  { month: string; profit: number }[];
 }
 
-export type AnalyticsTab = "overview" | "finance" | "dynamics" | "touches";
+export type AnalyticsTab = "overview" | "finance" | "expenses" | "touches";
 
 export const ANALYTICS_TABS: { id: AnalyticsTab; label: string; icon: string }[] = [
   { id: "overview",  label: "Обзор",    icon: "LayoutDashboard" },
   { id: "finance",   label: "Финансы",  icon: "Banknote" },
-  { id: "dynamics",  label: "Динамика", icon: "TrendingUp" },
+  { id: "expenses",  label: "Расходы",  icon: "Receipt" },
   { id: "touches",   label: "Касания",  icon: "MessagesSquare" },
 ];
 

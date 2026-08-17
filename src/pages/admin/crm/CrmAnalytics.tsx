@@ -7,9 +7,11 @@ import { Stats, AnalyticsTab, ANALYTICS_TABS } from "./analyticsTypes";
 import { loadCustomFinRows } from "./drawerTypes";
 import { computeStats } from "./computeAnalytics";
 import { useOrderSources } from "@/hooks/useOrderSources";
-import { applyAnalyticsFilters, STAGE_OPTIONS, PERIOD_OPTIONS, periodLabel, StageFilter, PeriodFilter, CustomRange } from "./analyticsFilters";
-import AnalyticsFilterSelect from "./AnalyticsFilterSelect";
+import { applyMultiFilters, STAGE_OPTIONS, PERIOD_OPTIONS, periodLabel, stagesLabel, StageFilter, PeriodFilter, CustomRange } from "./analyticsFilters";
+import AnalyticsMultiSelect from "./AnalyticsMultiSelect";
 import PeriodRangeModal from "./PeriodRangeModal";
+import { useExpenses } from "@/hooks/useExpenses";
+import { filterExpenses } from "./computeExpenses";
 
 // Суммирует кастомные строки ДОХОДОВ из localStorage по всем клиентам.
 // Кастомные статьи ЗАТРАТ (Технолог, Логистика, Менеджер и т.п.) уже переехали
@@ -27,21 +29,23 @@ function calcCustomIncomeTotal(clientIds: number[]): number {
 }
 import AnalyticsOverview from "./AnalyticsOverview";
 import AnalyticsFinance from "./AnalyticsFinance";
-import AnalyticsDynamics from "./AnalyticsDynamics";
+import AnalyticsExpenses from "./AnalyticsExpenses";
 import TouchDashboard from "./TouchDashboard";
 
 export default function CrmAnalytics() {
   const t = useTheme();
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<AnalyticsTab>("overview");
+  // По умолчанию открываем «Финансы» за текущий месяц по стадии «Финал», все источники
+  const [tab, setTab]             = useState<AnalyticsTab>("finance");
   const [allClients,    setAllClients]    = useState<Client[]>([]);
   const [drawerClient,  setDrawerClient]  = useState<Client | null>(null);
-  const [sourceFilter,  setSourceFilter]  = useState<string>(""); // "" = все источники
-  const [stageFilter,   setStageFilter]   = useState<StageFilter>("final"); // по умолчанию — завершённые сделки
-  const [periodFilter,  setPeriodFilter]  = useState<PeriodFilter>("all");
+  const [sourceFilters, setSourceFilters] = useState<string[]>([]);            // [] = все источники
+  const [stageFilters,  setStageFilters]  = useState<StageFilter[]>(["final"]); // финал по умолчанию
+  const [periodFilter,  setPeriodFilter]  = useState<PeriodFilter>("month");    // текущий месяц
   const [customRange,   setCustomRange]   = useState<CustomRange | null>(null);
   const [rangeModal,    setRangeModal]    = useState(false);
   const { sources } = useOrderSources();
+  const exp = useExpenses();
 
   useEffect(() => {
     crmFetch("clients").then((d: unknown) => {
@@ -50,10 +54,20 @@ export default function CrmAnalytics() {
     }).catch(() => setLoading(false));
   }, []);
 
-  // Заявки под выбранные фильтры (источник / стадия / период). Считаем в браузере — мгновенно.
+  // Заявки под выбранные фильтры (источники / стадии / период). Считаем в браузере — мгновенно.
   const filteredClients = useMemo(
-    () => applyAnalyticsFilters(allClients, { source: sourceFilter, stage: stageFilter, period: periodFilter, range: customRange }),
-    [allClients, sourceFilter, stageFilter, periodFilter, customRange],
+    () => applyMultiFilters(allClients, { sources: sourceFilters, stages: stageFilters, period: periodFilter, range: customRange }),
+    [allClients, sourceFilters, stageFilters, periodFilter, customRange],
+  );
+
+  // Расходы под тот же период; фильтр по источнику применяется только к рекламным статьям
+  const filteredExpenses = useMemo(
+    () => filterExpenses(exp.expenses, {
+      period: periodFilter,
+      range: customRange,
+      source: sourceFilters.length === 1 ? sourceFilters[0] : "",
+    }),
+    [exp.expenses, periodFilter, customRange, sourceFilters],
   );
 
   const recentClients = filteredClients.slice(0, 10);
@@ -124,8 +138,9 @@ export default function CrmAnalytics() {
           <p className="text-xs mt-0.5" style={{ color: t.textMute }}>
             {(() => {
               const parts: string[] = [];
-              if (sourceFilter) parts.push(`источник «${sourceFilter}»`);
-              if (stageFilter)  parts.push(STAGE_OPTIONS.find(o => o.id === stageFilter)!.label.toLowerCase());
+              if (sourceFilters.length === 1) parts.push(`источник «${sourceFilters[0]}»`);
+              else if (sourceFilters.length > 1) parts.push(`источники: ${sourceFilters.join(", ")}`);
+              if (stageFilters.length) parts.push(stagesLabel(stageFilters));
               if (periodFilter !== "all") parts.push(periodLabel(periodFilter, customRange));
               return parts.length
                 ? `${parts.join(", ")} — ${s.total_all} заявок`
@@ -134,41 +149,45 @@ export default function CrmAnalytics() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Фильтр по источнику заявок */}
-          <AnalyticsFilterSelect
+          {/* Источники — множественный выбор */}
+          <AnalyticsMultiSelect
             icon="Radio"
-            value={sourceFilter}
-            onChange={v => setSourceFilter(v)}
-            options={[{ id: "", label: "Все источники" }, ...sources.map(src => ({ id: src.name, label: src.name }))]}
+            allLabel="Все источники"
+            values={sourceFilters}
+            onChange={setSourceFilters}
+            options={sources.map(src => ({ id: src.name, label: src.name }))}
           />
 
-          {/* Фильтр по стадии сделки */}
-          <AnalyticsFilterSelect
+          {/* Стадии — можно отметить несколько (например Монтажи + Финал) */}
+          <AnalyticsMultiSelect
             icon="GitBranch"
-            value={stageFilter}
-            onChange={v => setStageFilter(v as StageFilter)}
-            options={STAGE_OPTIONS}
+            allLabel="Все стадии"
+            values={stageFilters}
+            onChange={v => setStageFilters(v as StageFilter[])}
+            options={STAGE_OPTIONS.filter(o => o.id !== "")}
           />
 
-          {/* Фильтр по периоду */}
-          <AnalyticsFilterSelect
+          {/* Период — одиночный выбор, «Выбрать период» внутри попапа */}
+          <AnalyticsMultiSelect
             icon="CalendarDays"
-            value={periodFilter}
-            onChange={v => { setPeriodFilter(v as PeriodFilter); setCustomRange(null); }}
+            single
+            allLabel="За всё время"
+            values={periodFilter === "all" ? [] : [periodFilter]}
+            onChange={v => {
+              const next = (v[0] as PeriodFilter) || "all";
+              setPeriodFilter(next);
+              if (next !== "custom") setCustomRange(null);
+            }}
             options={periodFilter === "custom"
-              ? [...PERIOD_OPTIONS, { id: "custom", label: periodLabel("custom", customRange) }]
-              : PERIOD_OPTIONS}
-            neutralValue="all"
+              ? [...PERIOD_OPTIONS.filter(o => o.id !== "all"), { id: "custom", label: periodLabel("custom", customRange) }]
+              : PERIOD_OPTIONS.filter(o => o.id !== "all")}
+            footer={{
+              label: "Выбрать период",
+              icon: "CalendarRange",
+              active: periodFilter === "custom",
+              onClick: () => setRangeModal(true),
+            }}
           />
-
-          {/* Произвольный период через модалку */}
-          <button onClick={() => setRangeModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition hover:opacity-80"
-            style={periodFilter === "custom"
-              ? { background: t.accent + "1F", color: t.accentLight, border: `1px solid ${t.accent}55` }
-              : { background: t.surface2, color: t.textMute, border: `1px solid ${t.border}` }}>
-            <Icon name="CalendarRange" size={13} /> Выбрать период
-          </button>
 
           <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
             {ANALYTICS_TABS.map((tb, i) => (
@@ -201,15 +220,27 @@ export default function CrmAnalytics() {
       )}
 
       {tab === "finance" && (
-        <AnalyticsFinance s={s} costPie={costPie} />
+        <AnalyticsFinance s={s} costPie={costPie} allMerged={allMerged} />
       )}
 
-      {tab === "dynamics" && (
-        <AnalyticsDynamics s={s} allMerged={allMerged} />
+      {tab === "expenses" && (
+        <AnalyticsExpenses
+          clients={filteredClients}
+          expenses={filteredExpenses}
+          categories={exp.categories}
+          sources={sources}
+          loading={exp.loading}
+          income={s.total_received}
+          dealCosts={s.total_costs}
+          onCreate={exp.create}
+          onUpdate={exp.update}
+          onRemove={exp.remove}
+          onAddCategory={exp.createCategory}
+        />
       )}
 
       {tab === "touches" && (
-        <TouchDashboard clients={filteredClients} sourceFilter={sourceFilter} onSelectClient={setDrawerClient} />
+        <TouchDashboard clients={filteredClients} sourceFilter={sourceFilters.length === 1 ? sourceFilters[0] : ""} onSelectClient={setDrawerClient} />
       )}
 
       {/* Модалка выбора произвольного периода */}

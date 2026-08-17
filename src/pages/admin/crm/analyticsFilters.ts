@@ -89,3 +89,30 @@ export function applyAnalyticsFilters(
     return true;
   });
 }
+
+/** Множественная версия фильтров: пустой массив = «все».
+ *  Стадии складываются по «или» — можно отметить Монтажи и Финал вместе. */
+export function applyMultiFilters(
+  clients: Client[],
+  opts: { sources?: string[]; stages?: StageFilter[]; period?: PeriodFilter; range?: CustomRange | null },
+): Client[] {
+  const { sources = [], stages = [], period = "all", range = null } = opts;
+  const allowedStatuses = stages.length
+    ? new Set(stages.flatMap(s => (s ? STAGE_STATUSES[s] : [])))
+    : null;
+  return clients.filter(c => {
+    if (sources.length && !sources.includes(c.source || "")) return false;
+    if (allowedStatuses && !allowedStatuses.has(c.status)) return false;
+    if (!inPeriod(c.created_at, period, range)) return false;
+    return true;
+  });
+}
+
+/** Подпись выбранных стадий для шапки. */
+export function stagesLabel(stages: StageFilter[]): string {
+  if (!stages.length) return "";
+  return stages
+    .map(s => STAGE_OPTIONS.find(o => o.id === s)?.label.toLowerCase())
+    .filter(Boolean)
+    .join(" + ");
+}
