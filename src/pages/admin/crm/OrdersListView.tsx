@@ -120,9 +120,19 @@ export function OrdersListView({
     ? clientsByStatusAndFilter.filter(c => c.sub_status === activeSubFilter)
     : clientsByStatusAndFilter;
 
+  // На вкладке «Финальный» источники и их счётчики должны считаться только по
+  // выбранной сейчас группе (Выполнено / Отказ), а не по обеим сразу — иначе
+  // цифра на кнопке источника не совпадает с тем, что реально показано в списке.
+  const doneGroupStatuses = activeTab === "done"
+    ? (DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0]).statuses
+    : null;
+  const sourceScopePool = doneGroupStatuses
+    ? clientsByStatusSubFilter.filter(c => doneGroupStatuses.includes(c.status ?? ""))
+    : clientsByStatusSubFilter;
+
   // Источники (Авито/Квиз/Директ/...), реально встречающиеся среди текущих заявок
   const sourcesPresent = Array.from(new Set(
-    clientsByStatusSubFilter.map(c => c.source).filter((s): s is string => !!s)
+    sourceScopePool.map(c => c.source).filter((s): s is string => !!s)
   ));
   const clientsBySourceFilter = activeSourceFilter != null
     ? clientsByStatusSubFilter.filter(c => (c.source || null) === activeSourceFilter)
@@ -154,7 +164,7 @@ export function OrdersListView({
     .map(sourceName => {
       const src = orderSources.find(s => s.name === sourceName);
       return { key: `src-${sourceName}`, label: src?.name || sourceName, color: src?.color || "#64748b",
-               cnt: clientsByStatusSubFilter.filter(c => c.source === sourceName).length,
+               cnt: sourceScopePool.filter(c => c.source === sourceName).length,
                isSel: activeSourceFilter === sourceName,
                onClick: () => setActiveSourceFilter(activeSourceFilter === sourceName ? null : sourceName) };
     })
