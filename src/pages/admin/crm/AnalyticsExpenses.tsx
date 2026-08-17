@@ -88,6 +88,10 @@ export default function AnalyticsExpenses({
   );
 
   const cell = "px-3 py-2.5 text-xs whitespace-nowrap";
+  // Визуальное разделение воронки на смысловые зоны: Заявки/Замеры (0–5) | Монтажи (6–7) | Финал (8–10).
+  // Жирная граница слева у первой колонки каждой новой зоны.
+  const groupBorder = (i: number): React.CSSProperties =>
+    i === 6 || i === 8 ? { borderLeft: `2px solid ${t.border}` } : {};
 
   return (
     <div className="space-y-5">
@@ -260,9 +264,17 @@ export default function AnalyticsExpenses({
           <div className="overflow-x-auto -mx-2 px-2">
             <table className="w-full min-w-[900px]">
               <thead>
+                {/* Подписи зон воронки — визуально отделяют «Заявки/Замеры» от «Монтажей» и «Финала» */}
+                <tr>
+                  <th className={cell} />
+                  <th colSpan={5} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute }}>Заявки и замеры</th>
+                  <th colSpan={2} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute, ...groupBorder(6) }}>Монтажи</th>
+                  <th colSpan={3} className={`${cell} text-left text-[10px] uppercase tracking-wider`} style={{ color: t.textMute, ...groupBorder(8) }}>Финал</th>
+                </tr>
                 <tr style={{ borderBottom: `1px solid ${t.border}` }}>
                   {["Источник", "Расход", "Заявки", "Цена заявки", "Замеры", "Цена замера", "Монтажи", "Цена монтажа", "Финал", "Цена клиента", "Конверсия"].map((h, i) => (
-                    <th key={h} className={`${cell} font-semibold ${i === 0 ? "text-left" : "text-right"}`} style={{ color: t.textMute }}>{h}</th>
+                    <th key={h} className={`${cell} font-semibold ${i === 0 ? "text-left" : "text-right"}`}
+                      style={{ color: t.textMute, ...(groupBorder(i)) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -275,9 +287,9 @@ export default function AnalyticsExpenses({
                     <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplLead)}</td>
                     <td className={`${cell} text-right`} style={{ color: t.textSub }}>{r.measures}</td>
                     <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplMeasure)}</td>
-                    <td className={`${cell} text-right`} style={{ color: t.textSub }}>{r.montages}</td>
+                    <td className={`${cell} text-right`} style={{ color: t.textSub, ...groupBorder(6) }}>{r.montages}</td>
                     <td className={`${cell} text-right`} style={{ color: "#fb923c" }}>{fmtMoney(r.cplMontage)}</td>
-                    <td className={`${cell} text-right font-semibold`} style={{ color: "#34d399" }}>{r.finals}</td>
+                    <td className={`${cell} text-right font-semibold`} style={{ color: "#34d399", ...groupBorder(8) }}>{r.finals}</td>
                     <td className={`${cell} text-right font-semibold`} style={{ color: "#a78bfa" }}>{fmtMoney(r.cplFinal)}</td>
                     <td className={`${cell} text-right`} style={{ color: t.textSub }}>{fmtPct(r.convFinal)}</td>
                   </tr>
@@ -289,9 +301,9 @@ export default function AnalyticsExpenses({
                   <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.leads > 0 ? totals.adTotal / totals.leads : null)}</td>
                   <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{totals.measures}</td>
                   <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.measures > 0 ? totals.adTotal / totals.measures : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{totals.montages}</td>
+                  <td className={`${cell} text-right font-bold`} style={{ color: t.text, ...groupBorder(6) }}>{totals.montages}</td>
                   <td className={`${cell} text-right font-bold`} style={{ color: "#fb923c" }}>{fmtMoney(totals.adTotal > 0 && totals.montages > 0 ? totals.adTotal / totals.montages : null)}</td>
-                  <td className={`${cell} text-right font-bold`} style={{ color: "#34d399" }}>{totals.finals}</td>
+                  <td className={`${cell} text-right font-bold`} style={{ color: "#34d399", ...groupBorder(8) }}>{totals.finals}</td>
                   <td className={`${cell} text-right font-bold`} style={{ color: "#a78bfa" }}>{fmtMoney(totals.adTotal > 0 && totals.finals > 0 ? totals.adTotal / totals.finals : null)}</td>
                   <td className={`${cell} text-right font-bold`} style={{ color: t.text }}>{fmtPct(totals.leads > 0 ? (totals.finals / totals.leads) * 100 : null)}</td>
                 </tr>
