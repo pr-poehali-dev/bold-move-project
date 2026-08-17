@@ -5,6 +5,7 @@ import re
 import hashlib
 import base64
 import uuid
+import time
 import psycopg2
 import boto3
 import urllib.request as _ureq
@@ -639,6 +640,58 @@ def normalize_phone(raw):
     if digits:
         return "+" + digits
     return ""
+
+
+def log_incoming_lead(conn, channel, payload, company_id=None, parsed_phone=None):
+    """Записывает СЫРУЮ входящую заявку в журнал ДО попытки создать карточку.
+
+    Нужно, чтобы ни одна заявка не терялась бесследно: если карточку создать не
+    удалось (сбой БД, таймаут функции, ошибка разбора текста) — сырой текст всё
+    равно сохранён, заявку видно в журнале и можно завести руками.
+    Возвращает id записи журнала (или None, если журнал недоступен).
+    Никогда не бросает исключение — сбой журнала не должен ронять приём заявки.
+    """
+    try:
+        with conn.cursor() as c:
+            c.execute(
+                f"""INSERT INTO {SCHEMA}.leads_webhook_raw_log
+                        (company_id, channel, payload, parsed_phone)
+                    VALUES (%s, %s, %s, %s) RETURNING id""",
+                (company_id, channel, json.dumps(payload, ensure_ascii=False), parsed_phone),
+            )
+            log_id = c.fetchone()[0]
+        conn.commit()
+        return log_id
+    except Exception as e:
+        print(f"[leads-log] failed to write incoming lead: {type(e).__name__}: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return None
+
+
+def finish_incoming_lead(conn, log_id, outcome, client_id=None, error=None, parsed_phone=None):
+    """Отмечает в журнале, чем закончилась обработка заявки (created/duplicate/
+    skipped/error). Тоже никогда не бросает исключение."""
+    if not log_id:
+        return
+    try:
+        with conn.cursor() as c:
+            c.execute(
+                f"""UPDATE {SCHEMA}.leads_webhook_raw_log
+                    SET outcome=%s, client_id=%s, error=%s,
+                        parsed_phone=COALESCE(%s, parsed_phone)
+                    WHERE id=%s""",
+                (outcome, client_id, error, parsed_phone, log_id),
+            )
+        conn.commit()
+    except Exception as e:
+        print(f"[leads-log] failed to finish lead log {log_id}: {type(e).__name__}: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 def parse_tg_lead_text(text):
@@ -4892,7 +4945,15 @@ def handler(event: dict, context) -> dict:
                 return ok({"skipped": True})  # не текстовое сообщение (стикер, фото без подписи и т.д.)
 
             lead = parse_tg_lead_text(text)
+            # Пишем в журнал ВСЁ, что похоже на заявку (есть слово «Телефон»), даже если
+            # разобрать не удалось — иначе такая заявка потеряется бесследно.
+            log_id = None
+            if lead or re.search(r'[Тт]елефон', text):
+                log_id = log_incoming_lead(conn, "telegram_leads", body or {},
+                                           company_id=owner_id,
+                                           parsed_phone=(lead or {}).get("phone"))
             if not lead:
+                finish_incoming_lead(conn, log_id, "skipped", error="не распознано как заявка")
                 return ok({"skipped": True, "reason": "not a lead"})  # обычное сообщение в группе, не заявка
 
             # Дедупликация: используем message_id из Telegram как уникальный внешний id,
@@ -4915,24 +4976,43 @@ def handler(event: dict, context) -> dict:
                 notes_parts.append(f"Удобнее общаться: {lead['contact_via']}")
             notes = "\n".join(notes_parts) if notes_parts else None
 
-            try:
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Telegram-заявки', 'telegram_leads', %s, %s, NOW())
-                    ON CONFLICT (session_id) DO NOTHING
-                    RETURNING id
-                """, (session_id, "Заявка из Telegram", lead["phone"],
-                      lead["city"], lead["area"], notes, final_company_id, default_next_call_date()))
-                new_row = cur.fetchone()
-                conn.commit()
-            except psycopg2.Error:
-                conn.rollback()
+            # Разовый сбой БД не должен убивать заявку — пробуем записать ещё раз.
+            new_row = None
+            last_db_err = None
+            for attempt in range(3):
+                try:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.live_chats
+                            (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                        VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Telegram-заявки', 'telegram_leads', %s, %s, NOW())
+                        ON CONFLICT (session_id) DO NOTHING
+                        RETURNING id
+                    """, (session_id, "Заявка из Telegram", lead["phone"],
+                          lead["city"], lead["area"], notes, final_company_id, default_next_call_date()))
+                    new_row = cur.fetchone()
+                    conn.commit()
+                    last_db_err = None
+                    break
+                except psycopg2.Error as e:
+                    last_db_err = f"{type(e).__name__}: {str(e)[:300]}"
+                    print(f"[tg-leads-webhook] insert failed (attempt {attempt + 1}/3): {last_db_err}")
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    if attempt < 2:
+                        time.sleep(0.3 * (attempt + 1))
+
+            if last_db_err:
+                # Заявка не создалась, но сырой текст уже в журнале — не потеряется.
+                finish_incoming_lead(conn, log_id, "error", error=last_db_err)
                 return err("db error", 500)
 
             if not new_row:
+                finish_incoming_lead(conn, log_id, "duplicate")
                 return ok({"duplicate": True})
 
+            finish_incoming_lead(conn, log_id, "created", client_id=new_row[0])
             return ok({"created": True, "client_id": new_row[0]})
 
         # ── EMAIL-LEADS-POLL: заявки с leakad.ru, присылаемые НЕ вебхуком, а на
@@ -5140,8 +5220,13 @@ def handler(event: dict, context) -> dict:
                     phone_raw = lead["phone"]
                     city = city or lead["city"]
 
+            # Журналируем ЛЮБОЙ входящий запрос сразу — даже если телефон не распознан.
+            # Иначе такая заявка исчезает бесследно и восстановить её неоткуда.
             phone = normalize_phone(phone_raw) if phone_raw else ""
+            log_id = log_incoming_lead(conn, "leakad_webhook", payload or {"_raw": raw_body},
+                                       parsed_phone=phone or None)
             if not phone:
+                finish_incoming_lead(conn, log_id, "skipped", error="нет телефона / не распознан")
                 return err("нет поля phone (или телефон не распознан)", 422)
 
             # Если comment совпадает по формату со старым текстом заявки — вытащим
@@ -5167,25 +5252,63 @@ def handler(event: dict, context) -> dict:
                 notes_parts.append(f"Удобнее общаться: {parsed_comment['contact_via']}")
             notes = "\n".join(notes_parts) if notes_parts else None
 
-            try:
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, %s, %s, %s, 'leakad_webhook', %s, %s, NOW())
-                    ON CONFLICT (session_id) DO NOTHING
-                    RETURNING id
-                """, (session_id, name or "Заявка с сайта (leakad)", phone,
-                      city, area, notes, source_name, master_id, default_next_call_date()))
-                new_row = cur.fetchone()
-                conn.commit()
-            except psycopg2.Error:
-                conn.rollback()
+            # Разовый сбой БД не должен убивать заявку — пробуем записать ещё раз.
+            new_row = None
+            last_db_err = None
+            for attempt in range(3):
+                try:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.live_chats
+                            (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                        VALUES (%s, %s, %s, 'new', %s, %s, %s, %s, 'leakad_webhook', %s, %s, NOW())
+                        ON CONFLICT (session_id) DO NOTHING
+                        RETURNING id
+                    """, (session_id, name or "Заявка с сайта (leakad)", phone,
+                          city, area, notes, source_name, master_id, default_next_call_date()))
+                    new_row = cur.fetchone()
+                    conn.commit()
+                    last_db_err = None
+                    break
+                except psycopg2.Error as e:
+                    last_db_err = f"{type(e).__name__}: {str(e)[:300]}"
+                    print(f"[leakad-webhook] insert failed (attempt {attempt + 1}/3): {last_db_err}")
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    if attempt < 2:
+                        time.sleep(0.3 * (attempt + 1))
+
+            if last_db_err:
+                # Заявка не создалась, но сырой запрос уже в журнале — не потеряется.
+                finish_incoming_lead(conn, log_id, "error", error=last_db_err)
                 return err("db error", 500)
 
             if not new_row:
+                finish_incoming_lead(conn, log_id, "duplicate")
                 return ok({"ok": True, "duplicate": True})
 
+            finish_incoming_lead(conn, log_id, "created", client_id=new_row[0])
             return ok({"ok": True, "id": new_row[0]})
+
+        # ── LEADS-LOG: журнал входящих заявок. Показывает ВСЁ, что пришло по вебхукам,
+        # включая заявки, которые не удалось создать (сбой БД, не распознан телефон).
+        # Нужен, чтобы потерянные заявки были видны и их можно было завести вручную.
+        if resource == "leads-log" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            only_lost = qs.get("lost") == "1"
+            limit = min(int(qs.get("limit", "100") or 100), 500)
+            where = "WHERE outcome IN ('error','skipped')" if only_lost else ""
+            cur.execute(f"""
+                SELECT id, channel, parsed_phone, outcome, client_id, error, created_at, payload
+                FROM {SCHEMA}.leads_webhook_raw_log
+                {where}
+                ORDER BY created_at DESC
+                LIMIT {limit}
+            """)
+            cols = [d[0] for d in cur.description]
+            return ok([dict(zip(cols, r)) for r in cur.fetchall()])
 
         # ── LEADS-SOURCES-INFO: сводка по источникам заявок для вкладки «Интеграции».
         # Отдаёт готовый адрес вебхука (с секретным ключом — только авторизованным,

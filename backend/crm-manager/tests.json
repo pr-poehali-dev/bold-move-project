@@ -17,16 +17,22 @@
       "method": "GET",
       "path": "/?r=clients",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "PUT touch-flags without auth is rejected",
       "method": "PUT",
       "path": "/?r=touch-flags&client_id=1",
-      "body": {"pinned": true},
+      "body": {
+        "pinned": true
+      },
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -34,7 +40,9 @@
       "method": "GET",
       "path": "/?r=touch-hidden",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -84,7 +92,9 @@
       "method": "GET",
       "path": "/?r=plan-rooms-by-chat",
       "expectedStatus": 400,
-      "expectedBody": {"error": "chat_id required"},
+      "expectedBody": {
+        "error": "chat_id required"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -92,7 +102,9 @@
       "method": "GET",
       "path": "/?r=custom-fin-values",
       "expectedStatus": 400,
-      "expectedBody": {"error": "client_id required"},
+      "expectedBody": {
+        "error": "client_id required"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -100,7 +112,9 @@
       "method": "GET",
       "path": "/?r=plan-crm-sync&project_id=0",
       "expectedStatus": 404,
-      "expectedBody": {"error": "not found"},
+      "expectedBody": {
+        "error": "not found"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -108,7 +122,9 @@
       "method": "GET",
       "path": "/?r=plan-share",
       "expectedStatus": 400,
-      "expectedBody": {"error": "token required"},
+      "expectedBody": {
+        "error": "token required"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -116,16 +132,22 @@
       "method": "GET",
       "path": "/?r=order-share",
       "expectedStatus": 400,
-      "expectedBody": {"error": "token required"},
+      "expectedBody": {
+        "error": "token required"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST order-share without auth is rejected",
       "method": "POST",
       "path": "/?r=order-share",
-      "body": {"chat_id": 1},
+      "body": {
+        "chat_id": 1
+      },
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -133,16 +155,24 @@
       "method": "POST",
       "path": "/?r=tg-leads-check",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST tg-leads-webhook missing key",
       "method": "POST",
       "path": "/?r=tg-leads-webhook",
-      "body": {"message": {"text": "test"}},
+      "body": {
+        "message": {
+          "text": "test"
+        }
+      },
       "expectedStatus": 401,
-      "expectedBody": {"error": "company_id и key обязательны"},
+      "expectedBody": {
+        "error": "company_id и key обязательны"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -155,9 +185,13 @@
       "name": "POST channel-qr-start without auth is rejected",
       "method": "POST",
       "path": "/?r=channel-qr-start",
-      "body": {"channel": "telegram"},
+      "body": {
+        "channel": "telegram"
+      },
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -165,7 +199,9 @@
       "method": "GET",
       "path": "/?r=channel-qr-status&channel=telegram",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -173,16 +209,23 @@
       "method": "GET",
       "path": "/?r=channel-qr-worker",
       "expectedStatus": 401,
-      "expectedBody": {"error": "неверный токен воркера"},
+      "expectedBody": {
+        "error": "неверный токен воркера"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST channel-qr-password without auth is rejected",
       "method": "POST",
       "path": "/?r=channel-qr-password",
-      "body": {"channel": "telegram", "password": "test"},
+      "body": {
+        "channel": "telegram",
+        "password": "test"
+      },
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -190,34 +233,57 @@
       "method": "GET",
       "path": "/?r=channel-qr-worker-password&company_id=1",
       "expectedStatus": 401,
-      "expectedBody": {"error": "неверный токен воркера"},
+      "expectedBody": {
+        "error": "неверный токен воркера"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST bug_report without platform is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
-      "body": {"severity": "normal", "report_type": "bug"},
+      "body": {
+        "severity": "normal",
+        "report_type": "bug"
+      },
       "expectedStatus": 400,
-      "expectedBody": {"error": "выберите платформу"},
+      "expectedBody": {
+        "error": "выберите платформу"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST bug_report with short description is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
-      "body": {"severity": "normal", "report_type": "bug", "platform": "desktop", "area": "crm", "description": "коротко"},
+      "body": {
+        "severity": "normal",
+        "report_type": "bug",
+        "platform": "desktop",
+        "area": "crm",
+        "description": "коротко"
+      },
       "expectedStatus": 400,
-      "expectedBody": {"error": "слишком мало описания — минимум 50 символов"},
+      "expectedBody": {
+        "error": "слишком мало описания — минимум 50 символов"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST bug_report without screenshot is rejected",
       "method": "POST",
       "path": "/?r=bug_reports",
-      "body": {"severity": "normal", "report_type": "bug", "platform": "desktop", "area": "crm", "description": "Это очень подробное описание проблемы, которое точно длиннее пятидесяти символов для теста"},
+      "body": {
+        "severity": "normal",
+        "report_type": "bug",
+        "platform": "desktop",
+        "area": "crm",
+        "description": "Это очень подробное описание проблемы, которое точно длиннее пятидесяти символов для теста"
+      },
       "expectedStatus": 400,
-      "expectedBody": {"error": "прикрепите скриншот проблемы"},
+      "expectedBody": {
+        "error": "прикрепите скриншот проблемы"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -225,7 +291,9 @@
       "method": "PUT",
       "path": "/?r=clients&action=restore",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -233,7 +301,9 @@
       "method": "GET",
       "path": "/?r=integrations",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -241,7 +311,9 @@
       "method": "GET",
       "path": "/?r=touches&client_id=1",
       "expectedStatus": 401,
-      "expectedBody": {"error": "Требуется авторизация"},
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -254,9 +326,13 @@
       "name": "POST expense without amount is rejected",
       "method": "POST",
       "path": "/?r=expenses",
-      "body": {"comment": "test"},
+      "body": {
+        "comment": "test"
+      },
       "expectedStatus": 400,
-      "expectedBody": {"error": "amount required"},
+      "expectedBody": {
+        "error": "amount required"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -264,16 +340,22 @@
       "method": "DELETE",
       "path": "/?r=expenses",
       "expectedStatus": 400,
-      "expectedBody": {"error": "id required"},
+      "expectedBody": {
+        "error": "id required"
+      },
       "bodyMatcher": "partial"
     },
     {
       "name": "POST expense category without name is rejected",
       "method": "POST",
       "path": "/?r=expense-categories",
-      "body": {"color": "#fff"},
+      "body": {
+        "color": "#fff"
+      },
       "expectedStatus": 400,
-      "expectedBody": {"error": "name required"},
+      "expectedBody": {
+        "error": "name required"
+      },
       "bodyMatcher": "partial"
     },
     {
@@ -281,7 +363,16 @@
       "method": "GET",
       "path": "/?r=email-leads-poll&key=wrong",
       "expectedStatus": 401,
-      "expectedBody": {"error": "unauthorized"},
+      "expectedBody": {
+        "error": "unauthorized"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET leads-log without auth is rejected",
+      "method": "GET",
+      "path": "/?r=leads-log",
+      "expectedStatus": 401,
       "bodyMatcher": "partial"
     }
   ]
