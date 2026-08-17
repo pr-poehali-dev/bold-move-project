@@ -5142,9 +5142,13 @@ def handler(event: dict, context) -> dict:
                             # создаём. Если совпадения нет — вебхук, скорее всего,
                             # не сработал, и заявку нужно завести именно из письма
                             # (помечаем как "recovered", чтобы это было явно видно).
+                            # Сравниваем ТОЛЬКО по цифрам номера — в БД телефон хранится
+                            # в разных форматах ("+7 (958) 801-94-60" и "+79588019460"),
+                            # текстовое сравнение "=" их не совпадёт и создаст дубль.
                             cur.execute(f"""
                                 SELECT id FROM {SCHEMA}.live_chats
-                                WHERE phone = %s AND created_via IN ('leakad_webhook','telegram_leads')
+                                WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace(%s, '\\D', '', 'g')
+                                  AND created_via IN ('leakad_webhook','telegram_leads')
                                   AND created_at > NOW() - INTERVAL '3 days'
                                 ORDER BY created_at DESC LIMIT 1
                             """, (lead["phone"],))
