@@ -32,7 +32,7 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
   // с DrawerCostsBlock (поднят в DrawerInfoTab) — новая трата видна тут же.
   const { rules: autoRules } = useAutoRules();
   const ownCustomFinValues = useCustomFinValues(customFinValuesHook ? 0 : data.id);
-  const { values: customCostValues } = customFinValuesHook ?? ownCustomFinValues;
+  const { values: customCostValues, loading: customValuesLoading } = customFinValuesHook ?? ownCustomFinValues;
   // Прибыль должна учитывать РЕАЛЬНО потраченные деньги, даже если статью скрыли
   // из отображения в блоке "Затраты" (visible=false) — деньги от этого никуда не
   // делись, скрытие влияет только на список, не на факт затрат.
@@ -97,7 +97,21 @@ export function DrawerPLBlock({ data, isHidden, toggleHidden, customFinRows, dis
         </button>
       </div>
 
-      {!isHidden && (
+      {!isHidden && customValuesLoading && (
+        // Пока не подтянулись кастомные статьи затрат (Технолог, Логистика и т.п.) —
+        // показываем заглушку вместо цифр. Без неё P&L сначала считается без этих
+        // статей, а через мгновение "доезжает" до правильной суммы — выглядит так,
+        // будто прибыль посчиталась неверно.
+        <div className="px-4 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background: t.surface2 }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isHidden && !customValuesLoading && (
         <div style={{ background: "linear-gradient(135deg,#7c3aed08,#10b98108)" }}>
 
           {/* ── МОБИЛЕ: вертикальный понятный вид ─────────────────── */}
