@@ -5170,10 +5170,14 @@ def handler(event: dict, context) -> dict:
                                 notes_parts.append("⚠️ Восстановлено с почты — не найдено по вебхуку (возможно, он не сработал)")
                             notes = "\n".join(notes_parts) if notes_parts else None
 
+                            # Источник "Квиз" — не "Email-заявки": почта тут лишь резервный
+                            # канал доставки той же заявки с leakad.ru (когда вебхук не
+                            # сработал), а не отдельный рекламный источник. Один источник —
+                            # без дублей в статистике и на карточках.
                             cur.execute(f"""
                                 INSERT INTO {SCHEMA}.live_chats
                                     (session_id, client_name, phone, status, address, area, notes, source, created_via, company_id, next_call_date, status_changed_at)
-                                VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Email-заявки', 'email_leads', %s, %s, NOW())
+                                VALUES (%s, %s, %s, 'new', %s, %s, %s, 'Квиз', 'email_leads', %s, %s, NOW())
                                 ON CONFLICT (session_id) DO NOTHING
                                 RETURNING id
                             """, (session_id, "Заявка с сайта (email)", lead["phone"],
