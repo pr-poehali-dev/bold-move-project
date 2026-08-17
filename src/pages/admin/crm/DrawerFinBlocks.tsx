@@ -261,7 +261,15 @@ export function DrawerCostsBlock({
     .filter(r => r.row_type === "cost")
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  const visibleCostRules = costRules.filter(r => r.visible !== false);
+  const isBuiltinKey = (key: string) => (BUILTIN_COST_KEYS as readonly string[]).includes(key);
+  const ruleHasValue = (r: RuleEntry) =>
+    isBuiltinKey(r.key) ? !!Number(data[r.key as keyof Client]) : Number(customValues[r.key]) > 0;
+
+  // Статья, скрытая через ползунок ("visible=false"), но по которой РЕАЛЬНО есть
+  // потраченные деньги — всё равно показываем. Иначе деньги учтены в прибыли (P&L),
+  // но не видны в самом списке затрат — карточка выглядит так, будто P&L считает
+  // неправильно. Скрытие полностью работает только для пустых статей.
+  const visibleCostRules = costRules.filter(r => r.visible !== false || ruleHasValue(r));
 
   const costRows: CostRowDef[] = visibleCostRules.map(r => ({ key: r.key, label: r.label }));
 
@@ -416,7 +424,10 @@ export function DrawerCostsBlock({
           <SortableContext items={rowsToRender.map(r => r.key)} strategy={verticalListSortingStrategy}>
             {rowsToRender.map(rule => {
               const key = rule.key;
-              const isVisible = rule.visible !== false;
+              // Строка реально показана, если она не скрыта, ЛИБО скрыта, но по ней
+              // есть потраченные деньги (см. visibleCostRules выше) — иначе RowWithToggle
+              // саму строку не отрендерит, несмотря на то что она уже прошла в список.
+              const isVisible = rule.visible !== false || ruleHasValue(rule);
               if (isBuiltin(key)) {
                 const icons: Record<string, string> = { material_cost: "Package", measure_cost: "Ruler", install_cost: "Wrench" };
                 const save = (v: string) => {
