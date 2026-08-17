@@ -1854,7 +1854,9 @@ def handler(event: dict, context) -> dict:
                     ) AS m
                 ),
                 done AS (
-                    SELECT DATE_TRUNC('month', created_at) AS m, COUNT(*) AS cnt
+                    -- Завершённые считаем по месяцу ЗАКРЫТИЯ сделки — совпадает с рядом
+                    -- стоящим графиком выручки/прибыли (тот же месяц закрытия)
+                    SELECT DATE_TRUNC('month', COALESCE(closed_at, status_changed_at, updated_at, created_at)) AS m, COUNT(*) AS cnt
                     FROM {S}.live_chats WHERE status = 'done'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(done.cnt, 0)
@@ -1871,8 +1873,13 @@ def handler(event: dict, context) -> dict:
                     ) AS m
                 ),
                 rev AS (
-                    SELECT DATE_TRUNC('month', created_at) AS m, COALESCE(SUM(contract_sum), 0) AS s
-                    FROM {S}.live_chats WHERE contract_sum IS NOT NULL AND status != 'deleted'{cmp_sql} GROUP BY 1
+                    -- Выручка относится к месяцу ЗАКРЫТИЯ сделки (closed_at), а не создания
+                    -- заявки — иначе деньги "приезжают" не в тот месяц. closed_at фиксируется
+                    -- один раз при переходе в 'done'; для старых записей до его появления
+                    -- используем ближайший доступный запасной вариант.
+                    SELECT DATE_TRUNC('month', COALESCE(closed_at, status_changed_at, updated_at, created_at)) AS m,
+                           COALESCE(SUM(contract_sum), 0) AS s
+                    FROM {S}.live_chats WHERE status = 'done'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(rev.s, 0)
                 FROM months LEFT JOIN rev ON months.m = rev.m ORDER BY months.m
@@ -1888,9 +1895,10 @@ def handler(event: dict, context) -> dict:
                     ) AS m
                 ),
                 costs AS (
-                    SELECT DATE_TRUNC('month', created_at) AS m,
+                    -- Себестоимость — тем же месяцем, что и выручка (по дате закрытия сделки)
+                    SELECT DATE_TRUNC('month', COALESCE(closed_at, status_changed_at, updated_at, created_at)) AS m,
                         COALESCE(SUM(material_cost),0) + COALESCE(SUM(measure_cost),0) + COALESCE(SUM(install_cost),0) AS s
-                    FROM {S}.live_chats WHERE status != 'deleted'{cmp_sql} GROUP BY 1
+                    FROM {S}.live_chats WHERE status = 'done'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(costs.s, 0)
                 FROM months LEFT JOIN costs ON months.m = costs.m ORDER BY months.m
@@ -1906,9 +1914,10 @@ def handler(event: dict, context) -> dict:
                     ) AS m
                 ),
                 profit AS (
-                    SELECT DATE_TRUNC('month', created_at) AS m,
+                    -- Прибыль — тем же месяцем, что и выручка (по дате закрытия сделки)
+                    SELECT DATE_TRUNC('month', COALESCE(closed_at, status_changed_at, updated_at, created_at)) AS m,
                         COALESCE(SUM(contract_sum),0) - COALESCE(SUM(material_cost),0) - COALESCE(SUM(measure_cost),0) - COALESCE(SUM(install_cost),0) AS s
-                    FROM {S}.live_chats WHERE status != 'deleted'{cmp_sql} GROUP BY 1
+                    FROM {S}.live_chats WHERE status = 'done'{cmp_sql} GROUP BY 1
                 )
                 SELECT TO_CHAR(months.m, 'YYYY-MM'), COALESCE(profit.s, 0)
                 FROM months LEFT JOIN profit ON months.m = profit.m ORDER BY months.m
