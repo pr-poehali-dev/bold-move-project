@@ -20,6 +20,16 @@ export interface Stats {
   monthly_profit:  { month: string; profit: number }[];
 }
 
+/** Воронка по месяцам: сколько заявок прошло каждый этап в конкретном месяце.
+ *  Не зависит от фильтра стадии в шапке — показывает весь путь заявок целиком. */
+export interface FunnelMonth {
+  month: string;
+  leads: number;    // пришли (дата создания)
+  measures: number; // дошли до замера (дата замера)
+  montages: number; // дошли до монтажа (дата монтажа)
+  done: number;     // закрыты (дата закрытия сделки)
+}
+
 export type AnalyticsTab = "overview" | "finance" | "expenses" | "touches";
 
 export const ANALYTICS_TABS: { id: AnalyticsTab; label: string; icon: string }[] = [

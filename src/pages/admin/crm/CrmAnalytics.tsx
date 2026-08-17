@@ -5,7 +5,7 @@ import { useTheme } from "./themeContext";
 import ClientDrawer from "./ClientDrawer";
 import { Stats, AnalyticsTab, ANALYTICS_TABS } from "./analyticsTypes";
 import { loadCustomFinRows } from "./drawerTypes";
-import { computeStats } from "./computeAnalytics";
+import { computeStats, computeFunnelByMonth } from "./computeAnalytics";
 import { useOrderSources } from "@/hooks/useOrderSources";
 import { applyMultiFilters, STAGE_OPTIONS, PERIOD_OPTIONS, periodLabel, stagesLabel, StageFilter, PeriodFilter, CustomRange } from "./analyticsFilters";
 import AnalyticsMultiSelect from "./AnalyticsMultiSelect";
@@ -60,6 +60,16 @@ export default function CrmAnalytics() {
     () => applyMultiFilters(allClients, { sources: sourceFilters, stages: stageFilters, period: periodFilter, range: customRange }),
     [allClients, sourceFilters, stageFilters, periodFilter, customRange],
   );
+
+  // Для графика «Воронка по месяцам» стадию НЕ фильтруем — иначе, например, при
+  // активном фильтре «Финал» столбец «Заявки» на графике посчитает только уже
+  // закрытые сделки, и выглядит так, будто заявок почти не было. Источник и период
+  // применяем как обычно — это разрезы, а не срез по одному этапу воронки.
+  const funnelSourceClients = useMemo(
+    () => applyMultiFilters(allClients, { sources: sourceFilters, period: periodFilter, range: customRange }),
+    [allClients, sourceFilters, periodFilter, customRange],
+  );
+  const funnelMonths = useMemo(() => computeFunnelByMonth(funnelSourceClients), [funnelSourceClients]);
 
   // Для ДЕНЕГ («Финансы», «Расходы») период считаем по дате ЗАКРЫТИЯ сделки:
   // выручка относится к месяцу, когда её получили, а не когда пришла заявка.
@@ -131,14 +141,12 @@ export default function CrmAnalytics() {
     { label: "Отказников",        count: s.total_cancel,  color: "#ef4444", pct: s.total_all > 0 ? Math.round(s.total_cancel  / s.total_all * 100) : 0 },
   ];
 
-  // Динамика по месяцам — деньги берём из денежного среза
-  const allMerged = s.monthly_leads.map(d => ({
+  // Динамика денег по месяцам — денежный срез (период по дате закрытия сделки)
+  const moneyMonths = sMoney.monthly_revenue.map(d => ({
     month:   d.month,
-    leads:   d.count,
-    done:    s.monthly_done.find(x => x.month === d.month)?.count           ?? 0,
-    revenue: sMoney.monthly_revenue.find(x => x.month === d.month)?.revenue ?? 0,
-    costs:   sMoney.monthly_costs.find(x => x.month === d.month)?.costs     ?? 0,
-    profit:  sMoney.monthly_profit.find(x => x.month === d.month)?.profit   ?? 0,
+    revenue: d.revenue,
+    costs:   sMoney.monthly_costs.find(x => x.month === d.month)?.costs   ?? 0,
+    profit:  sMoney.monthly_profit.find(x => x.month === d.month)?.profit ?? 0,
   }));
 
   return (
@@ -236,7 +244,7 @@ export default function CrmAnalytics() {
       )}
 
       {tab === "finance" && (
-        <AnalyticsFinance s={sMoney} costPie={costPie} allMerged={allMerged} />
+        <AnalyticsFinance s={sMoney} costPie={costPie} moneyMonths={moneyMonths} funnelMonths={funnelMonths} />
       )}
 
       {tab === "expenses" && (

@@ -1,5 +1,5 @@
 import { Client, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
-import { Stats, EMPTY_STATS } from "./analyticsTypes";
+import { Stats, EMPTY_STATS, FunnelMonth } from "./analyticsTypes";
 import { clientPeriodDate } from "./analyticsFilters";
 
 // Клиентский расчёт всех показателей аналитики по уже загруженному списку заявок.
@@ -33,6 +33,44 @@ function last12Months(): string[] {
     res.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   return res;
+}
+
+/** Воронка по месяцам: заявки → замеры → монтажи → завершено.
+ *  Специально принимает список БЕЗ фильтра стадии — график динамики должен
+ *  показывать весь путь заявок целиком, а не срез по одной стадии воронки
+ *  (иначе, например, при активном фильтре «Финал» столбец «Заявки» на графике
+ *  будет считать только уже закрытые сделки, что выглядит как "заявок почти нет"). */
+export function computeFunnelByMonth(clients: Client[]): FunnelMonth[] {
+  const list = clients.filter(c => c.status !== "deleted");
+  const months = last12Months();
+  const zero = () => Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>;
+  const mLeads = zero(), mMeasures = zero(), mMontages = zero(), mDone = zero();
+
+  for (const c of list) {
+    const leadMk = monthKey(c.created_at);
+    if (leadMk != null && leadMk in mLeads) mLeads[leadMk] += 1;
+
+    // Дошли до замера — считаем по факту назначенной даты замера (когда именно замеряли)
+    if (c.measure_date) {
+      const mk = monthKey(c.measure_date);
+      if (mk != null && mk in mMeasures) mMeasures[mk] += 1;
+    }
+    // Дошли до монтажа — по дате монтажа
+    if (c.install_date) {
+      const mk = monthKey(c.install_date);
+      if (mk != null && mk in mMontages) mMontages[mk] += 1;
+    }
+    // Завершено — по дате закрытия сделки (не съезжает при правках карточки)
+    if (c.status === "done") {
+      const mk = monthKey(clientPeriodDate(c, "closed"));
+      if (mk != null && mk in mDone) mDone[mk] += 1;
+    }
+  }
+
+  return months.map(m => ({
+    month: m,
+    leads: mLeads[m], measures: mMeasures[m], montages: mMontages[m], done: mDone[m],
+  }));
 }
 
 export function computeStats(clients: Client[]): Stats {

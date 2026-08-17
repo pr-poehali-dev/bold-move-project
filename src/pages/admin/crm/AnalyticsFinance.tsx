@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { Stats } from "./analyticsTypes";
+import { Stats, FunnelMonth } from "./analyticsTypes";
 import AnalyticsDynamics from "./AnalyticsDynamics";
 
 function KpiCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string | number; sub?: string; color: string }) {
@@ -19,10 +19,8 @@ function KpiCard({ icon, label, value, sub, color }: { icon: string; label: stri
   );
 }
 
-interface MergedMonth {
+interface MoneyMonth {
   month: string;
-  leads: number;
-  done: number;
   revenue: number;
   costs: number;
   profit: number;
@@ -31,11 +29,13 @@ interface MergedMonth {
 interface Props {
   s: Stats;
   costPie: { name: string; value: number; color: string }[];
-  /** Показатели по месяцам — блок «Динамика» переехал сюда */
-  allMerged: MergedMonth[];
+  /** Выручка/затраты/прибыль по месяцам — денежный срез (по дате закрытия сделки) */
+  moneyMonths: MoneyMonth[];
+  /** Воронка по месяцам: заявки → замеры → монтажи → завершено — не зависит от фильтра стадии */
+  funnelMonths: FunnelMonth[];
 }
 
-export default function AnalyticsFinance({ s, costPie, allMerged }: Props) {
+export default function AnalyticsFinance({ s, costPie, moneyMonths, funnelMonths }: Props) {
   const t = useTheme();
 
   return (
@@ -176,7 +176,7 @@ export default function AnalyticsFinance({ s, costPie, allMerged }: Props) {
       </div>
 
       {/* Показатели во времени — переехали с бывшей вкладки «Динамика» */}
-      <AnalyticsDynamics s={s} allMerged={allMerged} />
+      <AnalyticsDynamics s={s} moneyMonths={moneyMonths} funnelMonths={funnelMonths} />
     </div>
   );
 }

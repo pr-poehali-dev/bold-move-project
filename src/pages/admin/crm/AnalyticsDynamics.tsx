@@ -5,31 +5,51 @@ import {
 } from "recharts";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { Stats } from "./analyticsTypes";
+import { Stats, FunnelMonth } from "./analyticsTypes";
 
-interface MergedMonth {
+interface MoneyMonth {
   month: string;
-  leads: number;
-  done: number;
   revenue: number;
   costs: number;
   profit: number;
 }
 
+type FunnelStep = "leads" | "measures" | "montages" | "done";
+
 interface Props {
   s: Stats;
-  allMerged: MergedMonth[];
+  moneyMonths: MoneyMonth[];
+  /** Воронка по месяцам — заявки → замеры → монтажи → завершено. Не зависит от
+   *  фильтра стадии в шапке, поэтому «Заявки» тут всегда весь поток обращений. */
+  funnelMonths: FunnelMonth[];
 }
 
-export default function AnalyticsDynamics({ s, allMerged }: Props) {
+const FUNNEL_STEPS: { id: FunnelStep; label: string; color: string }[] = [
+  { id: "leads",    label: "Заявки",    color: "#8b5cf6" },
+  { id: "measures", label: "Замеры",    color: "#f59e0b" },
+  { id: "montages", label: "Монтажи",   color: "#06b6d4" },
+  { id: "done",     label: "Завершено", color: "#10b981" },
+];
+
+export default function AnalyticsDynamics({ s, moneyMonths, funnelMonths }: Props) {
   const t = useTheme();
 
-  const [leadsMode,   setLeadsMode]   = useState<"leads" | "done" | "both">("both");
+  const [activeSteps, setActiveSteps] = useState<FunnelStep[]>(["leads", "measures", "montages", "done"]);
   const [revenueMode, setRevenueMode] = useState<"revenue" | "costs" | "profit" | "all">("all");
   const [monthFrom, setMonthFrom] = useState("");
   const [monthTo,   setMonthTo]   = useState("");
 
-  const merged = allMerged.filter(d =>
+  const toggleStep = (id: FunnelStep) => {
+    setActiveSteps(prev => prev.includes(id)
+      ? (prev.length > 1 ? prev.filter(s2 => s2 !== id) : prev) // хотя бы один ряд должен остаться включённым
+      : [...prev, id]);
+  };
+
+  const funnel = funnelMonths.filter(d =>
+    (!monthFrom || d.month >= monthFrom) &&
+    (!monthTo   || d.month <= monthTo)
+  );
+  const merged = moneyMonths.filter(d =>
     (!monthFrom || d.month >= monthFrom) &&
     (!monthTo   || d.month <= monthTo)
   );
@@ -58,21 +78,24 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
       {/* Графики */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
-        {/* Заявки vs Завершённые */}
+        {/* Воронка по месяцам: заявки → замеры → монтажи → завершено */}
         <div className="rounded-2xl p-5" style={{ background: t.surface, border: `1px solid ${t.border}` }}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <div className="w-1 h-4 rounded-full bg-violet-500" />
-              <span className="text-sm font-bold" style={{ color: t.text }}>Заявки vs Завершённые</span>
+              <span className="text-sm font-bold" style={{ color: t.text }}>Воронка по месяцам</span>
             </div>
-            <div className="flex items-center gap-1">
-              {(["leads", "done", "both"] as const).map(m => (
-                <button key={m} onClick={() => setLeadsMode(m)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold transition"
-                  style={leadsMode === m ? { background: "#7c3aed", color: "#fff" } : { background: t.surface2, color: t.textMute }}>
-                  {m === "leads" ? "Заявки" : m === "done" ? "Завершённые" : "Оба"}
-                </button>
-              ))}
+            <div className="flex items-center gap-1 flex-wrap">
+              {FUNNEL_STEPS.map(step => {
+                const on = activeSteps.includes(step.id);
+                return (
+                  <button key={step.id} onClick={() => toggleStep(step.id)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold transition"
+                    style={on ? { background: step.color, color: "#fff" } : { background: t.surface2, color: t.textMute }}>
+                    {step.label}
+                  </button>
+                );
+              })}
               <input type="month" value={monthFrom} onChange={e => setMonthFrom(e.target.value)}
                 className="rounded-lg px-2 py-1 text-xs ml-2 focus:outline-none"
                 style={dateInputStyle} />
@@ -88,14 +111,15 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+            <BarChart data={funnel} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} labelFormatter={monthLabel}
                 formatter={(v: number, name: string) => [`${v} шт.`, name]} />
-              {leadsMode !== "done"  && <Bar dataKey="leads" name="Заявки"       fill="#8b5cf6" radius={[4, 4, 0, 0]} />}
-              {leadsMode !== "leads" && <Bar dataKey="done"  name="Завершённые"  fill="#10b981" radius={[4, 4, 0, 0]} />}
-              {leadsMode === "both"  && <Legend wrapperStyle={{ fontSize: 11, color: t.textMute }} />}
+              {FUNNEL_STEPS.filter(s2 => activeSteps.includes(s2.id)).map(step => (
+                <Bar key={step.id} dataKey={step.id} name={step.label} fill={step.color} radius={[4, 4, 0, 0]} />
+              ))}
+              {activeSteps.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: t.textMute }} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
