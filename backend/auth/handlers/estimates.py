@@ -231,21 +231,36 @@ def handle(action, method, params, body, token, event, conn, cur):
                 rules = cur.fetchall()
                 if rules:
                     auto_patch = {}
-                    cost_keys   = {"material_cost", "measure_cost", "install_cost", "management_cost"}
+                    custom_patch = {}
+                    # "management_cost" — отдельная системная колонка для режима
+                    # "Менеджмент по прайсу" (use_management_price). Кастомная статья
+                    # "Менеджер" (row_key='manager_cost') — это ДРУГАЯ, пользовательская
+                    # статья затрат, хранится в client_custom_fin_values как и остальные
+                    # кастомные статьи (Технолог и т.п.). Раньше её ошибочно писали в
+                    # management_cost — получалось задвоение с одноимённым системным полем.
+                    builtin_cost_keys = {"material_cost", "measure_cost", "install_cost", "management_cost"}
                     income_keys = {"prepayment", "extra_payment"}
                     for r_key, r_pct, r_type in rules:
-                        if r_key == "manager_cost": r_key = "management_cost"
                         if r_key == "install_cost"    and _use_install:    continue
                         if r_key == "measure_cost"    and _use_measure:    continue
                         if r_key == "management_cost" and _use_management: continue
-                        if r_key in cost_keys or r_key in income_keys:
-                            auto_patch[r_key] = int(round(float(total_standard) * float(r_pct) / 100))
+                        val = int(round(float(total_standard) * float(r_pct) / 100))
+                        if r_key in builtin_cost_keys or r_key in income_keys:
+                            auto_patch[r_key] = val
+                        elif r_type == "cost":
+                            custom_patch[r_key] = val
                     if auto_patch:
                         set_parts = ", ".join(f"{k}=%s" for k in auto_patch)
                         cur.execute(
                             f"UPDATE {SCHEMA}.live_chats SET {set_parts} WHERE id=%s",
                             list(auto_patch.values()) + [chat_id]
                         )
+                    for c_key, c_val in custom_patch.items():
+                        cur.execute(f"""
+                            INSERT INTO {SCHEMA}.client_custom_fin_values (client_id, row_key, value)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (client_id, row_key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+                        """, (chat_id, c_key, c_val))
 
         conn.commit()
 
