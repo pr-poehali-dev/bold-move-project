@@ -269,25 +269,45 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
           hidden={hiddenBlocks.has("status")}
           headerExtra={
             data.status === "done" ? (
-              /* На этапе «Выполнено» вместо «Сервис» — отметка «Проверено» (качество
-                 и оплата сверены). «Сервис» тут не имеет смысла: заявка уже завершена. */
-              <label className="flex items-center gap-2 cursor-pointer select-none"
-                title="Заявка проверена — качество и оплата сверены"
-                style={{ opacity: canOrdersEdit ? 1 : 0.5 }}>
-                <span className="text-[11px] font-semibold" style={{ color: data.is_verified ? "#10b981" : t.textMute }}>
-                  Проверено
-                </span>
-                <Switch
-                  checked={!!data.is_verified}
-                  disabled={!canOrdersEdit}
-                  onCheckedChange={v => saveWithLog(
-                    { is_verified: v },
-                    v ? "Заявка отмечена как проверенная" : "Снята отметка «Проверено»",
-                    "CheckCheck", "#10b981",
-                  )}
-                  className="h-5 w-9 data-[state=unchecked]:bg-white/10 data-[state=checked]:bg-emerald-500"
-                />
-              </label>
+              /* На этапе «Выполнено» вместо «Сервис» — два независимых переключателя:
+                 «Проверено» (качество и оплата сверены) и «Подтверждено» (напр. клиент
+                 подтвердил закрытие). «Сервис» тут не имеет смысла: заявка уже завершена. */
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none"
+                  title="Заявка проверена — качество и оплата сверены"
+                  style={{ opacity: canOrdersEdit ? 1 : 0.5 }}>
+                  <span className="text-[11px] font-semibold" style={{ color: data.is_verified ? "#10b981" : t.textMute }}>
+                    Проверено
+                  </span>
+                  <Switch
+                    checked={!!data.is_verified}
+                    disabled={!canOrdersEdit}
+                    onCheckedChange={v => saveWithLog(
+                      { is_verified: v },
+                      v ? "Заявка отмечена как проверенная" : "Снята отметка «Проверено»",
+                      "CheckCheck", "#10b981",
+                    )}
+                    className="h-5 w-9 data-[state=unchecked]:bg-white/10 data-[state=checked]:bg-emerald-500"
+                  />
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none"
+                  title="Заявка подтверждена"
+                  style={{ opacity: canOrdersEdit ? 1 : 0.5 }}>
+                  <span className="text-[11px] font-semibold" style={{ color: data.is_confirmed ? "#06b6d4" : t.textMute }}>
+                    Подтверждено
+                  </span>
+                  <Switch
+                    checked={!!data.is_confirmed}
+                    disabled={!canOrdersEdit}
+                    onCheckedChange={v => saveWithLog(
+                      { is_confirmed: v },
+                      v ? "Заявка отмечена как подтверждённая" : "Снята отметка «Подтверждено»",
+                      "ShieldCheck", "#06b6d4",
+                    )}
+                    className="h-5 w-9 data-[state=unchecked]:bg-white/10 data-[state=checked]:bg-cyan-500"
+                  />
+                </label>
+              </div>
             ) : (
               /* Тип заявки: обычный объект или сервис (доделка/переделка).
                  Сервисные заявки уходят в отдельную вкладку «Сервис» и не мешаются в «Монтажах». */

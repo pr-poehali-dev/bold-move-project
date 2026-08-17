@@ -71,7 +71,9 @@ export default function AnalyticsExpenses({
     measures:  acc.measures  + r.measures,
     montages:  acc.montages  + r.montages,
     finals:    acc.finals    + r.finals,
-  }), { adService: 0, adBudget: 0, adTotal: 0, leads: 0, measures: 0, montages: 0, finals: 0 }), [sourceRows]);
+    service:         acc.service         + r.service,
+    serviceRevenue:  acc.serviceRevenue  + r.serviceRevenue,
+  }), { adService: 0, adBudget: 0, adTotal: 0, leads: 0, measures: 0, montages: 0, finals: 0, service: 0, serviceRevenue: 0 }), [sourceRows]);
 
   const openAdd  = () => { setEditing(null); setModal(true); };
   const openEdit = (e: Expense) => { setEditing(e); setModal(true); };
@@ -89,13 +91,16 @@ export default function AnalyticsExpenses({
 
   const cell = "px-3 py-2.5 text-xs whitespace-nowrap";
 
-  // Воронка разбита на 4 смысловые зоны, у каждой свой цвет и своя граница.
-  // Индексы колонок: 0 Источник | 1 Расход | 2-3 Заявки | 4-5 Замеры | 6-7 Монтажи | 8-10 Финал.
+  // Воронка разбита на 5 смысловых зон, у каждой свой цвет и своя граница.
+  // Индексы колонок: 0 Источник | 1 Расход | 2-3 Заявки | 4-5 Замеры | 6-7 Монтажи | 8-10 Финал | 11-12 Сервис.
+  // «Сервис» (доделки/переделки) — отдельная зона, намеренно НЕ смешанная с «Монтажи»/«Финал»:
+  // это не новые заказы, а мелкие работы по уже сданным объектам (см. computeExpenses.ts).
   const ZONES = [
     { label: "Заявки",  color: "#8b5cf6", start: 2, span: 2 },
     { label: "Замеры",  color: "#f59e0b", start: 4, span: 2 },
     { label: "Монтажи", color: "#f97316", start: 6, span: 2 },
     { label: "Финал",   color: "#10b981", start: 8, span: 3 },
+    { label: "Сервис",  color: "#14b8a6", start: 11, span: 2 },
   ];
   const zoneOf = (i: number) => ZONES.find(z => i >= z.start && i < z.start + z.span);
   // Граница слева — на первой колонке каждой зоны, в цвете самой зоны.
@@ -125,7 +130,7 @@ export default function AnalyticsExpenses({
       </div>
 
       {/* KPI: реальный результат по деньгам */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
         <KpiCard icon="Wallet"     label="Получено денег"  value={fmtMoney(summary.income)} sub="подтверждённые платежи" color="#10b981" />
         <KpiCard icon="Receipt"    label="Все вложения"    value={fmtMoney(summary.totalSpend)} sub="реклама + ЗП + прочее" color="#ef4444" />
         <KpiCard icon="TrendingUp" label="Чистая прибыль"
@@ -133,6 +138,7 @@ export default function AnalyticsExpenses({
           sub="получено минус вложения" color={summary.netProfit >= 0 ? "#10b981" : "#ef4444"} />
         <KpiCard icon="Megaphone"  label="Стоимость лида"  value={fmtMoney(summary.cplLead)} sub={`${summary.leads} заявок`} color="#f97316" />
         <KpiCard icon="Target"     label="Цена клиента"    value={fmtMoney(summary.cac)} sub={`${summary.finals} закрыто, конверсия ${fmtPct(summary.convFinal)}`} color="#a78bfa" />
+        <KpiCard icon="Hammer"     label="Сервис"          value={String(summary.service)} sub="доделки/переделки, отдельно от заказов" color="#14b8a6" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -278,7 +284,7 @@ export default function AnalyticsExpenses({
         </div>
         {sourceRows.length > 0 ? (
           <div className="overflow-x-auto -mx-2 px-2">
-            <table className="w-full min-w-[980px]" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+            <table className="w-full min-w-[1180px]" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
               <thead>
                 {/* Ряд зон воронки: Заявки | Замеры | Монтажи | Финал — каждая своим цветом */}
                 <tr>
@@ -297,7 +303,7 @@ export default function AnalyticsExpenses({
                   ))}
                 </tr>
                 <tr style={{ borderBottom: `1px solid ${t.border}` }}>
-                  {["Источник", "Расход", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена клиента", "Конверсия"].map((h, i) => (
+                  {["Источник", "Расход", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена", "Кол-во", "Цена клиента", "Конверсия", "Кол-во", "Выручка"].map((h, i) => (
                     <th key={`${h}-${i}`} className={`${cell} font-semibold ${i === 0 ? "text-left" : "text-right"}`}
                       style={{
                         color: zoneOf(i)?.color ?? t.textMute,
@@ -320,6 +326,8 @@ export default function AnalyticsExpenses({
                     { v: r.finals,                color: "#34d399", bold: true },
                     { v: fmtMoney(r.cplFinal),    color: "#6ee7b7" },
                     { v: fmtPct(r.convFinal),     color: t.textSub },
+                    { v: r.service,                          color: "#5eead4", bold: true },
+                    { v: r.serviceRevenue > 0 ? fmtMoney(r.serviceRevenue) : "—", color: "#5eead4" },
                   ];
                   return (
                     <tr key={r.source} style={{ borderBottom: `1px solid ${t.border2}` }}>
@@ -351,6 +359,8 @@ export default function AnalyticsExpenses({
                     { v: totals.finals,                   color: "#34d399" },
                     { v: fmtMoney(cpl(totals.finals)),    color: "#6ee7b7" },
                     { v: fmtPct(totals.leads > 0 ? (totals.finals / totals.leads) * 100 : null), color: t.text },
+                    { v: totals.service,                                              color: "#5eead4" },
+                    { v: totals.serviceRevenue > 0 ? fmtMoney(totals.serviceRevenue) : "—", color: "#5eead4" },
                   ];
                   return (
                     <tr>

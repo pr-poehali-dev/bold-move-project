@@ -3,7 +3,7 @@ import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
 import { filterOrdersBySearch } from "./ordersSearch";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID, SERVICE_STATUSES } from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs, Substatus } from "./OrdersTabs";
@@ -35,6 +35,7 @@ interface Props {
   onNextStep: (id: number, nextStatus: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onSaveVerified?: (id: number, verified: boolean) => void;
+  onSaveConfirmed?: (id: number, confirmed: boolean) => void;
   onSetActiveTab: (tab: string) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
@@ -57,7 +58,7 @@ interface Props {
 }
 
 export function OrdersListView({
-  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSaveSubStatus, onSaveVerified, onSetActiveTab,
+  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSaveSubStatus, onSaveVerified, onSaveConfirmed, onSetActiveTab,
   onSwipeBuilder, onSwipeAgent,
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
@@ -89,6 +90,10 @@ export function OrdersListView({
   const [activeVerifiedFilter, setActiveVerifiedFilter] = useState<"verified" | "unverified" | null>(null);
   useEffect(() => { setActiveVerifiedFilter(null); }, [activeTab]);
 
+  // Фильтр «Подтверждено/Не подтверждено» — второй тумблер рядом с «Проверено», та же логика.
+  const [activeConfirmedFilter, setActiveConfirmedFilter] = useState<"confirmed" | "unconfirmed" | null>(null);
+  useEffect(() => { setActiveConfirmedFilter(null); }, [activeTab]);
+
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
       id: tab.id, label: tabLabels[tab.id] || tab.label, icon: tab.icon,
@@ -116,7 +121,11 @@ export function OrdersListView({
   // Реальные этапы (статусы) текущей вкладки — бирки показываются только когда
   // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).
   // Вкладка "done" уже имеет свой переключатель Выполнено/Отказ — бирки там не дублируем.
-  const tabStatuses = activeTab !== "done" && currentTab.statuses.length > 1 ? currentTab.statuses : [];
+  // «Сервис» — особый случай: у таба в конфиге statuses пустой (фильтруется по is_service),
+  // свои 3 этапа воронки берём отдельно из SERVICE_STATUSES.
+  const tabStatuses = activeTab === SERVICE_TAB_ID
+    ? SERVICE_STATUSES
+    : activeTab !== "done" && currentTab.statuses.length > 1 ? currentTab.statuses : [];
   // Свои этапы (кастомные substatus), привязанные к текущей вкладке
   const mySubstatuses = substatuses.filter(s => s.parent_status === activeTab);
   const clientsByStatusAndFilter = activeStatusFilter != null
@@ -264,12 +273,12 @@ export function OrdersListView({
 
   const renderCard = (c: Client) => (
     <OrdersClientCard key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
-      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified}
+      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified} onSaveConfirmed={onSaveConfirmed}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
   const renderRow = (c: Client) => (
     <OrdersClientRow key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
-      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified}
+      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified} onSaveConfirmed={onSaveConfirmed}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
 
@@ -385,6 +394,33 @@ export function OrdersListView({
                 </div>
               );
             })()}
+            {/* Фильтр «Подтверждено» — второй тумблер рядом с «Проверено», та же логика */}
+            {doneSubFilter === "done" && (() => {
+              const donePool = currentClients.filter(c => c.status === "done");
+              const confirmedCnt = donePool.filter(c => c.is_confirmed).length;
+              const unconfirmedCnt = donePool.length - confirmedCnt;
+              const confirmedChips: { key: string; label: string; cnt: number; isSel: boolean; color: string; onClick: () => void }[] = [
+                { key: "all",          label: "Все",              cnt: donePool.length, isSel: activeConfirmedFilter === null,           color: "#64748b", onClick: () => setActiveConfirmedFilter(null) },
+                { key: "confirmed",    label: "Подтверждено",     cnt: confirmedCnt,    isSel: activeConfirmedFilter === "confirmed",     color: "#06b6d4", onClick: () => setActiveConfirmedFilter(activeConfirmedFilter === "confirmed" ? null : "confirmed") },
+                { key: "unconfirmed",  label: "Не подтверждено",  cnt: unconfirmedCnt,  isSel: activeConfirmedFilter === "unconfirmed",   color: "#f59e0b", onClick: () => setActiveConfirmedFilter(activeConfirmedFilter === "unconfirmed" ? null : "unconfirmed") },
+              ];
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+                  <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Подтверждение</span>
+                  {confirmedChips.map(x => (
+                    <button key={x.key} onClick={x.onClick}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                      style={{
+                        background: x.isSel ? x.color : x.color + "18",
+                        borderColor: x.color,
+                        color: x.isSel ? "#fff" : x.color,
+                      }}>
+                      {x.label} <span className="font-bold">{x.cnt}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {(() => {
@@ -393,7 +429,10 @@ export function OrdersListView({
             const verifiedFiltered = doneSubFilter === "done" && activeVerifiedFilter != null
               ? groupClients.filter(c => activeVerifiedFilter === "verified" ? !!c.is_verified : !c.is_verified)
               : groupClients;
-            const items = sortByCreated(filterSearch(verifiedFiltered));
+            const confirmedFiltered = doneSubFilter === "done" && activeConfirmedFilter != null
+              ? verifiedFiltered.filter(c => activeConfirmedFilter === "confirmed" ? !!c.is_confirmed : !c.is_confirmed)
+              : verifiedFiltered;
+            const items = sortByCreated(filterSearch(confirmedFiltered));
             return viewMode === "list" ? (
               <div className="space-y-2">
                 {items.length === 0

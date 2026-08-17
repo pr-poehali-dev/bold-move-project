@@ -1,25 +1,27 @@
 import { useState, useRef } from "react";
 import { Client, STATUS_COLORS, getClientOrders } from "./crmApi";
 import { useTheme } from "./themeContext";
-import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
+import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, SERVICE_NEXT_STATUS, SERVICE_NEXT_LABEL } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
 import { OrdersClientRowMobile } from "./OrdersClientRowMobile";
 import { OrdersClientRowDesktop } from "./OrdersClientRowDesktop";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
 
-export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSaveConfirmed, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
-  /** «Проверено» — используется только в карточках (grid), в строке списка сейчас не показывается. */
+  /** «Проверено»/«Подтверждено» — используются только в карточках (grid), в строке списка сейчас не показываются. */
   onSaveVerified?: (id: number, verified: boolean) => void;
+  onSaveConfirmed?: (id: number, confirmed: boolean) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
-  void onSaveVerified; // пока не используется в строчном виде — тумблер «Проверено» только на карточках (grid)
+  void onSaveVerified; // пока не используется в строчном виде — тумблеры только на карточках (grid)
+  void onSaveConfirmed;
   const t = useTheme();
   const allSubs = useSubstatuses();
   const [stepping, setStepping] = useState(false);
@@ -30,9 +32,9 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubS
   const { offset, dragging, swipeHint, cb } = useSwipeGesture({ elRef: mobileRef, client: c, onSwipeBuilder, onSwipeAgent });
 
   const clientWithSub = { ...c, sub_status: localSubStatus };
-  const nextStatus  = NEXT_STATUS[c.status];
-  const nextLabel   = NEXT_LABEL[c.status];
-  const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
+  const nextStatus  = c.is_service ? SERVICE_NEXT_STATUS[c.status] : NEXT_STATUS[c.status];
+  const nextLabel   = c.is_service ? SERVICE_NEXT_LABEL[c.status] : NEXT_LABEL[c.status];
+  const tab         = !c.is_service ? ORDERS_TABS.find(tb => tb.statuses.includes(c.status)) : undefined;
   // Активный подэтап — показываем его вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
   const subsForTab  = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];

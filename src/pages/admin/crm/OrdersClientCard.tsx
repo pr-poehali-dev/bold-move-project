@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Client, STATUS_LABELS, STATUS_COLORS, getClientOrders, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS } from "./ordersTypes";
+import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, SERVICE_NEXT_STATUS, SERVICE_NEXT_LABEL } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
@@ -24,13 +24,14 @@ function Metric({ label, value, color, icon }: { label: string; value: string; c
   );
 }
 
-export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSaveConfirmed, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
   onSaveVerified?: (id: number, verified: boolean) => void;
+  onSaveConfirmed?: (id: number, confirmed: boolean) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
@@ -52,7 +53,9 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
   const { offset, dragging, swipeHint } = useSwipeGesture({ elRef: cardRef, client: c, onSwipeBuilder, onSwipeAgent });
 
   const clientWithSub = { ...c, sub_status: localSubStatus };
-  const tab         = ORDERS_TABS.find(tb => tb.statuses.includes(c.status));
+  // Сервисные заявки (доделки/переделки) не привязаны к общим табам воронки —
+  // у них своя мини-воронка из 3 этапов (см. SERVICE_STATUSES), подэтапы «Монтажей» им не подходят.
+  const tab         = !c.is_service ? ORDERS_TABS.find(tb => tb.statuses.includes(c.status)) : undefined;
   // Активный подэтап (напр. «Новый в работе») — показываем его в углу вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
   // Все варианты подстатуса для текущего этапа — для выпадающего списка смены
@@ -60,8 +63,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
   const isInstall   = tab?.id === "installs";
   const isCancelled = c.status === "cancelled";
   const isDone      = c.status === "done";
-  const nextStatus  = NEXT_STATUS[c.status];
-  const nextLabel   = NEXT_LABEL[c.status];
+  const nextStatus  = c.is_service ? SERVICE_NEXT_STATUS[c.status] : NEXT_STATUS[c.status];
+  const nextLabel   = c.is_service ? SERVICE_NEXT_LABEL[c.status] : NEXT_LABEL[c.status];
 
   const { contractSum, income, debt, costs, profit } = useOrderMetrics(c);
   const ordersCount = allClients ? getClientOrders(c, allClients).length : 1;
@@ -195,18 +198,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     <Icon name="Hammer" size={9} /> Сервис
                   </span>
                 )}
-                {isDone && (
-                  <button
-                    onClick={e => { e.stopPropagation(); onSaveVerified?.(c.id, !c.is_verified); }}
-                    title={c.is_verified ? "Проверено — нажмите, чтобы снять отметку" : "Отметить как проверенное"}
-                    className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold transition"
-                    style={c.is_verified
-                      ? { background: "#10b98122", color: "#10b981", border: "1px solid #10b98144" }
-                      : { background: "transparent", color: t.textMute, border: `1px solid ${t.border}` }}>
-                    <Icon name={c.is_verified ? "CheckCheck" : "Circle"} size={9} />
-                    {c.is_verified ? "Проверено" : "Не проверено"}
-                  </button>
-                )}
                 {c.has_missed_call && (
                   <span
                     title="Есть пропущенный звонок, на который ещё не перезвонили"
@@ -300,6 +291,33 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
             <div className="mt-2 text-[10px] px-2.5 py-1.5 rounded-lg"
               style={{ background: "rgba(239,68,68,0.07)", color: "#ef4444" }}>
               Причина отказа: {c.cancel_reason}
+            </div>
+          )}
+
+          {/* Финальная сверка: два независимых переключателя — «Проверено» (качество
+              и оплата сверены) и «Подтверждено» (например, клиент подтвердил закрытие). */}
+          {isDone && (
+            <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${t.border2}` }}>
+              <button
+                onClick={e => { e.stopPropagation(); onSaveVerified?.(c.id, !c.is_verified); }}
+                title={c.is_verified ? "Проверено — нажмите, чтобы снять отметку" : "Отметить как проверенное"}
+                className="flex items-center justify-center gap-1.5 text-[10px] px-2 py-1.5 rounded-lg font-bold transition"
+                style={c.is_verified
+                  ? { background: "#10b98122", color: "#10b981", border: "1px solid #10b98155" }
+                  : { background: "transparent", color: t.textMute, border: `1px solid ${t.border}` }}>
+                <Icon name={c.is_verified ? "CheckCheck" : "Circle"} size={10} />
+                Проверено
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); onSaveConfirmed?.(c.id, !c.is_confirmed); }}
+                title={c.is_confirmed ? "Подтверждено — нажмите, чтобы снять отметку" : "Отметить как подтверждённое"}
+                className="flex items-center justify-center gap-1.5 text-[10px] px-2 py-1.5 rounded-lg font-bold transition"
+                style={c.is_confirmed
+                  ? { background: "#06b6d422", color: "#06b6d4", border: "1px solid #06b6d455" }
+                  : { background: "transparent", color: t.textMute, border: `1px solid ${t.border}` }}>
+                <Icon name={c.is_confirmed ? "ShieldCheck" : "Circle"} size={10} />
+                Подтверждено
+              </button>
             </div>
           )}
         </div>

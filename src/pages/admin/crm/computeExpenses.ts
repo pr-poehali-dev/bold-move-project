@@ -19,6 +19,11 @@ export interface SourceRow {
   measures: number;
   montages: number;
   finals: number;
+  /** Сервисные заявки (доделки/переделки, is_service=true) — считаются ОТДЕЛЬНО
+   *  от «Монтажи»/«Финал», чтобы не искажать конверсию и стоимость клиента по
+   *  обычным заказам. serviceRevenue — сумма по завершённым (done) сервисным заявкам. */
+  service: number;
+  serviceRevenue: number;
   cplLead: number | null;
   cplMeasure: number | null;
   cplMontage: number | null;
@@ -41,6 +46,8 @@ export interface ExpenseSummary {
   profitability: number | null;
   leads: number;
   finals: number;
+  /** Сервисные заявки (доделки/переделки) — отдельно от «Финал», не искажают конверсию/CAC. */
+  service: number;
   cplLead: number | null;
   cac: number | null;
   convFinal: number | null;
@@ -88,12 +95,21 @@ export function filterExpenses(
   });
 }
 
-/** Разбивка заявок по этапам воронки в разрезе рекламных источников. */
+/** Разбивка заявок по этапам воронки в разрезе рекламных источников.
+ *  Сервисные заявки (is_service=true — доделки/переделки) считаются в отдельные
+ *  service/serviceRevenue и НЕ попадают в leads/measures/montages/finals, иначе
+ *  они незаметно искажают конверсию и стоимость клиента по обычным заказам. */
 function funnelBySource(clients: Client[]) {
-  const map = new Map<string, { leads: number; measures: number; montages: number; finals: number; revenue: number }>();
+  const map = new Map<string, { leads: number; measures: number; montages: number; finals: number; revenue: number; service: number; serviceRevenue: number }>();
   for (const c of clients) {
     const key = c.source || "Без источника";
-    const row = map.get(key) ?? { leads: 0, measures: 0, montages: 0, finals: 0, revenue: 0 };
+    const row = map.get(key) ?? { leads: 0, measures: 0, montages: 0, finals: 0, revenue: 0, service: 0, serviceRevenue: 0 };
+    if (c.is_service) {
+      row.service += 1;
+      if (c.status === "done") row.serviceRevenue += Number(c.contract_sum) || 0;
+      map.set(key, row);
+      continue;
+    }
     row.leads += 1;
     if (WENT_MEASURE.includes(c.status)) row.measures += 1;
     if (WENT_MONTAGE.includes(c.status)) row.montages += 1;
@@ -131,7 +147,7 @@ export function computeSourceRows(clients: Client[], expenses: Expense[]): Sourc
   names.delete("Email-заявки");
 
   return [...names].map(name => {
-    const f  = funnel.get(name)    ?? { leads: 0, measures: 0, montages: 0, finals: 0, revenue: 0 };
+    const f  = funnel.get(name)    ?? { leads: 0, measures: 0, montages: 0, finals: 0, revenue: 0, service: 0, serviceRevenue: 0 };
     const ad = adBySource.get(name) ?? { service: 0, budget: 0 };
     const adTotal = ad.service + ad.budget;
     return {
@@ -143,6 +159,8 @@ export function computeSourceRows(clients: Client[], expenses: Expense[]): Sourc
       measures: f.measures,
       montages: f.montages,
       finals: f.finals,
+      service: f.service,
+      serviceRevenue: f.serviceRevenue,
       // Расхода нет (органика, сарафан) → стоимость лида не считаем, показываем «—»
       cplLead:    adTotal > 0 ? safeDiv(adTotal, f.leads)    : null,
       cplMeasure: adTotal > 0 ? safeDiv(adTotal, f.measures) : null,
@@ -177,8 +195,11 @@ export function computeExpenseSummary(
   const totalSpend = adTotal + salaryTotal + generalTotal + opts.dealCosts;
   const netProfit  = opts.income - totalSpend;
 
-  const leads  = leadsClients.length;
-  const finals = closedClients.filter(c => c.status === "done").length;
+  // Сервисные заявки (доделки/переделки) исключаем из «Заявок»/«Финала» — иначе
+  // они незаметно искажают стоимость лида, CAC и конверсию по обычным заказам.
+  const leads   = leadsClients.filter(c => !c.is_service).length;
+  const finals  = closedClients.filter(c => c.status === "done" && !c.is_service).length;
+  const service = leadsClients.filter(c => c.is_service).length;
 
   return {
     income: opts.income,
@@ -187,7 +208,7 @@ export function computeExpenseSummary(
     totalSpend,
     netProfit,
     profitability: opts.income > 0 ? (netProfit / opts.income) * 100 : null,
-    leads, finals,
+    leads, finals, service,
     cplLead: adTotal > 0 ? safeDiv(adTotal, leads)  : null,
     cac:     adTotal > 0 ? safeDiv(adTotal, finals) : null,
     convFinal: leads > 0 ? (finals / leads) * 100   : null,

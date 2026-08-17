@@ -79,6 +79,12 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     onReload();
   };
 
+  // Второй тумблер «Подтверждено» — та же механика, что и «Проверено» (см. выше).
+  const handleSaveConfirmed = async (id: number, confirmed: boolean) => {
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ is_confirmed: confirmed }) }, { id: String(id) });
+    onReload();
+  };
+
   const { actionModal, actionLoading, handleSwipeBuilder, handleSwipeAgent, handleActionConfirm, closeActionModal } =
     useOrderActionModal(onReload);
 
@@ -169,6 +175,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onNextStep={handleNextStep}
           onSaveSubStatus={handleSaveSubStatus}
           onSaveVerified={handleSaveVerified}
+          onSaveConfirmed={handleSaveConfirmed}
           onSetActiveTab={setActiveTab}
           onSwipeBuilder={handleSwipeBuilder}
           onSwipeAgent={handleSwipeAgent}

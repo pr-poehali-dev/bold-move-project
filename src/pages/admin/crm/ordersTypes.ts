@@ -33,6 +33,22 @@ export const ALL_TAB_ID = "all";
 // статусам воронки, поэтому отдельного статуса у них нет — только признак.
 export const SERVICE_TAB_ID = "service";
 
+// Сервисные заявки (доделки/переделки) идут по своей упрощённой мини-воронке из
+// 3 этапов — вместо полной цепочки монтажа (Договор → Предоплата → ... → Доплата).
+// Значения статуса переиспользуют обычные "new"/"install_scheduled"/"done" —
+// у них уже есть готовые понятные подписи в STATUS_LABELS.
+export const SERVICE_STATUSES = ["new", "install_scheduled", "done"] as const;
+
+export const SERVICE_NEXT_STATUS: Record<string, string> = {
+  new:               "install_scheduled",
+  install_scheduled: "done",
+};
+
+export const SERVICE_NEXT_LABEL: Record<string, string> = {
+  new:               "Назначить монтаж",
+  install_scheduled: "Завершить",
+};
+
 export const ORDERS_TABS = [
   { id: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: ["new"] as readonly string[],                                         emptyText: "Новых заявок нет" },
   { id: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] as readonly string[],                                        emptyText: "Нет заявок в работе" },
