@@ -90,20 +90,39 @@ export function applyAnalyticsFilters(
   });
 }
 
+/** Дата, по которой заявка попадает в период.
+ *  "created" — когда заявка пришла (поток лидов, «Обзор», «Касания»).
+ *  "closed"  — когда сделка закрылась и деньги получены (для денег: «Финансы», «Расходы»).
+ *  Для закрытых сделок берём дату монтажа, иначе дату смены статуса / последнего изменения. */
+export type DateBasis = "created" | "closed";
+
+export function clientPeriodDate(c: Client, basis: DateBasis): string | null | undefined {
+  if (basis === "created") return c.created_at;
+  if (c.status === "done") {
+    return c.install_date || c.status_changed_at || c.updated_at || c.created_at;
+  }
+  return c.created_at;
+}
+
 /** Множественная версия фильтров: пустой массив = «все».
  *  Стадии складываются по «или» — можно отметить Монтажи и Финал вместе. */
 export function applyMultiFilters(
   clients: Client[],
-  opts: { sources?: string[]; stages?: StageFilter[]; period?: PeriodFilter; range?: CustomRange | null },
+  opts: {
+    sources?: string[]; stages?: StageFilter[]; period?: PeriodFilter;
+    range?: CustomRange | null;
+    /** По какой дате отбирать период. По умолчанию — дата создания заявки. */
+    basis?: DateBasis;
+  },
 ): Client[] {
-  const { sources = [], stages = [], period = "all", range = null } = opts;
+  const { sources = [], stages = [], period = "all", range = null, basis = "created" } = opts;
   const allowedStatuses = stages.length
     ? new Set(stages.flatMap(s => (s ? STAGE_STATUSES[s] : [])))
     : null;
   return clients.filter(c => {
     if (sources.length && !sources.includes(c.source || "")) return false;
     if (allowedStatuses && !allowedStatuses.has(c.status)) return false;
-    if (!inPeriod(c.created_at, period, range)) return false;
+    if (!inPeriod(clientPeriodDate(c, basis), period, range)) return false;
     return true;
   });
 }

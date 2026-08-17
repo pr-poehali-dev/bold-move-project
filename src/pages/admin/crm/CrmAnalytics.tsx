@@ -55,8 +55,16 @@ export default function CrmAnalytics() {
   }, []);
 
   // Заявки под выбранные фильтры (источники / стадии / период). Считаем в браузере — мгновенно.
+  // Период здесь — по дате ПРИХОДА заявки: это поток лидов («Обзор», «Касания»).
   const filteredClients = useMemo(
     () => applyMultiFilters(allClients, { sources: sourceFilters, stages: stageFilters, period: periodFilter, range: customRange }),
+    [allClients, sourceFilters, stageFilters, periodFilter, customRange],
+  );
+
+  // Для ДЕНЕГ («Финансы», «Расходы») период считаем по дате ЗАКРЫТИЯ сделки:
+  // выручка относится к месяцу, когда её получили, а не когда пришла заявка.
+  const moneyClients = useMemo(
+    () => applyMultiFilters(allClients, { sources: sourceFilters, stages: stageFilters, period: periodFilter, range: customRange, basis: "closed" }),
     [allClients, sourceFilters, stageFilters, periodFilter, customRange],
   );
 
@@ -72,17 +80,22 @@ export default function CrmAnalytics() {
 
   const recentClients = filteredClients.slice(0, 10);
 
-  const s: Stats = useMemo(() => {
-    const base = computeStats(filteredClients);
+  const withCustomIncome = (list: Client[]): Stats => {
+    const base = computeStats(list);
     // Кастомные строки ДОХОДОВ из localStorage — по отфильтрованным заявкам.
     // Затраты (материалы/замер/монтаж/менеджмент/кастомные из БД) уже посчитаны в base.
-    const extraIncome = calcCustomIncomeTotal(filteredClients.map(c => c.id));
+    const extraIncome = calcCustomIncomeTotal(list.map(c => c.id));
     return {
       ...base,
       total_received: base.total_received + extraIncome,
       total_profit:   base.total_profit   + extraIncome,
     };
-  }, [filteredClients]);
+  };
+
+  // Показатели по потоку заявок (для «Обзора»)
+  const s: Stats = useMemo(() => withCustomIncome(filteredClients), [filteredClients]);
+  // Показатели по деньгам — период по дате закрытия сделки (для «Финансов» и «Расходов»)
+  const sMoney: Stats = useMemo(() => withCustomIncome(moneyClients), [moneyClients]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -96,13 +109,13 @@ export default function CrmAnalytics() {
   const convDone     = s.went_contract > 0 ? Math.round((s.total_done    / s.went_contract) * 100) : 0;
   const cancelRate   = s.total_all     > 0 ? Math.round((s.total_cancel  / s.total_all)     * 100) : 0;
 
-  // Pie данные
+  // Pie данные — по денежному срезу (период = дата закрытия сделки)
   const costPie = [
-    { name: "Материалы",  value: s.total_material,      color: "#ef4444" },
-    { name: "Замеры",     value: s.total_measure_cost,  color: "#f59e0b" },
-    { name: "Монтажи",    value: s.total_install_cost,  color: "#f97316" },
-    { name: "Менеджмент", value: s.total_management,    color: "#8b5cf6" },
-    { name: "Прочее",     value: s.total_custom_costs,  color: "#64748b" },
+    { name: "Материалы",  value: sMoney.total_material,      color: "#ef4444" },
+    { name: "Замеры",     value: sMoney.total_measure_cost,  color: "#f59e0b" },
+    { name: "Монтажи",    value: sMoney.total_install_cost,  color: "#f97316" },
+    { name: "Менеджмент", value: sMoney.total_management,    color: "#8b5cf6" },
+    { name: "Прочее",     value: sMoney.total_custom_costs,  color: "#64748b" },
   ].filter(c => c.value > 0);
 
   const statusPie = s.status_dist
@@ -118,14 +131,14 @@ export default function CrmAnalytics() {
     { label: "Отказников",        count: s.total_cancel,  color: "#ef4444", pct: s.total_all > 0 ? Math.round(s.total_cancel  / s.total_all * 100) : 0 },
   ];
 
-  // Динамика по месяцам
+  // Динамика по месяцам — деньги берём из денежного среза
   const allMerged = s.monthly_leads.map(d => ({
     month:   d.month,
     leads:   d.count,
-    done:    s.monthly_done.find(x => x.month === d.month)?.count      ?? 0,
-    revenue: s.monthly_revenue.find(x => x.month === d.month)?.revenue ?? 0,
-    costs:   s.monthly_costs.find(x => x.month === d.month)?.costs     ?? 0,
-    profit:  s.monthly_profit.find(x => x.month === d.month)?.profit   ?? 0,
+    done:    s.monthly_done.find(x => x.month === d.month)?.count           ?? 0,
+    revenue: sMoney.monthly_revenue.find(x => x.month === d.month)?.revenue ?? 0,
+    costs:   sMoney.monthly_costs.find(x => x.month === d.month)?.costs     ?? 0,
+    profit:  sMoney.monthly_profit.find(x => x.month === d.month)?.profit   ?? 0,
   }));
 
   return (
@@ -142,9 +155,12 @@ export default function CrmAnalytics() {
               else if (sourceFilters.length > 1) parts.push(`источники: ${sourceFilters.join(", ")}`);
               if (stageFilters.length) parts.push(stagesLabel(stageFilters));
               if (periodFilter !== "all") parts.push(periodLabel(periodFilter, customRange));
-              return parts.length
-                ? `${parts.join(", ")} — ${s.total_all} заявок`
-                : `Всего заявок: ${s.total_all}`;
+              const money = tab === "finance" || tab === "expenses";
+              const cnt = money ? sMoney.total_all : s.total_all;
+              const tail = money && periodFilter !== "all" ? " · период по дате закрытия сделки" : "";
+              return (parts.length
+                ? `${parts.join(", ")} — ${cnt} заявок`
+                : `Всего заявок: ${cnt}`) + tail;
             })()}
           </p>
         </div>
@@ -220,18 +236,18 @@ export default function CrmAnalytics() {
       )}
 
       {tab === "finance" && (
-        <AnalyticsFinance s={s} costPie={costPie} allMerged={allMerged} />
+        <AnalyticsFinance s={sMoney} costPie={costPie} allMerged={allMerged} />
       )}
 
       {tab === "expenses" && (
         <AnalyticsExpenses
-          clients={filteredClients}
+          clients={moneyClients}
           expenses={filteredExpenses}
           categories={exp.categories}
           sources={sources}
           loading={exp.loading}
-          income={s.total_received}
-          dealCosts={s.total_costs}
+          income={sMoney.total_received}
+          dealCosts={sMoney.total_costs}
           onCreate={exp.create}
           onUpdate={exp.update}
           onRemove={exp.remove}
