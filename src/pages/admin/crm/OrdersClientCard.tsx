@@ -24,12 +24,13 @@ function Metric({ label, value, color, icon }: { label: string; value: string; c
   );
 }
 
-export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
+  onSaveVerified?: (id: number, verified: boolean) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
@@ -193,6 +194,18 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     style={{ background: "#14b8a622", color: "#14b8a6", border: "1px solid #14b8a644" }}>
                     <Icon name="Hammer" size={9} /> Сервис
                   </span>
+                )}
+                {isDone && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onSaveVerified?.(c.id, !c.is_verified); }}
+                    title={c.is_verified ? "Проверено — нажмите, чтобы снять отметку" : "Отметить как проверенное"}
+                    className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold transition"
+                    style={c.is_verified
+                      ? { background: "#10b98122", color: "#10b981", border: "1px solid #10b98144" }
+                      : { background: "transparent", color: t.textMute, border: `1px solid ${t.border}` }}>
+                    <Icon name={c.is_verified ? "CheckCheck" : "Circle"} size={9} />
+                    {c.is_verified ? "Проверено" : "Не проверено"}
+                  </button>
                 )}
                 {c.has_missed_call && (
                   <span

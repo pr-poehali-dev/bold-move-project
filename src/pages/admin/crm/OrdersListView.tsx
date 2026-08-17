@@ -34,6 +34,7 @@ interface Props {
   onSelect: (c: Client) => void;
   onNextStep: (id: number, nextStatus: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
+  onSaveVerified?: (id: number, verified: boolean) => void;
   onSetActiveTab: (tab: string) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
@@ -56,7 +57,7 @@ interface Props {
 }
 
 export function OrdersListView({
-  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSaveSubStatus, onSetActiveTab,
+  allClients, loading, viewMode, search, activeTab, onSelect, onNextStep, onSaveSubStatus, onSaveVerified, onSetActiveTab,
   onSwipeBuilder, onSwipeAgent,
   tabLabels, tabColors, hiddenTabs, customTabs,
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
@@ -82,6 +83,11 @@ export function OrdersListView({
   // Активный фильтр по метке (Недозвон/Перезвонить/...). Тоже сбрасывается при смене вкладки.
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   useEffect(() => { setActiveTagFilter(null); }, [activeTab]);
+
+  // Фильтр «Проверено/Не проверено» — только на вкладке «Финальный», в группе «Выполнено».
+  // Тоже сбрасывается при смене вкладки.
+  const [activeVerifiedFilter, setActiveVerifiedFilter] = useState<"verified" | "unverified" | null>(null);
+  useEffect(() => { setActiveVerifiedFilter(null); }, [activeTab]);
 
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
@@ -258,12 +264,12 @@ export function OrdersListView({
 
   const renderCard = (c: Client) => (
     <OrdersClientCard key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
-      onSaveSubStatus={onSaveSubStatus}
+      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
   const renderRow = (c: Client) => (
     <OrdersClientRow key={c.id} c={c} allClients={allClients} onClick={() => onSelect(c)} onNextStep={onNextStep}
-      onSaveSubStatus={onSaveSubStatus}
+      onSaveSubStatus={onSaveSubStatus} onSaveVerified={onSaveVerified}
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
 
@@ -352,11 +358,42 @@ export function OrdersListView({
                 ))}
               </div>
             )}
+            {/* Фильтр «Проверено» — только в группе «Выполнено» (для «Отказ» не имеет смысла) */}
+            {doneSubFilter === "done" && (() => {
+              const donePool = currentClients.filter(c => c.status === "done");
+              const verifiedCnt = donePool.filter(c => c.is_verified).length;
+              const unverifiedCnt = donePool.length - verifiedCnt;
+              const verifiedChips: { key: string; label: string; cnt: number; isSel: boolean; color: string; onClick: () => void }[] = [
+                { key: "all",        label: "Все",           cnt: donePool.length, isSel: activeVerifiedFilter === null,           color: "#64748b", onClick: () => setActiveVerifiedFilter(null) },
+                { key: "verified",   label: "Проверено",     cnt: verifiedCnt,     isSel: activeVerifiedFilter === "verified",     color: "#10b981", onClick: () => setActiveVerifiedFilter(activeVerifiedFilter === "verified" ? null : "verified") },
+                { key: "unverified", label: "Не проверено",  cnt: unverifiedCnt,   isSel: activeVerifiedFilter === "unverified",   color: "#f59e0b", onClick: () => setActiveVerifiedFilter(activeVerifiedFilter === "unverified" ? null : "unverified") },
+              ];
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+                  <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Проверка</span>
+                  {verifiedChips.map(x => (
+                    <button key={x.key} onClick={x.onClick}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
+                      style={{
+                        background: x.isSel ? x.color : x.color + "18",
+                        borderColor: x.color,
+                        color: x.isSel ? "#fff" : x.color,
+                      }}>
+                      {x.label} <span className="font-bold">{x.cnt}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {(() => {
             const group = DONE_GROUPS.find(g => g.key === doneSubFilter) ?? DONE_GROUPS[0];
-            const items = sortByCreated(filterSearch(currentClients.filter(c => group.statuses.includes(c.status ?? ""))));
+            const groupClients = currentClients.filter(c => group.statuses.includes(c.status ?? ""));
+            const verifiedFiltered = doneSubFilter === "done" && activeVerifiedFilter != null
+              ? groupClients.filter(c => activeVerifiedFilter === "verified" ? !!c.is_verified : !c.is_verified)
+              : groupClients;
+            const items = sortByCreated(filterSearch(verifiedFiltered));
             return viewMode === "list" ? (
               <div className="space-y-2">
                 {items.length === 0

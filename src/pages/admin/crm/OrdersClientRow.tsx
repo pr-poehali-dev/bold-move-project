@@ -8,15 +8,18 @@ import { OrdersClientRowDesktop } from "./OrdersClientRowDesktop";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
 
-export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSwipeBuilder, onSwipeAgent }: {
+export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubStatus, onSaveVerified, onSwipeBuilder, onSwipeAgent }: {
   c: Client;
   allClients?: Client[];
   onClick: () => void;
   onNextStep: (id: number, next: string) => void;
   onSaveSubStatus?: (id: number, subStatusId: number) => void;
+  /** «Проверено» — используется только в карточках (grid), в строке списка сейчас не показывается. */
+  onSaveVerified?: (id: number, verified: boolean) => void;
   onSwipeBuilder?: (client: Client) => void;
   onSwipeAgent?: (client: Client) => void;
 }) {
+  void onSaveVerified; // пока не используется в строчном виде — тумблер «Проверено» только на карточках (grid)
   const t = useTheme();
   const allSubs = useSubstatuses();
   const [stepping, setStepping] = useState(false);

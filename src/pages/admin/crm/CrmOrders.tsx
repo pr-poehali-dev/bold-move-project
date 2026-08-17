@@ -72,6 +72,13 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
     onReload();
   };
 
+  // Переключить «Проверено» прямо с карточки в списке (этап «Выполнено»),
+  // без открытия заявки — тот же PUT, что и тумблер внутри карточки.
+  const handleSaveVerified = async (id: number, verified: boolean) => {
+    await crmFetch("clients", { method: "PUT", body: JSON.stringify({ is_verified: verified }) }, { id: String(id) });
+    onReload();
+  };
+
   const { actionModal, actionLoading, handleSwipeBuilder, handleSwipeAgent, handleActionConfirm, closeActionModal } =
     useOrderActionModal(onReload);
 
@@ -161,6 +168,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onSelect={setSelected}
           onNextStep={handleNextStep}
           onSaveSubStatus={handleSaveSubStatus}
+          onSaveVerified={handleSaveVerified}
           onSetActiveTab={setActiveTab}
           onSwipeBuilder={handleSwipeBuilder}
           onSwipeAgent={handleSwipeAgent}
