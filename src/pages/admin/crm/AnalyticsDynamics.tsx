@@ -35,6 +35,12 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
   );
 
   const tooltipStyle = { backgroundColor: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, fontSize: 12 };
+  const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  const monthLabel = (m: string) => {
+    const [y, mo] = m.split("-");
+    const idx = Number(mo) - 1;
+    return idx >= 0 && idx < 12 ? `${MONTH_NAMES[idx]} ${y}` : m;
+  };
   // Подсветка под курсором на графике — по умолчанию recharts рисует светло-серую
   // плашку, которая на тёмной теме выглядит как белая подложка. Делаем её едва заметной.
   const tooltipCursor = { fill: t.theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" };
@@ -85,7 +91,8 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
             <BarChart data={merged} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} allowDecimals={false} />
-              <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} />
+              <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} labelFormatter={monthLabel}
+                formatter={(v: number, name: string) => [`${v} шт.`, name]} />
               {leadsMode !== "done"  && <Bar dataKey="leads" name="Заявки"       fill="#8b5cf6" radius={[4, 4, 0, 0]} />}
               {leadsMode !== "leads" && <Bar dataKey="done"  name="Завершённые"  fill="#10b981" radius={[4, 4, 0, 0]} />}
               {leadsMode === "both"  && <Legend wrapperStyle={{ fontSize: 11, color: t.textMute }} />}
@@ -115,7 +122,8 @@ export default function AnalyticsDynamics({ s, allMerged }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke={t.border2} />
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: t.textMute }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}к` : v} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: t.border, strokeWidth: 1 }} formatter={(v: number) => [v.toLocaleString("ru-RU") + " ₽", ""]} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: t.border, strokeWidth: 1 }} labelFormatter={monthLabel}
+                formatter={(v: number, name: string) => [v.toLocaleString("ru-RU") + " ₽", name]} />
               {(revenueMode === "revenue" || revenueMode === "all") && <Line type="monotone" dataKey="revenue" name="Выручка" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />}
               {(revenueMode === "costs"   || revenueMode === "all") && <Line type="monotone" dataKey="costs"   name="Затраты" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />}
               {(revenueMode === "profit"  || revenueMode === "all") && <Line type="monotone" dataKey="profit"  name="Прибыль" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />}

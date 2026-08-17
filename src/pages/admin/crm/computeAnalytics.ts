@@ -1,5 +1,6 @@
 import { Client, LEAD_STATUSES, ORDER_STATUSES } from "./crmApi";
 import { Stats, EMPTY_STATS } from "./analyticsTypes";
+import { clientPeriodDate } from "./analyticsFilters";
 
 // Клиентский расчёт всех показателей аналитики по уже загруженному списку заявок.
 // Полностью повторяет серверную логику (backend/crm-manager resource=="stats"),
@@ -110,21 +111,30 @@ export function computeStats(clients: Client[]): Stats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  // Динамика по месяцам — 12 месяцев с нулями для пустых
+  // Динамика по месяцам — 12 месяцев с нулями для пустых.
+  // Заявки (mLeads) считаем по дате ПРИХОДА — это поток лидов.
+  // Завершённые и деньги (mDone/mRevenue/mCosts/mProfit) — по дате ЗАКРЫТИЯ сделки
+  // (closed_at), чтобы график совпадал с карточками сверху («Сумма договоров»,
+  // «Прибыль» и т.п.), которые считаются по тому же денежному срезу.
   const months = last12Months();
   const zero = () => Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>;
   const mLeads = zero(), mDone = zero(), mRevenue = zero(), mCosts = zero(), mProfit = zero();
   for (const c of list) {
-    const mk = monthKey(c.created_at);
-    if (mk == null || !(mk in mLeads)) continue;
-    mLeads[mk] += 1;
-    if (c.status === "done") mDone[mk] += 1;
-    const rev = num(c.contract_sum);
-    const cost = num(c.material_cost) + num(c.measure_cost) + num(c.install_cost)
-               + num(c.management_cost) + num(c.custom_costs_total);
-    mRevenue[mk] += rev;
-    mCosts[mk]   += cost;
-    mProfit[mk]  += rev - cost;
+    const leadMk = monthKey(c.created_at);
+    if (leadMk != null && leadMk in mLeads) mLeads[leadMk] += 1;
+
+    if (c.status === "done") {
+      const closedMk = monthKey(clientPeriodDate(c, "closed"));
+      if (closedMk != null && closedMk in mDone) {
+        mDone[closedMk] += 1;
+        const rev = num(c.contract_sum);
+        const cost = num(c.material_cost) + num(c.measure_cost) + num(c.install_cost)
+                   + num(c.management_cost) + num(c.custom_costs_total);
+        mRevenue[closedMk] += rev;
+        mCosts[closedMk]   += cost;
+        mProfit[closedMk]  += rev - cost;
+      }
+    }
   }
 
   // Средние (по не-null значениям, как AVG на сервере)
