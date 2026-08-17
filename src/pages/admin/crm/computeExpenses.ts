@@ -123,7 +123,12 @@ export function computeSourceRows(clients: Client[], expenses: Expense[]): Sourc
     adBySource.set(key, row);
   }
 
+  // "Email-заявки" — не отдельный рекламный источник, а резервный канал доставки
+  // тех же заявок с квиза (когда основной вебхук не сработал, письмо подхватывает
+  // ту же заявку). Показывать его отдельной строкой в этой таблице — дублировать
+  // "Квиз" и искажать реальную стоимость лида по источникам.
   const names = new Set<string>([...funnel.keys(), ...adBySource.keys()]);
+  names.delete("Email-заявки");
 
   return [...names].map(name => {
     const f  = funnel.get(name)    ?? { leads: 0, measures: 0, montages: 0, finals: 0, revenue: 0 };
