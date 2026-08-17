@@ -17,6 +17,7 @@ import {
 } from "./syncedCols";
 import { useStageDateGuard } from "./useStageDateGuard";
 import { StageDateConfirm } from "./StageDateConfirm";
+import { normalizePhone } from "./ordersSearch";
 
 interface Props {
   clients: Client[];
@@ -131,7 +132,9 @@ export default function CrmKanban({ clients, loading, onStatusChange, onClientRe
         if (!match) return false;
         if (!search) return true;
         const q = search.toLowerCase();
-        return (c.client_name || "").toLowerCase().includes(q) || (c.phone || "").includes(q);
+        const qDigits = normalizePhone(search);
+        return (c.client_name || "").toLowerCase().includes(q)
+          || (qDigits.length > 0 && normalizePhone(c.phone || "").includes(qDigits));
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };

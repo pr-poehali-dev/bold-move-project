@@ -7,6 +7,7 @@ import { Dialog, channelMeta } from "./messagesChannels";
 import { MessagesDialogRow } from "./MessagesDialogRow";
 import { MessagesHiddenModal } from "./MessagesHiddenModal";
 import { useCallClient } from "./useCallClient";
+import { normalizePhone } from "./ordersSearch";
 
 const isAvito = (d: Dialog) => d.last_channel === "avito" || d.source === "avito" || !!d.avito_chat_url;
 
@@ -84,8 +85,9 @@ export default function CrmMessages() {
     if (showFavOnly && !d.favorite) return false;
     if (!search) return true;
     const q = search.toLowerCase();
+    const qDigits = normalizePhone(search);
     return (d.name || "").toLowerCase().includes(q)
-      || (d.phone || "").includes(q)
+      || (qDigits.length > 0 && normalizePhone(d.phone || "").includes(qDigits))
       || (d.last_text || "").toLowerCase().includes(q);
   });
 
