@@ -126,7 +126,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       loadClients(true);
-    }, 30000);
+    }, 60000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, tab]);

@@ -49,7 +49,7 @@ export default function CrmMessages() {
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       load(true, showGroups);
-    }, 30000);
+    }, 60000);
     return () => clearInterval(timer);
   }, [load, showGroups]);
 

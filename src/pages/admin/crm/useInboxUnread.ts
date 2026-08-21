@@ -27,7 +27,7 @@ export function useInboxUnread(enabled: boolean): number {
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       check();
-    }, 30000);
+    }, 60000);
     return () => { alive = false; clearInterval(timer); };
   }, [enabled]);
 

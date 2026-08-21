@@ -51,7 +51,7 @@ export function useUnreadTouches(contactId: number | undefined, phone: string | 
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       check();
-    }, 30000);
+    }, 60000);
     return () => { alive = false; clearInterval(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId, phone, active]);

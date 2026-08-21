@@ -127,7 +127,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
       load(true);
-    }, 30000);
+    }, 60000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, contactId, clientId]);
