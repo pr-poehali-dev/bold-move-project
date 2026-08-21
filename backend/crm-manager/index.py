@@ -460,8 +460,19 @@ def get_s3():
         aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
     )
 
+def _json_default(o):
+    # БД хранит created_at как "timestamp without time zone", но фактическое
+    # значение — UTC (сессия psycopg2 работает в UTC). Без явной метки пояса
+    # фронтенд ошибочно принимал это время за уже московское и не пересчитывал
+    # его — из-за этого вся переписка отображалась на 3 часа раньше реальной.
+    # Помечаем таким значениям зону "Z" (UTC), чтобы фронтенд сделал верный
+    # пересчёт в московское время.
+    if isinstance(o, datetime):
+        return (o.isoformat() + "Z") if o.tzinfo is None else o.isoformat()
+    return str(o)
+
 def ok(data):
-    return {"statusCode": 200, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps(data, ensure_ascii=False, default=str)}
+    return {"statusCode": 200, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps(data, ensure_ascii=False, default=_json_default)}
 
 def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
