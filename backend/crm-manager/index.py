@@ -816,6 +816,7 @@ def handler(event: dict, context) -> dict:
     # чтобы не переписывать сам воркер под наш стиль именования.
     if not resource and qs.get("action"):
         resource = qs["action"].replace("_", "-")
+    print(f"[req] {method} r={resource}")
     body = {}
     if event.get("body"):
         try:

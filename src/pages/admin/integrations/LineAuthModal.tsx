@@ -49,6 +49,7 @@ export default function LineAuthModal({
   };
 
   const poll = async () => {
+    if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
     try {
       const res = await crmFetch("messenger-accounts-list") as { accounts?: AccountRow[] };
       const acc = res.accounts?.find(a => a.id === accountId);
