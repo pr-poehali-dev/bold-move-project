@@ -63,8 +63,8 @@ def tg_api_request(method_path, data=None, timeout=3, retries=3):
 # функций, даже когда сообщений нет. Теперь CRM, наоборот, сама коротко
 # "стучится" на воркер в момент появления новой задачи (см. WORKER_PUSH_URL в
 # секретах — HTTP-приёмник на том же VPS, что и TG_PROXY_URL). Воркер, получив
-# пуш, сразу забирает задачу через уже существующие worker-pending/
-# channel-qr-worker эндпоинты — редкий фоновый polling (раз в 5 минут)
+# пуш, сразу забирает задачу через уже существующий worker-pending
+# эндпоинт — редкий фоновый polling (раз в 5 минут)
 # остаётся только как подстраховка на случай, если сеть моргнула и пуш не дошёл.
 # Если пуш не удался — НЕ бросаем исключение наружу: задача уже лежит в БД
 # со статусом pending и будет подобрана подстраховочным опросом чуть позже.
@@ -3511,281 +3511,10 @@ def handler(event: dict, context) -> dict:
         # это операции, ждущие внешний ИИ-сервис до 30 сек, тогда как остальной
         # CRM отвечает за доли секунды. См. backend/crm-ai/index.py.
 
-        # ── CHANNEL-CONFIG: секретный ключ приёма сообщений для воркера на VPS ─────
-        # Компания видит/генерирует свой ключ во вкладке «Интеграции». Этот ключ
-        # воркер (Telethon/PyMax) подставляет в заголовок при вызове channel-webhook.
-        if resource == "channel-config":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            if not owner_id:
-                return err("company not resolved", 400)
-
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = dict(row[0]) if row and row[0] else {}
-
-            if method == "GET":
-                return ok({"webhook_key": cfg.get("_channel_webhook_key")})
-
-            if method == "POST" and body.get("regenerate"):
-                new_key = uuid.uuid4().hex
-                cfg["_channel_webhook_key"] = new_key
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
-                    VALUES (%s, %s, NOW())
-                    ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
-                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
-                conn.commit()
-                return ok({"webhook_key": new_key})
-
-            return err("unknown action")
-
-        # ── CHANNEL-QR-START: сотрудник нажал «Подключить по QR» ────────────────────
-        # Кладём заявку на подключение в очередь. Воркер на VPS (обслуживает СРАЗУ
-        # много компаний, у каждой — свой Telegram-аккаунт) периодически опрашивает
-        # эту очередь (см. resource=="channel-qr-worker" ниже), берёт заявку в работу,
-        # запрашивает QR-код у Telegram и кладёт его обратно через тот же ресурс.
-        if resource == "channel-qr-start" and method == "POST":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            if not owner_id:
-                return err("company not resolved", 400)
-            channel = body.get("channel", "telegram")
-            if channel not in ("telegram", "max"):
-                return err("unknown channel")
-
-            # На всякий случай убеждаемся, что у компании есть webhook-ключ —
-            # воркеру он нужен, чтобы потом слать сюда входящие сообщения.
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = dict(row[0]) if row and row[0] else {}
-            if not cfg.get("_channel_webhook_key"):
-                cfg["_channel_webhook_key"] = uuid.uuid4().hex
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
-                    VALUES (%s, %s, NOW())
-                    ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
-                """, (owner_id, json.dumps(cfg, ensure_ascii=False)))
-                conn.commit()
-
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.channel_qr_sessions (company_id, channel, status, action, updated_at, created_at)
-                VALUES (%s, %s, 'pending', 'connect', NOW(), NOW())
-                ON CONFLICT (company_id, channel) DO UPDATE SET
-                    status='pending', action='connect', qr_url=NULL, error=NULL, updated_at=NOW()
-            """, (owner_id, channel))
-            conn.commit()
-            notify_worker_push("qr-connect")
-            return ok({"status": "pending"})
-
-        # ── CHANNEL-QR-STATUS: фронтенд опрашивает — готов ли QR / подключено ли ───
-        if resource == "channel-qr-status" and method == "GET":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            if not owner_id:
-                return err("company not resolved", 400)
-            channel = qs.get("channel", "telegram")
-
-            cur.execute(f"""
-                SELECT status, qr_url, account_name, error, updated_at
-                FROM {SCHEMA}.channel_qr_sessions WHERE company_id=%s AND channel=%s
-            """, (owner_id, channel))
-            row = cur.fetchone()
-            if not row:
-                return ok({"status": "not_connected"})
-            status, qr_url, account_name, error, updated_at = row
-            # QR-код у Telegram живёт недолго (обычно ~30 сек) — если воркер молчит
-            # больше 2 минут, считаем сессию протухшей, чтобы фронтенд не крутил
-            # спиннер вечно, а показал ошибку и дал начать заново. Ожидание пароля
-            # (2FA) даём подольше — сотруднику нужно время его вспомнить/найти.
-            stale_after = 300 if status == "password_needed" else 120
-            if status in ("pending", "qr_ready", "password_needed") and (datetime.now() - updated_at).total_seconds() > stale_after:
-                status = "expired"
-            return ok({"status": status, "qr_url": qr_url, "account_name": account_name, "error": error})
-
-        # ── CHANNEL-QR-PASSWORD: сотрудник вводит облачный пароль (2FA) ─────────────
-        # Вызывается, когда channel-qr-status вернул status=password_needed.
-        # Пароль кладём во временное поле — воркер заберёт его на следующем опросе
-        # channel-qr-worker и сразу же затрёт после использования.
-        if resource == "channel-qr-password" and method == "POST":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            if not owner_id:
-                return err("company not resolved", 400)
-            channel = body.get("channel", "telegram")
-            password = body.get("password", "")
-            if not password:
-                return err("password required")
-            cur.execute(f"""
-                UPDATE {SCHEMA}.channel_qr_sessions
-                SET pending_password=%s, updated_at=NOW()
-                WHERE company_id=%s AND channel=%s AND status='password_needed'
-            """, (password, owner_id, channel))
-            if cur.rowcount == 0:
-                return err("сессия подключения не найдена или уже истекла", 400)
-            conn.commit()
-            return ok({"ok": True})
-
-        # ── CHANNEL-QR-DISCONNECT: отключить личный аккаунт ─────────────────────────
-        if resource == "channel-qr-disconnect" and method == "POST":
-            if not authenticated:
-                return err("Требуется авторизация", 401)
-            owner_id = company_id or master_uid
-            if not owner_id:
-                return err("company not resolved", 400)
-            channel = body.get("channel", "telegram")
-            cur.execute(f"""
-                UPDATE {SCHEMA}.channel_qr_sessions
-                SET action='disconnect', status='pending', updated_at=NOW()
-                WHERE company_id=%s AND channel=%s AND status='connected'
-            """, (owner_id, channel))
-            conn.commit()
-            return ok({"ok": True})
-
-        # ── CHANNEL-QR-WORKER: вызывается ТОЛЬКО воркером на VPS (не сотрудником) ──
-        # Один воркер-процесс обслуживает все компании сразу — крутит по одному
-        # Telethon-клиенту на company_id и параллельно опрашивает эту очередь.
-        # Защита — общий TG_PROXY_TOKEN (тот же секрет, что и у HTTP-моста в Telegram,
-        # воркер и так его знает и это НЕ секрет отдельной компании).
-        if resource == "channel-qr-worker":
-            worker_token = (event.get("headers") or {}).get("X-Worker-Token", "")
-            if not worker_token or worker_token != os.environ.get("TG_PROXY_TOKEN"):
-                return err("неверный токен воркера", 401)
-
-            if method == "GET":
-                # Отдаём воркеру задачи, ожидающие действия (взять QR / отключить)
-                cur.execute(f"""
-                    SELECT company_id, channel, action FROM {SCHEMA}.channel_qr_sessions
-                    WHERE status='pending' ORDER BY updated_at ASC LIMIT 20
-                """)
-                tasks = [{"company_id": r[0], "channel": r[1], "action": r[2]} for r in cur.fetchall()]
-
-                # И список УЖЕ подключённых компаний с их webhook_key — воркер
-                # обслуживает много компаний одновременно и должен знать, для
-                # каких сессий пересылать входящие/исходящие сообщения, даже
-                # после своего перезапуска (сессии Telethon лежат локально,
-                # а webhook_key — только в нашей БД).
-                cur.execute(f"""
-                    SELECT s.company_id, s.channel, i.config->>'_channel_webhook_key'
-                    FROM {SCHEMA}.channel_qr_sessions s
-                    JOIN {SCHEMA}.integrations i ON i.company_id = s.company_id
-                    WHERE s.status='connected'
-                """)
-                active = [{"company_id": r[0], "channel": r[1], "webhook_key": r[2]} for r in cur.fetchall() if r[2]]
-                return ok({"tasks": tasks, "active": active})
-
-            if method == "POST":
-                # Воркер отчитывается о ходе конкретной задачи
-                owner_id = body.get("company_id")
-                channel = body.get("channel", "telegram")
-                status = body.get("status")  # qr_ready | connected | error | disconnected | password_needed
-                if not owner_id or status not in ("qr_ready", "connected", "error", "disconnected", "password_needed"):
-                    return err("company_id и валидный status обязательны")
-                if status == "disconnected":
-                    cur.execute(f"""
-                        DELETE FROM {SCHEMA}.channel_qr_sessions WHERE company_id=%s AND channel=%s
-                    """, (owner_id, channel))
-                elif status == "connected":
-                    cur.execute(f"""
-                        UPDATE {SCHEMA}.channel_qr_sessions
-                        SET status='connected', account_name=%s, error=NULL, updated_at=NOW()
-                        WHERE company_id=%s AND channel=%s
-                    """, (body.get("account_name"), owner_id, channel))
-                    # Включаем карточку канала в интеграциях компании автоматически
-                    cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-                    irow = cur.fetchone()
-                    icfg = dict(irow[0]) if irow and irow[0] else {}
-                    icfg[f"{channel}_personal_enabled"] = "true"
-                    cur.execute(f"""
-                        INSERT INTO {SCHEMA}.integrations (company_id, config, updated_at)
-                        VALUES (%s, %s, NOW())
-                        ON CONFLICT (company_id) DO UPDATE SET config=EXCLUDED.config, updated_at=NOW()
-                    """, (owner_id, json.dumps(icfg, ensure_ascii=False)))
-                elif status == "qr_ready":
-                    cur.execute(f"""
-                        UPDATE {SCHEMA}.channel_qr_sessions
-                        SET status='qr_ready', qr_url=%s, error=NULL, updated_at=NOW()
-                        WHERE company_id=%s AND channel=%s
-                    """, (body.get("qr_url"), owner_id, channel))
-                elif status == "error":
-                    cur.execute(f"""
-                        UPDATE {SCHEMA}.channel_qr_sessions
-                        SET status='error', error=%s, updated_at=NOW()
-                        WHERE company_id=%s AND channel=%s
-                    """, (body.get("error"), owner_id, channel))
-                elif status == "password_needed":
-                    cur.execute(f"""
-                        UPDATE {SCHEMA}.channel_qr_sessions
-                        SET status='password_needed', error=NULL, pending_password=NULL, updated_at=NOW()
-                        WHERE company_id=%s AND channel=%s
-                    """, (owner_id, channel))
-
-                # Зеркалим статус в НОВУЮ систему линий (messenger_accounts) — экран
-                # «Интеграции → Мессенджеры» читает статус оттуда, а не из
-                # channel_qr_sessions. Без этого зеркалирования при разрыве сессии
-                # (например, сотрудник вышел из Telegram на телефоне) карточка линии
-                # молча оставалась «Подключено», хотя реально отправка уже не работала —
-                # ошибка обнаруживалась только когда сообщения начинали зависать.
-                # QR-линии (Telegram) обычно ровно одна на канал — берём самую свежую.
-                mirror_status = {
-                    "connected": "authorized", "error": "error", "qr_ready": "qr_ready",
-                    "disconnected": "none", "password_needed": "password_requested",
-                }.get(status)
-                if mirror_status:
-                    cur.execute(f"""
-                        SELECT id FROM {SCHEMA}.messenger_accounts
-                        WHERE company_id=%s AND channel=%s
-                        ORDER BY id DESC LIMIT 1
-                    """, (owner_id, channel))
-                    mrow = cur.fetchone()
-                    if mrow:
-                        cur.execute(f"""
-                            UPDATE {SCHEMA}.messenger_accounts
-                            SET auth_status=%s, auth_payload=%s,
-                                account_name=COALESCE(%s, account_name), auth_updated_at=NOW()
-                            WHERE id=%s
-                        """, (mirror_status, body.get("error"), body.get("account_name"), mrow[0]))
-
-                conn.commit()
-                return ok({"ok": True})
-
-            return err("unknown method")
-
-        # ── CHANNEL-QR-WORKER-PASSWORD: воркер ждёт облачный пароль (2FA), который
-        # сотрудник ввёл через channel-qr-password. Одноразовая выдача — как только
-        # воркер забрал пароль, он сразу стирается из БД, чтобы не хранить его дольше
-        # необходимого и не отдать повторно по ошибке.
-        if resource == "channel-qr-worker-password" and method == "GET":
-            worker_token = (event.get("headers") or {}).get("X-Worker-Token", "")
-            if not worker_token or worker_token != os.environ.get("TG_PROXY_TOKEN"):
-                return err("неверный токен воркера", 401)
-            owner_id_q = qs.get("company_id")
-            channel_q = qs.get("channel", "telegram")
-            if not owner_id_q:
-                return err("company_id required")
-            cur.execute(f"""
-                SELECT pending_password FROM {SCHEMA}.channel_qr_sessions
-                WHERE company_id=%s AND channel=%s AND status='password_needed'
-            """, (owner_id_q, channel_q))
-            row = cur.fetchone()
-            password = row[0] if row else None
-            if password:
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.channel_qr_sessions SET pending_password=NULL, updated_at=NOW()
-                    WHERE company_id=%s AND channel=%s
-                """, (owner_id_q, channel_q))
-                conn.commit()
-            return ok({"password": password})
-
         # ═══════════════════════════════════════════════════════════════════════════
         # МЕССЕНДЖЕРЫ (ЛИНИИ): несколько Telegram/MAX-аккаунтов на компанию.
         # Воркер на VPS обслуживает сразу много компаний — сам приходит за работой
-        # (pull-модель, открытых портов у воркера нет). Ключ компании отдельный от
-        # старого _channel_webhook_key (тот — для одиночного QR-входа, не трогаем).
+        # (pull-модель, открытых портов у воркера нет).
         # ═══════════════════════════════════════════════════════════════════════════
 
         # ── MESSENGER-CONFIG: ключ компании + адрес CRM для настройки воркера ──────
@@ -4251,8 +3980,8 @@ def handler(event: dict, context) -> dict:
         # Воркер опрашивает этот единственный эндпоинт (например раз в час) и сам
         # подтягивает список компаний с включённой интеграцией — руками дописывать
         # TENANTS в config.py и перезапускать процесс на VPS больше не нужно.
-        # Защита — тот же общий TG_PROXY_TOKEN, что и у channel-qr-worker (не секрет
-        # отдельной компании, воркер и так его знает).
+        # Защита — общий TG_PROXY_TOKEN (не секрет отдельной компании, воркер и так
+        # его знает).
         if resource == "messenger-registry" and method == "GET":
             worker_token = (event.get("headers") or {}).get("X-Worker-Token", "")
             if not worker_token or worker_token != os.environ.get("TG_PROXY_TOKEN"):
@@ -4280,128 +4009,6 @@ def handler(event: dict, context) -> dict:
                     "accounts": accounts,
                 })
             return ok({"tenants": tenants})
-
-        # ── CHANNEL-WEBHOOK: приём сообщения от воркера (Telegram/MAX) ─────────────
-        # Вызывается НЕ сотрудником, а нашим воркером на VPS — авторизация через
-        # секретный webhook_key (не через сессию пользователя).
-        if resource == "channel-webhook" and method == "POST":
-            company_id_q = qs.get("company_id")
-            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
-            if not company_id_q or not webhook_key:
-                return err("company_id и X-Webhook-Key обязательны", 401)
-            try:
-                owner_id = int(company_id_q)
-            except ValueError:
-                return err("company_id invalid")
-
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = row[0] if row else None
-            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
-                return err("неверный ключ", 401)
-
-            channel     = body.get("channel")       # "telegram" | "max"
-            direction   = body.get("direction", "in")  # "in" (обычно вебхук = входящее)
-            phone       = body.get("phone")         # если воркер знает номер
-            external_chat_id = body.get("external_chat_id")  # id чата в канале (fallback без телефона)
-            name        = body.get("name")
-            text        = body.get("text")
-            external_id = body.get("external_id")   # id сообщения в канале — защита от дублей
-            attachments = body.get("attachments")
-            # Личка / группа / канал — приходит от воркера (Telethon сам знает тип
-            # чата точно). Для групп/каналов group_title — название чата (это
-            # клиент в CRM, а не имя случайного участника), sender_name — кто из
-            # участников написал именно это сообщение (для отображения в ленте).
-            chat_type   = body.get("chat_type", "private")
-            group_title = body.get("group_title")
-            sender_name = body.get("sender_name")
-            is_group = chat_type != "private"
-
-            if channel not in ("telegram", "max", "avito", "whatsapp"):
-                return err("unknown channel")
-            if not phone and not external_chat_id:
-                return err("phone или external_chat_id обязателен")
-
-            # Находим/создаём клиента: приоритет — телефон, иначе внешний id канала
-            # (channel_ids — JSONB {"telegram": "12345", "max": "..."}, ищем по конкретному каналу)
-            # Группу/канал по телефону не ищем — участники группы могут писать с любых
-            # телефонов, это не карточка одного клиента, а общий чат по external_chat_id.
-            client_row = None
-            if phone and not is_group:
-                norm = normalize_phone(phone)
-                if norm:
-                    cur.execute(
-                        f"SELECT id FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
-                        (norm, owner_id))
-                    client_row = cur.fetchone()
-                    if not client_row:
-                        cur.execute(
-                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
-                            (owner_id, norm, name))
-                        client_row = cur.fetchone()
-                        conn.commit()
-            if not client_row and external_chat_id:
-                cur.execute(
-                    f"SELECT id FROM {SCHEMA}.touch_clients "
-                    f"WHERE company_id=%s AND channel_ids->>%s = %s",
-                    (owner_id, channel, str(external_chat_id)))
-                client_row = cur.fetchone()
-                if not client_row:
-                    cur.execute(
-                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids, chat_type, group_title) "
-                        f"VALUES (%s, %s, %s::jsonb, %s, %s) RETURNING id",
-                        (owner_id, group_title or name, json.dumps({channel: str(external_chat_id)}),
-                         chat_type, group_title))
-                    client_row = cur.fetchone()
-                    conn.commit()
-                elif is_group and group_title:
-                    # Название группы может меняться — держим свежим при каждом сообщении.
-                    cur.execute(
-                        f"UPDATE {SCHEMA}.touch_clients SET group_title=%s, chat_type=%s WHERE id=%s",
-                        (group_title, chat_type, client_row[0]))
-                    conn.commit()
-
-            client_id = client_row[0]
-
-            # Запоминаем/обновляем external_chat_id клиента для этого канала —
-            # нужно, чтобы send-message знал, куда именно слать ответ.
-            if external_chat_id:
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.touch_clients
-                    SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
-                    WHERE id=%s
-                """, (json.dumps({channel: str(external_chat_id)}), client_id))
-                conn.commit()
-
-            # Сохраняем касание (UNIQUE(channel, external_id) защищает от повторной вставки того же вебхука)
-            try:
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.touch_events (client_id, channel, direction, external_id, text, attachments, status, sender_name)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'received', %s)
-                """, (client_id, channel, direction, external_id,
-                      text, json.dumps(attachments, ensure_ascii=False) if attachments else None, sender_name))
-                conn.commit()
-            except psycopg2.errors.UniqueViolation:
-                conn.rollback()
-                return ok({"duplicate": True, "client_id": client_id})
-
-            # Автоматический пересбор ИИ-анализа при входящем — но не чаще раза в 10 минут
-            # на клиента (если пишет несколько сообщений подряд, анализ не дублируем).
-            # Группы/каналы не анализируем — это не сделка с одним клиентом, ИИ-сводка
-            # по продажам для группового чата бессмысленна и просто тратит деньги.
-            analysis = None
-            if direction == "in" and not is_group:
-                cur.execute(
-                    f"SELECT analysis_updated_at FROM {SCHEMA}.touch_clients WHERE id=%s",
-                    (client_id,))
-                au_row = cur.fetchone()
-                au = au_row[0] if au_row else None
-                if au is None or (datetime.now() - au).total_seconds() >= ANALYSIS_THROTTLE_SEC:
-                    analysis, analysis_err = run_client_analysis(cur, conn, client_id, phone, name)
-                    if analysis_err:
-                        print(f"[channel-webhook] analysis skipped: {analysis_err}")
-
-            return ok({"client_id": client_id, "saved": True, "analysis": analysis})
 
         # ── AVITO-WEBHOOK: приём входящих от Avito Messenger (Avito шлёт сам) ──────
         # URL этого вебхука регистрируется в Avito. Защита — секретный ключ в query.
@@ -4633,7 +4240,7 @@ def handler(event: dict, context) -> dict:
                     conn.rollback()
             return ok({"client_id": client_id, "saved": True})
 
-        # ── UIS-WEBHOOK-CONFIG: секретный ключ + URL вебхука для ЛК UIS (аналог channel-config) ──
+        # ── UIS-WEBHOOK-CONFIG: секретный ключ + URL вебхука для ЛК UIS ──
         if resource == "uis-webhook-config":
             if not authenticated:
                 return err("Требуется авторизация", 401)
@@ -5544,7 +5151,7 @@ def handler(event: dict, context) -> dict:
 
         # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
         # Кладёт сообщение в ленту со статусом 'pending' — воркер на VPS заберёт его
-        # через pending-messages (опрос) и подтвердит через mark-sent.
+        # через worker-pending (опрос) и подтвердит через worker-mark-sent.
         if resource == "send-message" and method == "POST":
             if not authenticated:
                 return err("Требуется авторизация", 401)
@@ -5652,102 +5259,6 @@ def handler(event: dict, context) -> dict:
                 "created_at": new_row[1],
                 "status": initial_status,
             })
-
-        # ── PENDING-MESSAGES: воркер на VPS опрашивает — есть что отправить? ───────
-        # Тот же секретный ключ, что и channel-webhook (без сессии сотрудника).
-        if resource == "pending-messages" and method == "GET":
-            company_id_q = qs.get("company_id")
-            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
-            channel_q    = qs.get("channel")
-            if not company_id_q or not webhook_key or not channel_q:
-                return err("company_id, channel и X-Webhook-Key обязательны", 401)
-            try:
-                owner_id = int(company_id_q)
-            except ValueError:
-                return err("company_id invalid")
-
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = row[0] if row else None
-            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
-                return err("неверный ключ", 401)
-
-            cur.execute(f"""
-                SELECT te.id, te.client_id, te.text, tc.channel_ids, tc.phone, te.attachments
-                FROM {SCHEMA}.touch_events te
-                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
-                WHERE tc.company_id=%s AND te.channel=%s AND te.direction='out' AND te.status='pending'
-                ORDER BY te.created_at ASC
-                LIMIT 20
-            """, (owner_id, channel_q))
-            items = []
-            for touch_id, cid, text, channel_ids, phone, attachments in cur.fetchall():
-                external_chat_id = (channel_ids or {}).get(channel_q)
-                # Нет привязки — но есть телефон: воркер попробует найти клиента в
-                # Telegram/MAX по номеру (написать первым). Без ни того ни другого
-                # отправить нечем — пропускаем (такое не должно случаться, т.к.
-                # send-message уже проверяет это на входе).
-                if not external_chat_id and not phone:
-                    continue
-                items.append({
-                    "touch_id": touch_id,
-                    "client_id": cid,
-                    "external_chat_id": external_chat_id,
-                    "phone": phone,
-                    "text": text,
-                    "attachments": attachments or [],
-                })
-            return ok({"messages": items})
-
-        # ── MARK-SENT: воркер подтверждает — сообщение реально ушло (или ошибка) ───
-        if resource == "mark-sent" and method == "POST":
-            company_id_q = qs.get("company_id")
-            webhook_key  = (event.get("headers") or {}).get("X-Webhook-Key", "")
-            if not company_id_q or not webhook_key:
-                return err("company_id и X-Webhook-Key обязательны", 401)
-            try:
-                owner_id = int(company_id_q)
-            except ValueError:
-                return err("company_id invalid")
-
-            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
-            row = cur.fetchone()
-            cfg = row[0] if row else None
-            if not cfg or cfg.get("_channel_webhook_key") != webhook_key:
-                return err("неверный ключ", 401)
-
-            touch_id = body.get("touch_id")
-            success  = body.get("success", True)
-            channel_q = body.get("channel")
-            found_chat_id = body.get("external_chat_id")  # воркер нашёл клиента по телефону
-            if not touch_id:
-                return err("touch_id required")
-
-            # Если это было первое сообщение клиенту без привязки (написали по
-            # телефону) и воркер успешно нашёл его в канале — запоминаем chat_id,
-            # чтобы дальше отправлять/принимать сообщения уже без повторного поиска.
-            if success and found_chat_id and channel_q:
-                cur.execute(f"""
-                    SELECT tc.id FROM {SCHEMA}.touch_events te
-                    JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
-                    WHERE te.id=%s AND tc.company_id=%s
-                """, (touch_id, owner_id))
-                crow = cur.fetchone()
-                if crow:
-                    cur.execute(f"""
-                        UPDATE {SCHEMA}.touch_clients
-                        SET channel_ids = COALESCE(channel_ids, '{{}}'::jsonb) || %s::jsonb
-                        WHERE id=%s
-                    """, (json.dumps({channel_q: str(found_chat_id)}), crow[0]))
-
-            cur.execute(f"""
-                UPDATE {SCHEMA}.touch_events te
-                SET status=%s
-                FROM {SCHEMA}.touch_clients tc
-                WHERE te.id=%s AND te.client_id=tc.id AND tc.company_id=%s
-            """, ("sent" if success else "error", touch_id, owner_id))
-            conn.commit()
-            return ok({"updated": True})
 
         # ── TOUCH-INBOX: список диалогов для раздела «Сообщения» (единый инбокс) ──
         # Все клиенты, у кого есть хотя бы одно касание, отсортированы по времени

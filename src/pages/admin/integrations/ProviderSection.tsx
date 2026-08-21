@@ -27,11 +27,6 @@ interface Props {
   tgLeadsError?: string | null;
   onToggleEnabled?: (section: SectionDef, next: boolean) => void;
   toggling?: boolean;
-  accountConnected?: boolean;
-  accountName?: string | null;
-  onOpenQr?: () => void;
-  onDisconnectAccount?: () => void;
-  disconnectingAccount?: boolean;
 }
 
 export default function ProviderSection({
@@ -40,7 +35,6 @@ export default function ProviderSection({
   revealed, setRevealed, sectionCheck, sectionChecking, checkSection,
   avitoConnected, avitoConnecting, connectAvito, tgLeadsBotUsername, tgLeadsError,
   onToggleEnabled, toggling,
-  accountConnected, accountName, onOpenQr, onDisconnectAccount, disconnectingAccount,
 }: Props) {
   const current = section.providers.find(p => p.id === activeProvider[section.id]) ?? section.providers[0];
   const multiProvider = section.providers.length > 1;
@@ -64,54 +58,7 @@ export default function ProviderSection({
         )}
       </div>
 
-      {/* Личный аккаунт: вход по QR (Telegram, реально работает) / номеру (MAX, скоро) */}
-      {section.kind === "account" && (
-        <div className="flex flex-col gap-2.5">
-          {accountConnected ? (
-            <>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg w-fit"
-                style={{ background: "rgba(16,185,129,0.14)", color: "#10b981" }}>
-                <Icon name="CheckCircle2" size={12} />
-                Подключено{accountName ? `: ${accountName}` : ""}
-              </div>
-              {onDisconnectAccount && (
-                <button
-                  onClick={onDisconnectAccount}
-                  disabled={disconnectingAccount}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition w-fit disabled:opacity-60"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
-                  {disconnectingAccount
-                    ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                    : <Icon name="Unlink" size={13} />}
-                  {disconnectingAccount ? "Отключение..." : "Отключить"}
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg w-fit"
-                style={{ background: "rgba(148,163,184,0.12)", color: txtSub }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#94a3b8" }} /> Не подключено
-              </div>
-              <button
-                onClick={section.authMethod === "qr" && onOpenQr ? onOpenQr : () => checkSection(section, current)}
-                disabled={section.authMethod !== "qr"}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition w-fit disabled:opacity-50"
-                style={{ background: "#7c3aed", color: "#fff" }}>
-                <Icon name={section.authMethod === "qr" ? "QrCode" : "Smartphone"} size={13} />
-                {section.authMethod === "qr" ? "Подключить по QR-коду" : "Скоро — подключение по номеру"}
-              </button>
-              <div className="text-[10px]" style={{ color: txtSub }}>
-                {section.authMethod === "qr"
-                  ? "Появится QR-код — отсканируйте его приложением Telegram (Настройки → Устройства → Подключить устройство)."
-                  : "Подключение личного MAX по номеру телефона пока в разработке."}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {section.kind !== "account" && multiProvider && (
+      {multiProvider && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {section.providers.map(p => {
             const active = p.id === current.id;
@@ -131,7 +78,7 @@ export default function ProviderSection({
         </div>
       )}
 
-      {section.kind !== "account" && <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5">
         {current.fields.map(f => {
           const isSecret = f.type === "password";
           const show = revealed[f.key];
@@ -169,7 +116,7 @@ export default function ProviderSection({
             </div>
           );
         })}
-      </div>}
+      </div>
 
       {/* Avito: сначала ключи, потом ОБЯЗАТЕЛЬНЫЙ вход владельца аккаунта — без него
           Avito не выдаёт прав на чтение/отправку сообщений, даже если ключи верные. */}
@@ -203,8 +150,8 @@ export default function ProviderSection({
         </div>
       )}
 
-      {/* Проверить — только для остальных секций с полями (не Avito, не личные аккаунты) */}
-      {section.kind !== "account" && section.id !== "avito" && <div className="flex items-center gap-2 mt-3">
+      {/* Проверить — только для остальных секций с полями (не Avito) */}
+      {section.id !== "avito" && <div className="flex items-center gap-2 mt-3">
         <button
           onClick={() => checkSection(section, current)}
           disabled={!!sectionChecking?.[section.id]}

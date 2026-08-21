@@ -19,31 +19,11 @@ export interface SectionDef {
   desc: string;
   icon: string;
   providers: ProviderOption[];
-  /** "account" — личный аккаунт (вход по QR/номеру через VPS-воркер, а не поля-токены) */
-  kind?: "fields" | "account";
-  /** способ входа для kind="account": qr (Telegram) | code (MAX по номеру) */
-  authMethod?: "qr" | "code";
-  /** канал для kind="account" — как называется в backend (channel-qr-*): "telegram" | "max" */
-  channel?: string;
   /** Ключ в config для тумблера вкл/выкл этой карточки (если задан — тумблер показывается) */
   enabledKey?: string;
   /** true — выключение реально останавливает приём на бэкенде; false/не задано — только визуально */
   realToggle?: boolean;
 }
-
-// Смысловые группы вкладки «Интеграции»
-export const GROUPS: { id: string; title: string; desc: string }[] = [
-  { id: "accounts", title: "Личные аккаунты (мессенджеры)",
-    desc: "Пишете клиенту от своего личного аккаунта. Вход как в веб-версию — по QR или номеру телефона." },
-  { id: "bots", title: "Боты (уведомления)",
-    desc: "Официальные боты по токену: уведомления о заявках и переписка через бота." },
-  { id: "channels", title: "Другие каналы",
-    desc: "Avito и веб-чат на сайте — сообщения попадают в ленту «Касания»." },
-  { id: "ai", title: "ИИ и обработка",
-    desc: "Распознавание звонков и модель, которая анализирует историю клиента." },
-  { id: "telephony", title: "Телефония (UIS)",
-    desc: "Звонки, кнопка «Позвонить», расшифровка и ИИ-анализ разговоров." },
-];
 
 export const SECTIONS: SectionDef[] = [
   // ── Боты (уведомления по токену) ──
