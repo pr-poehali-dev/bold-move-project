@@ -1,11 +1,15 @@
 import { RefObject } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { Touch, AttachmentItem, attachmentsOf } from "./touchesShared";
+import { Touch, AttachmentItem, MessengerAccount, attachmentsOf } from "./touchesShared";
 
 interface Props {
   sendChannel: string;
   setSendChannel: (v: string) => void;
+  /** Линии (аккаунты) Telegram/MAX компании — для ручного выбора отправителя */
+  accounts: MessengerAccount[];
+  sendAccountId: string;
+  setSendAccountId: (v: string) => void;
   draft: string;
   setDraft: (v: string) => void;
   sending: boolean;
@@ -29,12 +33,17 @@ interface Props {
 // Панель отправки сообщения вкладки «Касания»: цитата reply, превью вложения,
 // выбор канала, прикрепление файла, запись голоса и сама текстовая область.
 export default function TouchesComposer({
-  sendChannel, setSendChannel, draft, setDraft, sending, sendError,
+  sendChannel, setSendChannel, accounts, sendAccountId, setSendAccountId,
+  draft, setDraft, sending, sendError,
   replyTo, setReplyTo, pendingAttachment, setPendingAttachment, uploadingFile,
   isRecording, recSeconds, fileInputRef, textareaRef, flashInput,
   onPickFile, onStartVoiceRecording, onStopVoiceRecording, onSend,
 }: Props) {
   const t = useTheme();
+
+  // Линии выбранного канала — селект показываем только если их больше одной
+  // (иначе выбирать не из чего, автовыбор backend'а и так справится).
+  const channelAccounts = accounts.filter(a => a.channel === sendChannel && a.is_active && a.auth_status === "authorized");
 
   return (
     <>
@@ -67,6 +76,21 @@ export default function TouchesComposer({
           <button onClick={() => setPendingAttachment(null)} className="flex-shrink-0 p-1 rounded-full" style={{ color: t.textMute }}>
             <Icon name="X" size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Выбор линии — только если у канала подключено больше одной линии */}
+      {channelAccounts.length > 1 && (
+        <div className="flex-shrink-0 px-3 sm:px-6 pt-2 flex items-center gap-1.5">
+          <Icon name="Radio" size={12} style={{ color: t.textMute }} className="flex-shrink-0" />
+          <select value={sendAccountId} onChange={e => setSendAccountId(e.target.value)}
+            className="text-[11px] rounded-lg px-2 py-1 focus:outline-none"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.textSub }}>
+            <option value="">Линия автоматически</option>
+            {channelAccounts.map(a => (
+              <option key={a.id} value={a.id}>{a.title}</option>
+            ))}
+          </select>
         </div>
       )}
 

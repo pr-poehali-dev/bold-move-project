@@ -43,6 +43,17 @@ export function imagesOf(attachments: unknown): string[] {
   return attachmentsOf(attachments).filter(a => a.type === "image").map(a => a.url);
 }
 
+// Линия (аккаунт) компании в Telegram/MAX — для ручного выбора, с какого
+// номера отправить сообщение, если у компании их несколько.
+export interface MessengerAccount {
+  id: number;
+  channel: "telegram" | "max";
+  title: string;
+  phone: string | null;
+  is_active: boolean;
+  auth_status: string;
+}
+
 export interface TouchClient {
   id: number;
   phone: string | null;

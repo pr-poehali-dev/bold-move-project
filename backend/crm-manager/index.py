@@ -5162,6 +5162,7 @@ def handler(event: dict, context) -> dict:
             client_id = body.get("client_id")
             phone_q   = body.get("phone")
             channel   = body.get("channel")
+            requested_account_id = body.get("account_id")
             text      = (body.get("text") or "").strip()
             # Вложения: список [{type: "image"|"file"|"voice", url, filename?, duration_sec?}].
             # Сообщение должно содержать текст ИЛИ хотя бы одно вложение.
@@ -5213,28 +5214,43 @@ def handler(event: dict, context) -> dict:
             out_external_id = None  # id сообщения в канале (заполняем для Avito — защита от дублей)
             line_account_id = None  # какая именно линия (аккаунт) должна отправить — для воркера
             if channel in ("telegram", "max"):
-                # Без привязки к конкретной линии воркер не знает, каким аккаунтом
-                # отправлять — сообщение зависало бы в pending навсегда.
-                # Если у компании НЕСКОЛЬКО линий одного канала — важно ответить с
-                # ТОЙ ЖЕ линии, с которой клиент переписывался раньше (иначе ответ
-                # уйдёт с чужого аккаунта или вообще не найдёт получателя). Смотрим
-                # последнее входящее сообщение этого клиента в этом канале — его
-                # account_id и есть «правильная» линия.
-                cur.execute(f"""
-                    SELECT te.account_id FROM {SCHEMA}.touch_events te
-                    WHERE te.client_id=%s AND te.channel=%s AND te.direction='in' AND te.account_id IS NOT NULL
-                    ORDER BY te.created_at DESC LIMIT 1
-                """, (client_id, channel))
-                prev_row = cur.fetchone()
                 line_account_id = None
-                if prev_row:
+                # Если менеджер явно выбрал линию в интерфейсе — используем её
+                # (проверяем, что она принадлежит компании, тому же каналу,
+                # активна и авторизована — иначе тихо переходим к автовыбору).
+                if requested_account_id:
                     cur.execute(f"""
                         SELECT id FROM {SCHEMA}.messenger_accounts
-                        WHERE id=%s AND is_active=TRUE AND auth_status='authorized'
-                    """, (prev_row[0],))
-                    active_prev = cur.fetchone()
-                    if active_prev:
-                        line_account_id = active_prev[0]
+                        WHERE id=%s AND company_id=%s AND channel=%s
+                          AND is_active=TRUE AND auth_status='authorized'
+                    """, (requested_account_id, owner_id, channel))
+                    req_row = cur.fetchone()
+                    if req_row:
+                        line_account_id = req_row[0]
+                    else:
+                        return err("Выбранная линия недоступна — проверьте авторизацию в Интеграциях", 400)
+                if not line_account_id:
+                    # Без привязки к конкретной линии воркер не знает, каким аккаунтом
+                    # отправлять — сообщение зависало бы в pending навсегда.
+                    # Если у компании НЕСКОЛЬКО линий одного канала — важно ответить с
+                    # ТОЙ ЖЕ линии, с которой клиент переписывался раньше (иначе ответ
+                    # уйдёт с чужого аккаунта или вообще не найдёт получателя). Смотрим
+                    # последнее входящее сообщение этого клиента в этом канале — его
+                    # account_id и есть «правильная» линия.
+                    cur.execute(f"""
+                        SELECT te.account_id FROM {SCHEMA}.touch_events te
+                        WHERE te.client_id=%s AND te.channel=%s AND te.direction='in' AND te.account_id IS NOT NULL
+                        ORDER BY te.created_at DESC LIMIT 1
+                    """, (client_id, channel))
+                    prev_row = cur.fetchone()
+                    if prev_row:
+                        cur.execute(f"""
+                            SELECT id FROM {SCHEMA}.messenger_accounts
+                            WHERE id=%s AND is_active=TRUE AND auth_status='authorized'
+                        """, (prev_row[0],))
+                        active_prev = cur.fetchone()
+                        if active_prev:
+                            line_account_id = active_prev[0]
                 if not line_account_id:
                     # Истории нет (первый контакт) или прежняя линия отключена —
                     # берём любую активную авторизованную линию этого канала.

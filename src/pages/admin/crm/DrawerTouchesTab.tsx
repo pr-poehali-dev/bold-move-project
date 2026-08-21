@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { useCallClient } from "./useCallClient";
 import { useAutoTranscribe } from "./useAutoTranscribe";
-import { Touch, AttachmentItem, TouchClient } from "./touchesShared";
+import { Touch, AttachmentItem, TouchClient, MessengerAccount } from "./touchesShared";
 import TouchesHeader from "./TouchesHeader";
 import TouchesFeed from "./TouchesFeed";
 import TouchesComposer from "./TouchesComposer";
@@ -38,6 +38,11 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
   const [draft, setDraft] = useState("");
   // По умолчанию Avito, если у клиента нет телефона (пришёл из Avito), иначе Telegram
   const [sendChannel, setSendChannel] = useState(phone ? "telegram" : "avito");
+  // Линии (аккаунты) компании в Telegram/MAX — чтобы менеджер мог сам выбрать,
+  // с какого номера отправить сообщение, если линий несколько. Пусто = автовыбор
+  // на backend (последняя линия переписки или первая активная).
+  const [accounts, setAccounts] = useState<MessengerAccount[]>([]);
+  const [sendAccountId, setSendAccountId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -116,6 +121,18 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [phone, contactId, clientId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "auto" }); }, [touches.length, loading]);
 
+  // Список линий (аккаунтов) Telegram/MAX компании — грузим один раз, чтобы
+  // менеджер мог выбрать, с какого номера отправить сообщение.
+  useEffect(() => {
+    crmFetch("messenger-accounts-list")
+      .then((d) => setAccounts((d as { accounts?: MessengerAccount[] })?.accounts || []))
+      .catch(() => {});
+  }, []);
+
+  // При смене канала отправки сбрасываем выбор линии — старая линия могла
+  // относиться к другому каналу (Telegram/MAX линии не взаимозаменяемы).
+  useEffect(() => { setSendAccountId(""); }, [sendChannel]);
+
   // Звонки без расшифровки (запись есть, текста ещё нет) — расшифровываем
   // по одному, пока лента открыта, и подтягиваем текст в неё же.
   useAutoTranscribe(touches, () => load(true));
@@ -145,6 +162,7 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
         body: JSON.stringify({
           client_id: client.id, channel: sendChannel, text, attachments,
           reply_to_id: replyTo?.id ?? null,
+          account_id: sendAccountId ? Number(sendAccountId) : null,
         }),
       }) as { touch_id?: number; created_at?: string; error?: string };
       if (d?.error) {
@@ -271,6 +289,9 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
       <TouchesComposer
         sendChannel={sendChannel}
         setSendChannel={setSendChannel}
+        accounts={accounts}
+        sendAccountId={sendAccountId}
+        setSendAccountId={setSendAccountId}
         draft={draft}
         setDraft={setDraft}
         sending={sending}
