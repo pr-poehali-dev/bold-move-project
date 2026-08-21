@@ -5214,19 +5214,40 @@ def handler(event: dict, context) -> dict:
             line_account_id = None  # какая именно линия (аккаунт) должна отправить — для воркера
             if channel in ("telegram", "max"):
                 # Без привязки к конкретной линии воркер не знает, каким аккаунтом
-                # отправлять — сообщение зависало бы в pending навсегда. Берём
-                # активную авторизованную линию этого канала; если её нет — сразу
-                # понятная ошибка, а не тихое зависание.
+                # отправлять — сообщение зависало бы в pending навсегда.
+                # Если у компании НЕСКОЛЬКО линий одного канала — важно ответить с
+                # ТОЙ ЖЕ линии, с которой клиент переписывался раньше (иначе ответ
+                # уйдёт с чужого аккаунта или вообще не найдёт получателя). Смотрим
+                # последнее входящее сообщение этого клиента в этом канале — его
+                # account_id и есть «правильная» линия.
                 cur.execute(f"""
-                    SELECT id FROM {SCHEMA}.messenger_accounts
-                    WHERE company_id=%s AND channel=%s AND is_active=TRUE AND auth_status='authorized'
-                    ORDER BY id LIMIT 1
-                """, (owner_id, channel))
-                line_row = cur.fetchone()
-                if not line_row:
-                    label = "Telegram" if channel == "telegram" else "MAX"
-                    return err(f"Нет подключённой линии {label} — авторизуйте линию в Интеграциях", 400)
-                line_account_id = line_row[0]
+                    SELECT te.account_id FROM {SCHEMA}.touch_events te
+                    WHERE te.client_id=%s AND te.channel=%s AND te.direction='in' AND te.account_id IS NOT NULL
+                    ORDER BY te.created_at DESC LIMIT 1
+                """, (client_id, channel))
+                prev_row = cur.fetchone()
+                line_account_id = None
+                if prev_row:
+                    cur.execute(f"""
+                        SELECT id FROM {SCHEMA}.messenger_accounts
+                        WHERE id=%s AND is_active=TRUE AND auth_status='authorized'
+                    """, (prev_row[0],))
+                    active_prev = cur.fetchone()
+                    if active_prev:
+                        line_account_id = active_prev[0]
+                if not line_account_id:
+                    # Истории нет (первый контакт) или прежняя линия отключена —
+                    # берём любую активную авторизованную линию этого канала.
+                    cur.execute(f"""
+                        SELECT id FROM {SCHEMA}.messenger_accounts
+                        WHERE company_id=%s AND channel=%s AND is_active=TRUE AND auth_status='authorized'
+                        ORDER BY id LIMIT 1
+                    """, (owner_id, channel))
+                    line_row = cur.fetchone()
+                    if not line_row:
+                        label = "Telegram" if channel == "telegram" else "MAX"
+                        return err(f"Нет подключённой линии {label} — авторизуйте линию в Интеграциях", 400)
+                    line_account_id = line_row[0]
             if channel == "avito":
                 cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
                 arow = cur.fetchone()
