@@ -3723,6 +3723,33 @@ def handler(event: dict, context) -> dict:
                         SET status='password_needed', error=NULL, pending_password=NULL, updated_at=NOW()
                         WHERE company_id=%s AND channel=%s
                     """, (owner_id, channel))
+
+                # Зеркалим статус в НОВУЮ систему линий (messenger_accounts) — экран
+                # «Интеграции → Мессенджеры» читает статус оттуда, а не из
+                # channel_qr_sessions. Без этого зеркалирования при разрыве сессии
+                # (например, сотрудник вышел из Telegram на телефоне) карточка линии
+                # молча оставалась «Подключено», хотя реально отправка уже не работала —
+                # ошибка обнаруживалась только когда сообщения начинали зависать.
+                # QR-линии (Telegram) обычно ровно одна на канал — берём самую свежую.
+                mirror_status = {
+                    "connected": "authorized", "error": "error", "qr_ready": "qr_ready",
+                    "disconnected": "none", "password_needed": "password_requested",
+                }.get(status)
+                if mirror_status:
+                    cur.execute(f"""
+                        SELECT id FROM {SCHEMA}.messenger_accounts
+                        WHERE company_id=%s AND channel=%s
+                        ORDER BY id DESC LIMIT 1
+                    """, (owner_id, channel))
+                    mrow = cur.fetchone()
+                    if mrow:
+                        cur.execute(f"""
+                            UPDATE {SCHEMA}.messenger_accounts
+                            SET auth_status=%s, auth_payload=%s,
+                                account_name=COALESCE(%s, account_name), auth_updated_at=NOW()
+                            WHERE id=%s
+                        """, (mirror_status, body.get("error"), body.get("account_name"), mrow[0]))
+
                 conn.commit()
                 return ok({"ok": True})
 
