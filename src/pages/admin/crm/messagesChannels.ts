@@ -8,6 +8,16 @@ export const CHANNELS: Record<string, { icon: string; label: string; color: stri
   webchat:  { icon: "MessageSquareText", label: "Веб-чат",  color: "#0ea5e9" },
 };
 
+// Табы фильтра источника над списком диалогов. Порядок = порядок кнопок.
+// Чтобы добавить канал в фильтр — достаточно дописать сюда строку.
+export const CHANNEL_FILTERS: { value: string; label: string }[] = [
+  { value: "all",      label: "Все" },
+  { value: "telegram", label: "Telegram" },
+  { value: "max",      label: "MAX" },
+  { value: "avito",    label: "Avito" },
+  { value: "call",     label: "Звонки" },
+];
+
 export const channelMeta = (c: string) =>
   CHANNELS[c] || { icon: "MessageSquare", label: c, color: "#8b5cf6" };
 

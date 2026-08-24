@@ -3820,6 +3820,33 @@ def handler(event: dict, context) -> dict:
             reply_to_ext_v = body.get("reply_to_external_msg_id")
             external_id_v = body.get("external_id")  # какая линия приняла сообщение
 
+            # Тип чата: группа или личная переписка.
+            # Воркер может прислать признак явно (chat_type/is_group). Если не прислал —
+            # определяем по ID чата: и в Telegram, и в MAX у групп он отрицательный.
+            # Без этого групповые чаты MAX попадали в CRM как обычные личные диалоги.
+            raw_chat_type = (body.get("chat_type") or "").strip().lower()
+            is_group_flag = body.get("is_group")
+            chat_id_str = str(chat_id_v) if chat_id_v not in (None, "") else ""
+            if raw_chat_type in ("group", "chat", "supergroup", "channel"):
+                chat_type_v = "channel" if raw_chat_type == "channel" else "group"
+            elif raw_chat_type == "private":
+                chat_type_v = "private"
+            elif is_group_flag is True:
+                chat_type_v = "group"
+            elif is_group_flag is False:
+                chat_type_v = "private"
+            else:
+                chat_type_v = "group" if chat_id_str.startswith("-") else "private"
+
+            # Название группы и имя автора сообщения внутри группы
+            group_title_v = body.get("group_title") or body.get("chat_title") or None
+            sender_name_v = body.get("sender_name") or body.get("from_name") or None
+            # Имя контакта (MAX не передаёт телефон — имя единственный способ узнать человека)
+            contact_name_v = (body.get("name") or body.get("contact_name")
+                              or body.get("first_name") or body.get("username") or None)
+            # Как подписывать карточку: у группы — её название, у личного чата — имя контакта
+            display_name_v = (group_title_v if chat_type_v != "private" else contact_name_v)
+
             if channel_v not in ("telegram", "max"):
                 return err("unknown channel")
             if not phone_v and not chat_id_v:
@@ -3842,8 +3869,8 @@ def handler(event: dict, context) -> dict:
                     client_row = cur.fetchone()
                     if not client_row:
                         cur.execute(
-                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name) VALUES (%s, %s, %s) RETURNING id",
-                            (owner_id, norm, body.get("name")))
+                            f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name, chat_type, group_title) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                            (owner_id, norm, display_name_v, chat_type_v, group_title_v))
                         client_row = cur.fetchone()
                         conn.commit()
             if not client_row and chat_id_v:
@@ -3853,8 +3880,8 @@ def handler(event: dict, context) -> dict:
                 client_row = cur.fetchone()
                 if not client_row:
                     cur.execute(
-                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids) VALUES (%s, %s, %s::jsonb) RETURNING id",
-                        (owner_id, body.get("name"), json.dumps({channel_v: str(chat_id_v)})))
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, name, channel_ids, chat_type, group_title) VALUES (%s, %s, %s::jsonb, %s, %s) RETURNING id",
+                        (owner_id, display_name_v, json.dumps({channel_v: str(chat_id_v)}), chat_type_v, group_title_v))
                     client_row = cur.fetchone()
                     conn.commit()
             if not client_row:
@@ -3869,6 +3896,19 @@ def handler(event: dict, context) -> dict:
                 """, (json.dumps({channel_v: str(chat_id_v)}), client_id_v))
                 conn.commit()
 
+            # Дозаполняем карточку тем, что узнали из входящего сообщения.
+            # Правило: НЕ затираем данные, введённые человеком вручную — заполняем
+            # только пустые поля. Тип чата поправляем, если он ошибочно 'private',
+            # а на деле пришла группа (так чинятся старые карточки MAX).
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_clients
+                SET name = COALESCE(NULLIF(name, ''), %s),
+                    group_title = COALESCE(NULLIF(group_title, ''), %s),
+                    chat_type = CASE WHEN %s <> 'private' THEN %s ELSE chat_type END
+                WHERE id = %s
+            """, (display_name_v, group_title_v, chat_type_v, chat_type_v, client_id_v))
+            conn.commit()
+
             reply_to_id_v = None
             if reply_to_ext_v:
                 cur.execute(f"""
@@ -3880,9 +3920,9 @@ def handler(event: dict, context) -> dict:
             try:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.touch_events
-                        (client_id, channel, direction, external_id, text, status, reply_to_id, account_id)
-                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s)
-                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v))
+                        (client_id, channel, direction, external_id, text, status, reply_to_id, account_id, sender_name)
+                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s, %s)
+                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v, sender_name_v))
                 conn.commit()
             except psycopg2.errors.UniqueViolation:
                 conn.rollback()
@@ -5325,6 +5365,15 @@ def handler(event: dict, context) -> dict:
             include_groups = qs.get("include_groups") == "1"
             group_filter = "" if include_groups else "AND tc.chat_type = 'private'"
 
+            # Фильтр по источнику: показывать только диалоги, где последнее
+            # сообщение пришло/ушло по выбранному каналу. Пусто/"all" — все каналы.
+            channel_q = (qs.get("channel") or "").strip().lower()
+            params = [owner_id]
+            channel_filter = ""
+            if channel_q and channel_q != "all":
+                channel_filter = "AND le.channel = %s"
+                params.append(channel_q)
+
             cur.execute(f"""
                 SELECT tc.id, tc.name, tc.phone, tc.crm_contact_id,
                        tc.interest, tc.stage,
@@ -5343,10 +5392,10 @@ def handler(event: dict, context) -> dict:
                     LIMIT 1
                 ) le ON TRUE
                 LEFT JOIN {SCHEMA}.live_chats lc ON lc.id = tc.crm_contact_id
-                WHERE tc.company_id = %s AND tc.hidden = FALSE {group_filter}
+                WHERE tc.company_id = %s AND tc.hidden = FALSE {group_filter} {channel_filter}
                 ORDER BY tc.pinned DESC, le.created_at DESC
                 LIMIT 200
-            """, (owner_id,))
+            """, tuple(params))
             dialogs = []
             for r in cur.fetchall():
                 last_dir, last_at, last_read_at = r[7], r[9], r[15]

@@ -3,7 +3,7 @@ import { crmFetch } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import DrawerTouchesTab from "./DrawerTouchesTab";
-import { Dialog, channelMeta } from "./messagesChannels";
+import { Dialog, channelMeta, CHANNEL_FILTERS } from "./messagesChannels";
 import { MessagesDialogRow } from "./MessagesDialogRow";
 import { MessagesHiddenModal } from "./MessagesHiddenModal";
 import { useCallClient } from "./useCallClient";
@@ -24,6 +24,9 @@ export default function CrmMessages() {
   // По умолчанию групповые чаты/каналы Telegram скрыты — это не переписка
   // с клиентом, а мусор из групп, куда добавлен рабочий аккаунт.
   const [showGroups, setShowGroups] = useState(false);
+  // Фильтр по источнику: "all" — все каналы, иначе конкретный мессенджер.
+  // Фильтрует сервер, чтобы лимит в 200 диалогов не «съедал» нужный канал.
+  const [channelFilter, setChannelFilter] = useState("all");
 
   const refreshHiddenCount = useCallback(async () => {
     try {
@@ -32,26 +35,28 @@ export default function CrmMessages() {
     } catch { /* тихо */ }
   }, []);
 
-  const load = useCallback(async (silent = false, withGroups = showGroups) => {
+  const load = useCallback(async (silent = false, withGroups = showGroups, ch = channelFilter) => {
     if (!silent) setLoading(true);
     try {
-      const extra = withGroups ? { include_groups: "1" } : undefined;
-      const d = await crmFetch("touch-inbox", undefined, extra) as { dialogs?: Dialog[] };
+      const extra: Record<string, string> = {};
+      if (withGroups) extra.include_groups = "1";
+      if (ch && ch !== "all") extra.channel = ch;
+      const d = await crmFetch("touch-inbox", undefined, Object.keys(extra).length ? extra : undefined) as { dialogs?: Dialog[] };
       setDialogs(d?.dialogs ?? []);
     } catch { /* тихо */ }
     if (!silent) setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { load(false, showGroups); refreshHiddenCount(); }, [showGroups, refreshHiddenCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(false, showGroups, channelFilter); refreshHiddenCount(); }, [showGroups, channelFilter, refreshHiddenCount]); // eslint-disable-line react-hooks/exhaustive-deps
   // Тихий поллинг списка — новые сообщения появляются сверху сами
   useEffect(() => {
     const timer = setInterval(() => {
       if (document.hidden) return; // вкладка браузера свёрнута/неактивна — не дёргаем сервер впустую
-      load(true, showGroups);
+      load(true, showGroups, channelFilter);
     }, 60000);
     return () => clearInterval(timer);
-  }, [load, showGroups]);
+  }, [load, showGroups, channelFilter]);
 
   // Признак непрочитанного — ОБЩИЙ на компанию, приходит с сервера (touch_clients.last_read_at)
   const unreadFor = (d: Dialog): number => (d.unread ? 1 : 0);
@@ -143,6 +148,26 @@ export default function CrmMessages() {
               </span>
             )}
           </button>
+        </div>
+
+        {/* Фильтр по источнику: все каналы / конкретный мессенджер */}
+        <div className="flex-shrink-0 px-3 py-2 flex items-center gap-1.5 overflow-x-auto"
+          style={{ borderBottom: `1px solid ${t.border}` }}>
+          {CHANNEL_FILTERS.map(f => {
+            const active = channelFilter === f.value;
+            const color = f.value === "all" ? t.accent : channelMeta(f.value).color;
+            return (
+              <button key={f.value} onClick={() => setChannelFilter(f.value)}
+                className="flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition"
+                style={{
+                  background: active ? color + "22" : t.surface2,
+                  border: `1px solid ${active ? color : t.border}`,
+                  color: active ? color : t.textMute,
+                }}>
+                {f.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Список */}
