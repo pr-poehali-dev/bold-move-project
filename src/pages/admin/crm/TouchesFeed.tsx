@@ -1,7 +1,7 @@
-import { RefObject } from "react";
+import { RefObject, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { Touch, attachmentsOf, imagesOf, channelMeta, fmtTime, fmtDuration, callMeta } from "./touchesShared";
+import { Touch, attachmentsOf, imagesOf, reactionsOf, QUICK_REACTIONS, channelMeta, fmtTime, fmtDuration, callMeta } from "./touchesShared";
 
 interface Props {
   loading: boolean;
@@ -9,13 +9,21 @@ interface Props {
   expanded: Record<number, boolean>;
   setExpanded: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   onReply: (tt: Touch) => void;
+  /** Повторная отправка сообщения, которое не ушло (статус «ошибка») */
+  onResend?: (tt: Touch) => void;
+  /** Поставить/снять отметку (звёздочку) на сообщении */
+  onStar?: (tt: Touch) => void;
+  /** Поставить реакцию-эмодзи на сообщение (пустая строка — снять) */
+  onReact?: (tt: Touch, emoji: string) => void;
   bottomRef: RefObject<HTMLDivElement>;
 }
 
 // Лента сообщений и звонков вкладки «Касания»: рендерит каждое касание
 // (звонок с расшифровкой либо сообщение с вложениями/цитатой) в виде облачка.
-export default function TouchesFeed({ loading, touches, expanded, setExpanded, onReply, bottomRef }: Props) {
+export default function TouchesFeed({ loading, touches, expanded, setExpanded, onReply, onResend, onStar, onReact, bottomRef }: Props) {
   const t = useTheme();
+  // Какому сообщению сейчас открыт пикер эмодзи
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-6 py-4 flex flex-col gap-2.5">
@@ -31,16 +39,57 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
           const out = tt.direction === "out";
           const isCall = tt.channel === "call";
           const quoted = tt.reply_to_id ? touches.find(x => x.id === tt.reply_to_id) : null;
-          const nonImageAttachments = attachmentsOf(tt.attachments).filter(a => a.type !== "image");
+          const atts = attachmentsOf(tt.attachments);
+          const nonImageAttachments = atts.filter(a => a.type !== "image" && a.type !== "video");
+          const videos = atts.filter(a => a.type === "video");
+          const reactions = reactionsOf(tt.reactions);
+          const failed = out && tt.status === "error";
           return (
             <div key={tt.id} className={`group flex items-center gap-1.5 ${out ? "justify-end" : "justify-start"}`}>
-              {/* Кнопка «Ответить» — слева от чужого сообщения, справа от своего */}
+              {/* Действия над сообщением — слева от чужого, справа от своего */}
               {!isCall && (
-                <button onClick={() => onReply(tt)}
-                  className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full ${out ? "order-2" : ""}`}
-                  style={{ background: t.surface2, color: t.textMute }} title="Ответить">
-                  <Icon name="Reply" size={13} />
-                </button>
+                <div className={`flex-shrink-0 flex items-center gap-1 ${out ? "order-2" : ""}`}>
+                  <button onClick={() => onReply(tt)}
+                    className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full"
+                    style={{ background: t.surface2, color: t.textMute }} title="Ответить">
+                    <Icon name="Reply" size={13} />
+                  </button>
+                  {onStar && (
+                    <button onClick={() => onStar(tt)}
+                      className={`transition p-1.5 rounded-full ${tt.starred ? "" : "opacity-0 group-hover:opacity-100"}`}
+                      style={{ background: t.surface2, color: tt.starred ? "#f59e0b" : t.textMute }}
+                      title={tt.starred ? "Снять отметку" : "Отметить сообщение"}>
+                      <Icon name="Star" size={13} style={tt.starred ? { fill: "#f59e0b" } : undefined} />
+                    </button>
+                  )}
+                  {onReact && (
+                    <div className="relative">
+                      <button onClick={() => setPickerFor(p => p === tt.id ? null : tt.id)}
+                        className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full"
+                        style={{ background: t.surface2, color: t.textMute }} title="Поставить реакцию">
+                        <Icon name="SmilePlus" size={13} />
+                      </button>
+                      {pickerFor === tt.id && (
+                        <div className="absolute z-20 bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-0.5 px-1.5 py-1 rounded-xl shadow-lg"
+                          style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+                          {QUICK_REACTIONS.map(e => (
+                            <button key={e} onClick={() => { onReact(tt, e); setPickerFor(null); }}
+                              className="text-base leading-none px-1 py-0.5 rounded-lg hover:scale-125 transition">
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {failed && onResend && (
+                    <button onClick={() => onResend(tt)}
+                      className="transition p-1.5 rounded-full"
+                      style={{ background: "#ef444422", color: "#ef4444" }} title="Отправить повторно">
+                      <Icon name="RefreshCw" size={13} />
+                    </button>
+                  )}
+                </div>
               )}
               <div className="max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2"
                 style={{
@@ -119,6 +168,12 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                           style={{ maxHeight: 260, border: `1px solid ${t.border}` }} />
                       </a>
                     ))}
+                    {/* Видео из переписки */}
+                    {videos.map((a, i) => (
+                      <video key={i} controls preload="metadata" src={a.url}
+                        className="rounded-lg max-w-full mb-1.5"
+                        style={{ maxHeight: 260, border: `1px solid ${t.border}` }} />
+                    ))}
                     {/* Голосовые сообщения и обычные файлы */}
                     {nonImageAttachments.map((a, i) => a.type === "voice" ? (
                       <div key={i} className="mb-1.5 flex items-center gap-2">
@@ -132,9 +187,21 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                         <span className="text-xs truncate" style={{ color: t.textSub }}>{a.filename || "Файл"}</span>
                       </a>
                     ))}
-                    {(tt.text || !attachmentsOf(tt.attachments).length) && (
+                    {(tt.text || !atts.length) && (
                       <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
                         {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
+                      </div>
+                    )}
+                    {/* Реакции на сообщение */}
+                    {reactions.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {reactions.map((r, i) => (
+                          <span key={i} title={r.author || undefined}
+                            className="text-[11px] leading-none px-1.5 py-1 rounded-full"
+                            style={{ background: t.bg + "88", border: `1px solid ${t.border}` }}>
+                            {r.emoji}
+                          </span>
+                        ))}
                       </div>
                     )}
                     <div className="flex items-center justify-end gap-1.5 mt-1">

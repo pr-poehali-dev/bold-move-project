@@ -474,6 +474,92 @@ def _json_default(o):
 def ok(data):
     return {"statusCode": 200, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps(data, ensure_ascii=False, default=_json_default)}
 
+
+# ── Вложения из мессенджеров: приведение к единому формату CRM ──────────────
+# Воркер на VPS может присылать медиа по-разному (готовым списком attachments,
+# одиночными полями media_url/media_type, полем voice_url и т.п.). Чтобы CRM не
+# зависела от версии воркера, принимаем ЛЮБОЙ из этих вариантов и складываем в
+# один формат: [{"type": image|voice|video|file, "url": ..., "filename": ...}].
+# Расширять список синонимов можно здесь одной строкой, не трогая эндпоинты.
+_MEDIA_TYPE_ALIASES = {
+    "image": "image", "photo": "image", "picture": "image", "img": "image", "sticker": "image",
+    "voice": "voice", "audio": "voice", "voice_note": "voice", "ogg": "voice",
+    "video": "video", "video_note": "video", "animation": "video", "gif": "video",
+    "document": "file", "file": "file", "doc": "file",
+}
+
+_MEDIA_EXT_TYPES = {
+    "jpg": "image", "jpeg": "image", "png": "image", "gif": "image", "webp": "image", "heic": "image", "bmp": "image",
+    "ogg": "voice", "oga": "voice", "opus": "voice", "mp3": "voice", "m4a": "voice", "wav": "voice", "aac": "voice",
+    "mp4": "video", "mov": "video", "webm": "video", "mkv": "video", "avi": "video",
+}
+
+
+def _media_type_from(raw_type, url, filename):
+    """Определяет вид вложения: сначала по переданному типу, затем по расширению."""
+    t = (str(raw_type or "")).strip().lower()
+    if t in _MEDIA_TYPE_ALIASES:
+        return _MEDIA_TYPE_ALIASES[t]
+    src = str(filename or url or "").split("?")[0]
+    ext = src.rsplit(".", 1)[-1].lower() if "." in src else ""
+    return _MEDIA_EXT_TYPES.get(ext, "file")
+
+
+def normalize_incoming_media(body):
+    """Собирает вложения входящего сообщения из любых поддерживаемых полей.
+
+    Возвращает (attachments_list, audio_url, duration_sec):
+    attachments_list — список вложений в формате CRM (или None, если их нет);
+    audio_url/duration_sec — голосовое отдельно, чтобы плеер в ленте работал
+    так же, как для записей звонков.
+    """
+    items = []
+
+    def add(url, raw_type=None, filename=None, duration=None):
+        if not url or not isinstance(url, str) or not url.strip():
+            return
+        items.append({
+            "type": _media_type_from(raw_type, url, filename),
+            "url": url.strip(),
+            "filename": filename or None,
+            "duration_sec": duration if isinstance(duration, int) else None,
+        })
+
+    raw_list = body.get("attachments") or body.get("media") or body.get("files")
+    if isinstance(raw_list, list):
+        for a in raw_list:
+            if isinstance(a, str):
+                add(a)
+            elif isinstance(a, dict):
+                add(a.get("url") or a.get("media_url") or a.get("link") or a.get("href"),
+                    a.get("type") or a.get("media_type") or a.get("kind"),
+                    a.get("filename") or a.get("file_name") or a.get("name"),
+                    a.get("duration_sec") or a.get("duration"))
+
+    # Одиночное вложение отдельными полями
+    add(body.get("media_url") or body.get("file_url") or body.get("attachment_url"),
+        body.get("media_type") or body.get("attachment_type"),
+        body.get("file_name") or body.get("filename"),
+        body.get("duration_sec") or body.get("duration"))
+    add(body.get("photo_url") or body.get("image_url"), "image",
+        body.get("file_name") or body.get("filename"))
+    add(body.get("video_url"), "video", body.get("file_name") or body.get("filename"))
+    add(body.get("voice_url") or body.get("audio_url"), "voice",
+        body.get("file_name") or body.get("filename"),
+        body.get("duration_sec") or body.get("duration"))
+
+    # Убираем дубли по URL, сохраняя порядок
+    seen, uniq = set(), []
+    for it in items:
+        if it["url"] in seen:
+            continue
+        seen.add(it["url"])
+        uniq.append(it)
+
+    audio_url = next((it["url"] for it in uniq if it["type"] == "voice"), None)
+    duration = next((it["duration_sec"] for it in uniq if it["type"] == "voice"), None)
+    return (uniq or None), audio_url, duration
+
 def err(msg, code=400):
     return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
@@ -3487,7 +3573,8 @@ def handler(event: dict, context) -> dict:
                 # sender_name — кто из участников группы написал (для личных диалогов пусто).
                 cur.execute(f"""
                     SELECT id, channel, direction, external_id, text, audio_url,
-                           duration_sec, attachments, status, created_at, reply_to_id, sender_name
+                           duration_sec, attachments, status, created_at, reply_to_id, sender_name,
+                           starred, reactions
                     FROM {SCHEMA}.touch_events
                     WHERE client_id=%s AND status != 'hidden'
                     ORDER BY created_at ASC, id ASC
@@ -3498,6 +3585,7 @@ def handler(event: dict, context) -> dict:
                     "attachments": r[7], "status": r[8], "created_at": r[9],
                     "answered_by": (detect_call_answered_by(r[4], r[6], r[8]) if r[1] == "call" else None),
                     "reply_to_id": r[10], "sender_name": r[11],
+                    "starred": r[12], "reactions": r[13],
                 } for r in cur.fetchall()]
 
                 # Последний детальный ИИ-анализ клиента (для вкладки «Аналитика»)
@@ -3847,6 +3935,11 @@ def handler(event: dict, context) -> dict:
             # Как подписывать карточку: у группы — её название, у личного чата — имя контакта
             display_name_v = (group_title_v if chat_type_v != "private" else contact_name_v)
 
+            # Вложения из мессенджера. Воркер может прислать их в разных видах:
+            # готовым списком attachments или одиночными полями media_url/media_type.
+            # Приводим всё к единому формату CRM: [{type, url, filename, duration_sec}].
+            incoming_atts, incoming_audio, incoming_dur = normalize_incoming_media(body)
+
             if channel_v not in ("telegram", "max"):
                 return err("unknown channel")
             if not phone_v and not chat_id_v:
@@ -3920,9 +4013,13 @@ def handler(event: dict, context) -> dict:
             try:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.touch_events
-                        (client_id, channel, direction, external_id, text, status, reply_to_id, account_id, sender_name)
-                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s, %s)
-                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v, sender_name_v))
+                        (client_id, channel, direction, external_id, text, status, reply_to_id,
+                         account_id, sender_name, attachments, audio_url, duration_sec)
+                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s, %s, %s::jsonb, %s, %s)
+                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v,
+                      sender_name_v,
+                      json.dumps(incoming_atts, ensure_ascii=False) if incoming_atts else None,
+                      incoming_audio, incoming_dur))
                 conn.commit()
             except psycopg2.errors.UniqueViolation:
                 conn.rollback()
@@ -3937,7 +4034,9 @@ def handler(event: dict, context) -> dict:
                 return err("неверный ключ", 401)
             channel_q = qs.get("channel")
             cur.execute(f"""
-                SELECT te.id, te.client_id, te.text, te.channel, tc.channel_ids, tc.phone, ma.external_id
+                SELECT te.id, te.client_id, te.text, te.channel, tc.channel_ids, tc.phone, ma.external_id,
+                       te.attachments, te.reply_to_id,
+                       (SELECT rt.external_id FROM {SCHEMA}.touch_events rt WHERE rt.id = te.reply_to_id)
                 FROM {SCHEMA}.touch_events te
                 JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
                 LEFT JOIN {SCHEMA}.messenger_accounts ma ON ma.id = te.account_id
@@ -3950,7 +4049,11 @@ def handler(event: dict, context) -> dict:
             rows = cur.fetchall()
             ids = [r[0] for r in rows]
             items = []
-            for touch_id, cid, text, msg_channel, channel_ids, phone, ext_line in rows:
+            for touch_id, cid, text, msg_channel, channel_ids, phone, ext_line, atts, reply_id, reply_ext in rows:
+                # Вложения отдаём и списком, и первым файлом отдельными полями —
+                # чтобы воркер понял их в любом из форматов, без подгонки версий.
+                att_list = atts if isinstance(atts, list) else []
+                first = att_list[0] if att_list else None
                 items.append({
                     "message_id": touch_id,
                     "touch_id": touch_id,
@@ -3961,6 +4064,12 @@ def handler(event: dict, context) -> dict:
                     "text": text,
                     "line_external_id": ext_line,
                     "external_id": ext_line,
+                    "attachments": att_list,
+                    "media_url": (first or {}).get("url"),
+                    "media_type": (first or {}).get("type"),
+                    "file_name": (first or {}).get("filename"),
+                    "reply_to_id": reply_id,
+                    "reply_to_external_msg_id": reply_ext,
                 })
             if ids:
                 cur.execute(f"""
@@ -4004,6 +4113,136 @@ def handler(event: dict, context) -> dict:
                 """, (touch_id_v,))
             conn.commit()
             return ok({"ok": True})
+
+        # ── WORKER-REACTION: клиент поставил/снял реакцию на сообщение ─────────────
+        # Воркер сообщает о реакции в мессенджере. Ищем сообщение по его ID в канале
+        # (external_id) — это надёжнее, чем по внутреннему id CRM.
+        if resource == "worker-reaction" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            channel_v = body.get("channel")
+            ext_msg_v = body.get("external_msg_id") or body.get("message_external_id")
+            emoji_v = (body.get("emoji") or body.get("reaction") or "").strip()
+            author_v = body.get("author") or body.get("sender_name") or None
+            removed_v = bool(body.get("removed"))
+            if not channel_v or not ext_msg_v:
+                return err("channel и external_msg_id обязательны")
+            cur.execute(f"""
+                SELECT te.id, te.reactions FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id=%s AND te.channel=%s AND te.external_id=%s
+                LIMIT 1
+            """, (owner_id, channel_v, str(ext_msg_v)))
+            rrow = cur.fetchone()
+            if not rrow:
+                return ok({"skipped": "message not found"})
+            cur_reactions = rrow[1] if isinstance(rrow[1], list) else []
+            # Убираем прошлую реакцию этого же автора, затем добавляем новую
+            cur_reactions = [x for x in cur_reactions
+                             if not (isinstance(x, dict) and x.get("author") == author_v)]
+            if emoji_v and not removed_v:
+                cur_reactions.append({"emoji": emoji_v, "author": author_v, "by": "in"})
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events SET reactions=%s::jsonb WHERE id=%s
+            """, (json.dumps(cur_reactions, ensure_ascii=False) if cur_reactions else None, rrow[0]))
+            conn.commit()
+            return ok({"ok": True, "touch_id": rrow[0]})
+
+        # ── WORKER-STAR: клиент отметил сообщение в мессенджере ────────────────────
+        if resource == "worker-star" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            channel_v = body.get("channel")
+            ext_msg_v = body.get("external_msg_id") or body.get("message_external_id")
+            if not channel_v or not ext_msg_v:
+                return err("channel и external_msg_id обязательны")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events te SET starred=%s
+                FROM {SCHEMA}.touch_clients tc
+                WHERE tc.id = te.client_id AND tc.company_id=%s
+                      AND te.channel=%s AND te.external_id=%s
+            """, (bool(body.get("starred", True)), owner_id, channel_v, str(ext_msg_v)))
+            conn.commit()
+            return ok({"ok": True})
+
+        # ── TOUCH-RESEND: повторная отправка сообщения после ошибки ────────────────
+        # Не создаём копию: возвращаем то же сообщение в очередь, чтобы история
+        # переписки не засорялась дублями. Воркер заберёт его на ближайшем опросе.
+        if resource == "touch-resend" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            touch_id_v = body.get("touch_id") or body.get("message_id")
+            if not touch_id_v:
+                return err("touch_id обязателен")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events te SET status='pending'
+                FROM {SCHEMA}.touch_clients tc
+                WHERE tc.id = te.client_id AND tc.company_id=%s
+                      AND te.id=%s AND te.direction='out'
+                      AND te.status IN ('error', 'sending')
+                RETURNING te.channel
+            """, (owner_id, touch_id_v))
+            rrow = cur.fetchone()
+            conn.commit()
+            if not rrow:
+                return err("сообщение не найдено или его нельзя переотправить", 404)
+            if rrow[0] in ("telegram", "max"):
+                notify_worker_push("resend")
+            return ok({"ok": True, "status": "pending"})
+
+        # ── TOUCH-STAR: менеджер отметил сообщение в CRM ───────────────────────────
+        if resource == "touch-star" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            touch_id_v = body.get("touch_id")
+            if not touch_id_v:
+                return err("touch_id обязателен")
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events te SET starred=%s
+                FROM {SCHEMA}.touch_clients tc
+                WHERE tc.id = te.client_id AND tc.company_id=%s AND te.id=%s
+                RETURNING te.starred
+            """, (bool(body.get("starred", True)), owner_id, touch_id_v))
+            rrow = cur.fetchone()
+            conn.commit()
+            if not rrow:
+                return err("сообщение не найдено", 404)
+            return ok({"ok": True, "starred": rrow[0]})
+
+        # ── TOUCH-REACT: менеджер поставил реакцию на сообщение ────────────────────
+        # Реакция сохраняется в CRM сразу; если канал поддерживает — воркер
+        # доставит её в мессенджер (для этого отдаём её в очередь на отправку).
+        if resource == "touch-react" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            touch_id_v = body.get("touch_id")
+            emoji_v = (body.get("emoji") or "").strip()
+            if not touch_id_v:
+                return err("touch_id обязателен")
+            cur.execute(f"""
+                SELECT te.id, te.reactions FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id=%s AND te.id=%s
+            """, (owner_id, touch_id_v))
+            rrow = cur.fetchone()
+            if not rrow:
+                return err("сообщение не найдено", 404)
+            cur_reactions = rrow[1] if isinstance(rrow[1], list) else []
+            # Реакция менеджера одна: старую свою убираем, новую ставим
+            cur_reactions = [x for x in cur_reactions
+                             if not (isinstance(x, dict) and x.get("by") == "out")]
+            if emoji_v:
+                cur_reactions.append({"emoji": emoji_v, "author": "Менеджер", "by": "out"})
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_events SET reactions=%s::jsonb WHERE id=%s
+            """, (json.dumps(cur_reactions, ensure_ascii=False) if cur_reactions else None, touch_id_v))
+            conn.commit()
+            return ok({"ok": True, "reactions": cur_reactions})
 
         # ── WORKER-MARK-READ: собеседник прочитал сообщение(я) ──────────────────────
         if resource == "worker-mark-read" and method == "POST":

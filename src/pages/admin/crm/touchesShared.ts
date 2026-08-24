@@ -3,10 +3,26 @@
 // (лента сообщений, поле ввода, шапка).
 
 export interface AttachmentItem {
-  type: "image" | "file" | "voice";
+  type: "image" | "file" | "voice" | "video";
   url: string;
   filename?: string;
   duration_sec?: number;
+}
+
+/** Реакция на сообщение: by = 'in' поставил клиент, 'out' — менеджер из CRM */
+export interface MessageReaction {
+  emoji: string;
+  author?: string | null;
+  by?: "in" | "out";
+}
+
+/** Набор эмодзи для быстрой реакции на сообщение. Меняется одной строкой. */
+export const QUICK_REACTIONS = ["👍", "❤️", "🔥", "😁", "😮", "😢", "👏", "🙏"];
+
+export function reactionsOf(raw: unknown): MessageReaction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((r): r is MessageReaction =>
+    !!r && typeof r === "object" && typeof (r as MessageReaction).emoji === "string");
 }
 
 export interface Touch {
@@ -29,6 +45,10 @@ export interface Touch {
   /** Имя автора сообщения — заполнено только для группового чата (кто из
    * участников написал), в личных диалогах не используется */
   sender_name?: string | null;
+  /** Сообщение отмечено (звёздочка) — менеджером в CRM или клиентом в мессенджере */
+  starred?: boolean;
+  /** Реакции-эмодзи на сообщение */
+  reactions?: unknown;
 }
 
 // Достаёт вложения сообщения в типизированном виде. Формат приходит из

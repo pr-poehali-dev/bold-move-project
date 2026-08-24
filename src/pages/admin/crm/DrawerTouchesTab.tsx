@@ -188,6 +188,45 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
     setSending(false);
   };
 
+  // ── Действия над отдельным сообщением ───────────────────────────────────
+  // Везде сначала меняем состояние локально (интерфейс отзывается мгновенно), затем
+  // сохраняем на сервере; при ошибке перечитываем ленту и откатываемся.
+  const handleResend = async (tt: Touch) => {
+    setTouches(prev => prev.map(x => x.id === tt.id ? { ...x, status: "pending" } : x));
+    try {
+      await crmFetch("touch-resend", { method: "POST", body: JSON.stringify({ touch_id: tt.id }) });
+    } catch {
+      load(true);
+    }
+  };
+
+  const handleStar = async (tt: Touch) => {
+    const next = !tt.starred;
+    setTouches(prev => prev.map(x => x.id === tt.id ? { ...x, starred: next } : x));
+    try {
+      await crmFetch("touch-star", { method: "POST", body: JSON.stringify({ touch_id: tt.id, starred: next }) });
+    } catch {
+      load(true);
+    }
+  };
+
+  const handleReact = async (tt: Touch, emoji: string) => {
+    const prevList = Array.isArray(tt.reactions) ? tt.reactions as Record<string, unknown>[] : [];
+    const mine = prevList.filter(r => r?.by === "out")[0] as { emoji?: string } | undefined;
+    // Повторный клик по той же реакции — снимаем её
+    const nextEmoji = mine?.emoji === emoji ? "" : emoji;
+    const optimistic = [
+      ...prevList.filter(r => r?.by !== "out"),
+      ...(nextEmoji ? [{ emoji: nextEmoji, author: "Менеджер", by: "out" }] : []),
+    ];
+    setTouches(prev => prev.map(x => x.id === tt.id ? { ...x, reactions: optimistic } : x));
+    try {
+      await crmFetch("touch-react", { method: "POST", body: JSON.stringify({ touch_id: tt.id, emoji: nextEmoji }) });
+    } catch {
+      load(true);
+    }
+  };
+
   // Прикрепление файла/картинки через диалог выбора
   const handlePickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,7 +236,13 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
     setSendError(null);
     try {
       const url = await uploadFile(file);
-      setPendingAttachment({ type: file.type.startsWith("image/") ? "image" : "file", url, filename: file.name });
+      // Тип вложения по MIME файла: от него зависит, как сообщение отрисуется
+      // в ленте и как воркер отправит его в мессенджер (фото/видео/голос/файл).
+      const kind = file.type.startsWith("image/") ? "image"
+        : file.type.startsWith("video/") ? "video"
+        : file.type.startsWith("audio/") ? "voice"
+        : "file";
+      setPendingAttachment({ type: kind, url, filename: file.name });
     } catch {
       setSendError("Не удалось загрузить файл");
     }
@@ -283,6 +328,9 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
         expanded={expanded}
         setExpanded={setExpanded}
         onReply={(tt) => { setReplyTo(tt); textareaRef.current?.focus(); }}
+        onResend={handleResend}
+        onStar={handleStar}
+        onReact={handleReact}
         bottomRef={bottomRef}
       />
 
