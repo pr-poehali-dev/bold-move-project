@@ -320,6 +320,19 @@ export function hasPermission(user: AuthUser | null, key: keyof Permissions): bo
   return false;
 }
 
+/**
+ * Список статусов воронки, разрешённых пользователю.
+ * null — ограничений нет (владелец/мастер или сотрудник без настройки этапов),
+ * массив — видны только перечисленные этапы. Используется, чтобы полностью
+ * скрывать недоступные вкладки воронки, а не просто прятать их содержимое.
+ */
+export function allowedStatusesOf(user: AuthUser | null): string[] | null {
+  if (!user || user.is_master) return null;
+  if (user.role === "company" || user.role === "installer") return null;
+  const list = user.permissions?.allowed_statuses;
+  return Array.isArray(list) && list.length > 0 ? list : null;
+}
+
 export interface AuthUser {
   id: number;
   email: string;

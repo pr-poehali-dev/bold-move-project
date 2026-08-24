@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
+import { useAuth, allowedStatusesOf } from "@/context/AuthContext";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
 import { TabDef, Props } from "./ordersTabsShared";
@@ -17,10 +18,18 @@ export function OrdersTabs({
   substatuses, onSubstatusesChange,
 }: Props) {
   const t = useTheme();
+  const { user } = useAuth();
   const [openPopup, setOpenPopup] = useState<string | null>(null);
 
+  // Этапы, недоступные сотруднику, СКРЫВАЕМ полностью — вкладка не отображается
+  // вообще, а не просто показывает пустой список. Вкладка видна, если хотя бы один
+  // её статус разрешён. null = ограничений нет (владелец видит всё, как раньше).
+  const allowed = allowedStatusesOf(user);
+  const isTabAllowed = (statuses: readonly string[]) =>
+    !allowed || statuses.length === 0 || statuses.some(s => allowed.includes(s));
+
   const defaultTabs: TabDef[] = ORDERS_TABS
-    .filter(tab => !hiddenTabs.has(tab.id))
+    .filter(tab => !hiddenTabs.has(tab.id) && isTabAllowed(tab.statuses))
     .map(tab => ({
       id: tab.id,
       label: tabLabels[tab.id] || tab.label,
@@ -30,14 +39,16 @@ export function OrdersTabs({
       emptyText: tab.emptyText,
     }));
 
-  const customTabsMapped: TabDef[] = customTabs.map(tab => ({
-    id: tab.id,
-    label: tabLabels[tab.id] || tab.label,
-    icon: tab.icon ?? "Layers",
-    color: tabColors[tab.id] || tab.color,
-    statuses: Array.isArray(tab.statuses) ? tab.statuses : [],
-    emptyText: tab.emptyText ?? "Нет данных",
-  }));
+  const customTabsMapped: TabDef[] = customTabs
+    .filter(tab => isTabAllowed(Array.isArray(tab.statuses) ? tab.statuses : []))
+    .map(tab => ({
+      id: tab.id,
+      label: tabLabels[tab.id] || tab.label,
+      icon: tab.icon ?? "Layers",
+      color: tabColors[tab.id] || tab.color,
+      statuses: Array.isArray(tab.statuses) ? tab.statuses : [],
+      emptyText: tab.emptyText ?? "Нет данных",
+    }));
 
   const allTabs = [...defaultTabs, ...customTabsMapped];
 
@@ -168,12 +179,15 @@ export function OrdersTabs({
           );
         })}
 
-        {/* Кнопка добавить таб */}
-        <button onClick={onAddTab}
-          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition flex-shrink-0 hover:bg-violet-500/10"
-          style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#a78bfa" }}>
-          <Icon name="Plus" size={13} />
-        </button>
+        {/* Кнопка добавить таб — скрыта у сотрудников с ограничением по этапам:
+            настройка воронки это дело владельца, а не ограниченного сотрудника */}
+        {!allowed && (
+          <button onClick={onAddTab}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition flex-shrink-0 hover:bg-violet-500/10"
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#a78bfa" }}>
+            <Icon name="Plus" size={13} />
+          </button>
+        )}
       </div>
     </div>
   );

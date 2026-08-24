@@ -76,6 +76,17 @@ export function OrdersClientRowDesktop({
             {[c.client_name, c.phone].filter(Boolean).join(" · ")}
           </div>
         )}
+        {/* Ответственный: кто взял заявку в работу. Если никого — заявка ничья,
+            её видно тем, кому разрешены неназначенные, и можно взять. */}
+        <div className="flex items-center gap-1 mt-0.5">
+          <Icon name={c.assigned_name ? "UserCheck" : "UserPlus"} size={9}
+            style={{ color: c.assigned_name ? "#34d399" : t.textMute }} />
+          <span className="text-[10px] truncate"
+            style={{ color: c.assigned_name ? t.textSub : t.textMute }}
+            title={c.assigned_name ? `Ответственный: ${c.assigned_name}` : "Заявка ничья — можно взять в работу"}>
+            {c.assigned_name || "Не назначен"}
+          </span>
+        </div>
       </div>
 
       <div className="w-44 flex-shrink-0">

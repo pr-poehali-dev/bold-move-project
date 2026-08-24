@@ -15,7 +15,7 @@ export type {
   PageSettings, NavButtonContent, NavButton,
   Permissions, AuthUser, AuthCtx,
 } from "./authTypes";
-export { hasPermission, BUSINESS_ROLES, CLIENT_ROLES } from "./authTypes";
+export { hasPermission, allowedStatusesOf, BUSINESS_ROLES, CLIENT_ROLES } from "./authTypes";
 export { useAuth } from "./authContext";
 
 // ── Провайдер ─────────────────────────────────────────────────────────────────
