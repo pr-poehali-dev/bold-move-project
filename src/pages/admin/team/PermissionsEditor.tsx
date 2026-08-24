@@ -26,7 +26,7 @@ export const ORDERS_SCOPES = [
   { id: "own",      label: "Только свои",          icon: "User",      color: "#f59e0b",
     desc: "Только закреплённые за ним заявки" },
   { id: "own_free", label: "Свои + неназначенные", icon: "UserPlus",  color: "#34d399",
-    desc: "Свои плюс новые ничьи — можно взять в работу" },
+    desc: "Свои плюс НОВЫЕ обращения без ответственного (этап «Заявки»)" },
 ];
 
 type PermRow = {

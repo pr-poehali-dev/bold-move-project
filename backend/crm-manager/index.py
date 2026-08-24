@@ -1294,12 +1294,16 @@ def handler(event: dict, context) -> dict:
                     sql += " AND status = ANY(%s)"
                     params.append(allowed_statuses)
                 # Видимость по ответственному: own — только свои заявки,
-                # own_free — свои + ничьи (новые, которые можно взять в работу).
+                # own_free — свои + СВОБОДНЫЕ (именно НОВЫЕ обращения без ответственного,
+                # status='new'). Заявка без ответственного на более позднем этапе
+                # (например замер/монтаж без назначенного менеджера) — это не «взять
+                # в работу», а недосмотр, её должен явно назначить владелец/руководитель,
+                # поэтому сотруднику она не показывается автоматически.
                 if not is_master and orders_scope == "own":
                     sql += " AND lc.assigned_to = %s"
                     params.append(master_uid)
                 elif not is_master and orders_scope == "own_free":
-                    sql += " AND (lc.assigned_to = %s OR lc.assigned_to IS NULL)"
+                    sql += " AND (lc.assigned_to = %s OR (lc.assigned_to IS NULL AND status = 'new'))"
                     params.append(master_uid)
                 if search:
                     sql += " AND (client_name ILIKE %s OR phone ILIKE %s OR address ILIKE %s)"
