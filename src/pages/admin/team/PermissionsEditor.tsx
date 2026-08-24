@@ -56,6 +56,8 @@ export const PERM_TREE: PermSection[] = [
       { label: "Тарифы и пакеты",   icon: "Sparkles",        color: "#fbbf24", view: "tariffs_view",     desc: "Раздел тарифов и пакетов" },
       { label: "Панель управления", icon: "Settings2",       color: "#34d399", view: "admin_panel_view", desc: "Административная панель компании" },
       { label: "Поддержка",         icon: "MessageCircle",   color: "#29b6f6", view: "support_view",     desc: "Раздел поддержки" },
+      { label: "Заявки (журнал)",   icon: "Inbox",           color: "#38bdf8", view: "leads_log_view",   desc: "Журнал входящих заявок в верхней панели" },
+      { label: "Баг-репорт",        icon: "Bug",             color: "#fb7185", view: "bug_report_view",  desc: "Кнопка отправки баг-репорта в верхней панели" },
     ],
   },
   {

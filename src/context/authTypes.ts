@@ -226,6 +226,10 @@ export interface Permissions {
   tariffs_view?:     boolean;
   admin_panel_view?: boolean;
   support_view?:     boolean;
+  // Журнал входящих заявок и форма баг-репорта в верхней панели быстрой навигации.
+  // Раньше показывались всем без проверки — теперь тоже управляются правами.
+  leads_log_view?:   boolean;
+  bug_report_view?:  boolean;
 
   // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
   clients_view?:   boolean;
