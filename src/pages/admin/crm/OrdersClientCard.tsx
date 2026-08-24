@@ -116,6 +116,14 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                 <span className="text-sm font-bold truncate flex-1 min-w-0" style={{ color: t.text }}>
                   {localStorage.getItem(`order_title_${c.id}`) || `Заявка №${c.id}`}
                 </span>
+                {/* Ответственный — компактно, иконкой с подсказкой при наведении,
+                    чтобы не занимать отдельную строку в карточке */}
+                <span className="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded-full"
+                  title={c.assigned_name ? `Ответственный: ${c.assigned_name}` : "Ответственный не назначен"}
+                  style={{ background: c.assigned_name ? "#34d39922" : t.surface2 }}>
+                  <Icon name={c.assigned_name ? "UserCheck" : "UserPlus"} size={10}
+                    style={{ color: c.assigned_name ? "#34d399" : t.textMute }} />
+                </span>
                 {isInstall
                   ? <InstallProgress client={clientWithSub} />
                   : (
@@ -227,14 +235,6 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                     {c.area && <span className="flex-shrink-0 text-[10px] font-medium" style={{ color: t.textMute }}>{c.area} м²</span>}
                   </div>
                 )}
-                {/* Ответственный за заявку — кто взял её в работу */}
-                <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg" style={{ background: t.surface2 }}>
-                  <Icon name={c.assigned_name ? "UserCheck" : "UserPlus"} size={10}
-                    style={{ color: c.assigned_name ? "#34d399" : t.textMute, flexShrink: 0 }} />
-                  <span className="truncate" style={{ color: c.assigned_name ? t.textSub : t.textMute }}>
-                    {c.assigned_name || "Ответственный не назначен"}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
