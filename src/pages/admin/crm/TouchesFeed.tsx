@@ -46,28 +46,30 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
           const failed = out && tt.status === "error";
           return (
             <div key={tt.id} className={`group flex items-center gap-1.5 ${out ? "justify-end" : "justify-start"}`}>
-              {/* Действия над сообщением — слева от чужого, справа от своего */}
+              {/* Действия над сообщением — слева от чужого, справа от своего.
+                  Сетка 2×2 вместо одного длинного ряда — компактнее, особенно
+                  когда видны все 4 кнопки (ответить/отметить/реакция/повтор). */}
               {!isCall && (
-                <div className={`flex-shrink-0 flex items-center gap-1 ${out ? "order-2" : ""}`}>
+                <div className={`flex-shrink-0 grid grid-cols-2 gap-0.5 ${out ? "order-2" : ""}`}>
                   <button onClick={() => onReply(tt)}
-                    className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full"
+                    className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full"
                     style={{ background: t.surface2, color: t.textMute }} title="Ответить">
-                    <Icon name="Reply" size={13} />
+                    <Icon name="Reply" size={11} />
                   </button>
                   {onStar && (
                     <button onClick={() => onStar(tt)}
-                      className={`transition p-1.5 rounded-full ${tt.starred ? "" : "opacity-0 group-hover:opacity-100"}`}
+                      className={`transition p-1 rounded-full ${tt.starred ? "" : "opacity-0 group-hover:opacity-100"}`}
                       style={{ background: t.surface2, color: tt.starred ? "#f59e0b" : t.textMute }}
                       title={tt.starred ? "Снять отметку" : "Отметить сообщение"}>
-                      <Icon name="Star" size={13} style={tt.starred ? { fill: "#f59e0b" } : undefined} />
+                      <Icon name="Star" size={11} style={tt.starred ? { fill: "#f59e0b" } : undefined} />
                     </button>
                   )}
                   {onReact && (
                     <div className="relative">
                       <button onClick={() => setPickerFor(p => p === tt.id ? null : tt.id)}
-                        className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-full"
+                        className="opacity-0 group-hover:opacity-100 transition p-1 rounded-full"
                         style={{ background: t.surface2, color: t.textMute }} title="Поставить реакцию">
-                        <Icon name="SmilePlus" size={13} />
+                        <Icon name="SmilePlus" size={11} />
                       </button>
                       {pickerFor === tt.id && (
                         <div className="absolute z-20 bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-0.5 px-1.5 py-1 rounded-xl shadow-lg"
@@ -84,9 +86,9 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                   )}
                   {failed && onResend && (
                     <button onClick={() => onResend(tt)}
-                      className="transition p-1.5 rounded-full"
+                      className="transition p-1 rounded-full"
                       style={{ background: "#ef444422", color: "#ef4444" }} title="Отправить повторно">
-                      <Icon name="RefreshCw" size={13} />
+                      <Icon name="RefreshCw" size={11} />
                     </button>
                   )}
                 </div>
