@@ -934,6 +934,12 @@ def handler(event: dict, context) -> dict:
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
     # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
     allowed_statuses = None
+    # Тонкая настройка доступа сотрудника (значения по умолчанию = прежнее поведение,
+    # чтобы обновление ничего не изменило для уже заведённых сотрудников):
+    orders_scope = "all"          # all | own | own_free — какие заявки видит
+    orders_edit_own_only = False  # редактировать можно только свои заявки
+    calendar_event_types = None   # None = видны все типы событий календаря
+    calendar_own_only = False     # в календаре только события по своим заявкам
     # True только если токен реально проверен и найдена активная сессия в БД.
     # Отсутствие токена НЕ должно трактоваться как доступ мастера (см. resource=="clients" ниже).
     authenticated = False
@@ -967,6 +973,16 @@ def handler(event: dict, context) -> dict:
                         st = upermissions.get("allowed_statuses")
                         if isinstance(st, list) and len(st) > 0:
                             allowed_statuses = st
+                        # Видимость заявок по ответственному
+                        sc = upermissions.get("orders_scope")
+                        if sc in ("all", "own", "own_free"):
+                            orders_scope = sc
+                        orders_edit_own_only = bool(upermissions.get("orders_edit_own_only"))
+                        # Календарь: типы событий и «только свои»
+                        et = upermissions.get("calendar_event_types")
+                        if isinstance(et, list) and len(et) > 0:
+                            calendar_event_types = et
+                        calendar_own_only = bool(upermissions.get("calendar_own_only"))
                 else:
                     company_id = uid
 
@@ -1196,9 +1212,12 @@ def handler(event: dict, context) -> dict:
                            GREATEST(lc.updated_at, COALESCE(lact.last_touch_at, lc.updated_at)) AS last_activity_at,
                            COALESCE(missed.has_missed_call, FALSE) AS has_missed_call,
                            COALESCE(u.is_demo, FALSE) AS is_demo,
-                           COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total
+                           COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total,
+                           lc.assigned_to,
+                           COALESCE(NULLIF(au.name, ''), au.email) AS assigned_name
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
+                    LEFT JOIN {SCHEMA}.users au ON au.id = lc.assigned_to
                     LEFT JOIN (
                         -- Кастомные статьи затрат заказа (Технолог, Логистика, Менеджер и т.п.),
                         -- заведённые через "+ Добавить строку" в блоке "Затраты". Тип статьи
@@ -1274,6 +1293,14 @@ def handler(event: dict, context) -> dict:
                 if allowed_statuses is not None:
                     sql += " AND status = ANY(%s)"
                     params.append(allowed_statuses)
+                # Видимость по ответственному: own — только свои заявки,
+                # own_free — свои + ничьи (новые, которые можно взять в работу).
+                if not is_master and orders_scope == "own":
+                    sql += " AND lc.assigned_to = %s"
+                    params.append(master_uid)
+                elif not is_master and orders_scope == "own_free":
+                    sql += " AND (lc.assigned_to = %s OR lc.assigned_to IS NULL)"
+                    params.append(master_uid)
                 if search:
                     sql += " AND (client_name ILIKE %s OR phone ILIKE %s OR address ILIKE %s)"
                     params.extend([f"%{search}%"] * 3)
@@ -1406,6 +1433,21 @@ def handler(event: dict, context) -> dict:
                     new_status = body.get("status")
                     if new_status and new_status not in allowed_statuses:
                         return err("Нет доступа для перевода на этот этап", 403)
+
+                # Ответственный за заявку: кто первым взял её в работу, тот и закрепляется.
+                # Если заявка ещё ничья (assigned_to IS NULL) — записываем текущего сотрудника.
+                # Если уже закреплена за другим и сотруднику разрешено править только свои —
+                # изменение отклоняем, чтобы чужую заявку нельзя было перехватить.
+                if not is_master and master_uid:
+                    cur.execute(f"SELECT assigned_to FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    a_row = cur.fetchone()
+                    current_owner = a_row[0] if a_row else None
+                    if current_owner is None:
+                        cur.execute(f"UPDATE {SCHEMA}.live_chats SET assigned_to=%s WHERE id=%s",
+                                    (master_uid, int(cid)))
+                        conn.commit()
+                    elif orders_edit_own_only and current_owner != master_uid:
+                        return err("Заявка закреплена за другим сотрудником", 403)
 
                 # При переводе на этап «В работе» (call) без явно указанного подэтапа —
                 # автоматически ставим подэтап «Новый в работе» (если он есть у компании).
@@ -2232,24 +2274,26 @@ def handler(event: dict, context) -> dict:
                         {cond} {'AND' if cond else 'WHERE'} (lc.status IS NULL OR lc.status != 'deleted')
                         ORDER BY ce.start_time DESC LIMIT 200""", cond_args)
                 else:
+                    # Собираем условия по кусочкам: к базовым (компания, не удалённые)
+                    # добавляются персональные ограничения сотрудника — разрешённые типы
+                    # событий и «только по своим заявкам». Без настроек поведение прежнее.
+                    cal_sql = f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
+                        ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
+                        FROM {SCHEMA}.calendar_events ce
+                        LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
+                        WHERE ce.company_id=%s AND (lc.status IS NULL OR lc.status != 'deleted')"""
+                    cal_args = [company_id]
                     if month and year:
-                        cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
-                            FROM {SCHEMA}.calendar_events ce
-                            LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
-                            WHERE ce.company_id=%s
-                              AND EXTRACT(MONTH FROM ce.start_time)=%s
-                              AND EXTRACT(YEAR FROM ce.start_time)=%s
-                              AND (lc.status IS NULL OR lc.status != 'deleted')
-                            ORDER BY ce.start_time""", (company_id, int(month), int(year)))
-                    else:
-                        cur.execute(f"""SELECT ce.id, ce.client_id, ce.title, ce.description, ce.event_type,
-                            ce.start_time, ce.end_time, ce.color, ce.created_at, lc.client_name, lc.phone, lc.address
-                            FROM {SCHEMA}.calendar_events ce
-                            LEFT JOIN {SCHEMA}.live_chats lc ON ce.client_id=lc.id
-                            WHERE ce.company_id=%s
-                              AND (lc.status IS NULL OR lc.status != 'deleted')
-                            ORDER BY ce.start_time DESC LIMIT 100""", (company_id,))
+                        cal_sql += " AND EXTRACT(MONTH FROM ce.start_time)=%s AND EXTRACT(YEAR FROM ce.start_time)=%s"
+                        cal_args += [int(month), int(year)]
+                    if calendar_event_types is not None:
+                        cal_sql += " AND ce.event_type = ANY(%s)"
+                        cal_args.append(calendar_event_types)
+                    if calendar_own_only and master_uid:
+                        cal_sql += " AND lc.assigned_to = %s"
+                        cal_args.append(master_uid)
+                    cal_sql += " ORDER BY ce.start_time" if (month and year) else " ORDER BY ce.start_time DESC LIMIT 100"
+                    cur.execute(cal_sql, cal_args)
                 cols_desc = [d[0] for d in cur.description]
                 return ok([dict(zip(cols_desc, r)) for r in cur.fetchall()])
             if method == "POST":

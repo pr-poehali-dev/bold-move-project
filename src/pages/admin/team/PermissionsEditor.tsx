@@ -4,8 +4,30 @@ import type { Permissions } from "@/context/AuthContext";
 
 // ── Типы ──────────────────────────────────────────────────────────────────
 
-// Ключи прав с булевым значением (исключает allowed_statuses — это string[], не галочка)
-type BoolPermKey = Exclude<keyof Permissions, "allowed_statuses">;
+// Ключи прав с булевым значением. Исключаем поля-списки и поле-выбор
+// (allowed_statuses, calendar_event_types — массивы; orders_scope — выбор из вариантов):
+// они настраиваются отдельными вкладками, а не галочкой.
+type BoolPermKey = Exclude<keyof Permissions,
+  "allowed_statuses" | "calendar_event_types" | "orders_scope">;
+
+// Типы событий календаря — совпадают с event_type в базе.
+// Чтобы добавить новый тип, достаточно дописать строку сюда.
+export const CALENDAR_EVENT_TYPES = [
+  { id: "next_call", label: "Следующий звонок", icon: "PhoneCall",  color: "#38bdf8" },
+  { id: "last_call", label: "Контрольный звонок", icon: "PhoneOutgoing", color: "#818cf8" },
+  { id: "measure",   label: "Замер",             icon: "Ruler",      color: "#f59e0b" },
+  { id: "install",   label: "Монтаж",            icon: "Hammer",     color: "#34d399" },
+];
+
+// Варианты видимости заявок по ответственному
+export const ORDERS_SCOPES = [
+  { id: "all",      label: "Все заявки компании", icon: "Users",     color: "#a78bfa",
+    desc: "Видит всё, как руководитель" },
+  { id: "own",      label: "Только свои",          icon: "User",      color: "#f59e0b",
+    desc: "Только закреплённые за ним заявки" },
+  { id: "own_free", label: "Свои + неназначенные", icon: "UserPlus",  color: "#34d399",
+    desc: "Свои плюс новые ничьи — можно взять в работу" },
+];
 
 type PermRow = {
   label: string;
@@ -123,9 +145,11 @@ function Toggle({ checked, color, isDark, onChange, title }: {
   );
 }
 
-// Короткие названия для табов (последний — особая вкладка "Этапы", не входит в PERM_TREE)
-const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка", "Этапы"];
-const PIPELINE_TAB_INDEX = TAB_LABELS.length - 1;
+// Короткие названия для табов. Две последние вкладки — особые, не входят в PERM_TREE:
+// "Этапы" (статусы воронки) и "Мои" (видимость по ответственному + календарь).
+const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка", "Этапы", "Мои"];
+const PIPELINE_TAB_INDEX = TAB_LABELS.length - 2;
+const SCOPE_TAB_INDEX = TAB_LABELS.length - 1;
 
 export default function PermissionsEditor({ isDark, permissions, onChange }: Props) {
   const [activeTab, setActiveTab] = useState(0);
@@ -187,7 +211,28 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
     onChange({ ...permissions, allowed_statuses: allStatusesChecked ? [] : PIPELINE_STATUSES.map(s => s.id) });
   };
 
-  const section = activeTab === PIPELINE_TAB_INDEX ? null : PERM_TREE[activeTab];
+  // ── Логика вкладки "Мои" (видимость по ответственному + календарь) ────────
+  const ordersScope = permissions.orders_scope ?? "all";
+  const calTypes = permissions.calendar_event_types ?? [];
+  const noCalRestriction = calTypes.length === 0;
+  const isCalTypeChecked = (id: string) => noCalRestriction || calTypes.includes(id);
+
+  const toggleCalType = (id: string) => {
+    // "Ограничений нет" — стартуем с полного списка и убираем нажатый
+    const base = noCalRestriction ? CALENDAR_EVENT_TYPES.map(t => t.id) : calTypes;
+    const next = base.includes(id) ? base.filter(t => t !== id) : [...base, id];
+    onChange({ ...permissions, calendar_event_types: next });
+  };
+
+  // Счётчик для бейджа вкладки: считаем только реально включённые ограничения
+  const scopeActiveCount =
+    (ordersScope !== "all" ? 1 : 0) +
+    (permissions.orders_edit_own_only ? 1 : 0) +
+    (noCalRestriction ? 0 : 1) +
+    (permissions.calendar_own_only ? 1 : 0);
+
+  const section = (activeTab === PIPELINE_TAB_INDEX || activeTab === SCOPE_TAB_INDEX)
+    ? null : PERM_TREE[activeTab];
 
   return (
     <div className="flex flex-col gap-3">
@@ -210,6 +255,8 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
           const active = activeTab === i;
           const count  = i === PIPELINE_TAB_INDEX
             ? (noStatusRestriction ? 0 : allowedStatuses.length)
+            : i === SCOPE_TAB_INDEX
+            ? scopeActiveCount
             : sectionActiveCount(PERM_TREE[i]);
           return (
             <button key={i} onClick={() => setActiveTab(i)}
@@ -231,7 +278,121 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
         })}
       </div>
 
-      {activeTab === PIPELINE_TAB_INDEX ? (
+      {activeTab === SCOPE_TAB_INDEX ? (
+        <>
+          {/* ── Видимость заявок по ответственному ── */}
+          <div className="px-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
+              Какие заявки видит
+            </span>
+          </div>
+          <div className="rounded-xl px-3 py-2.5 text-[11px]"
+            style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
+            Ответственный назначается сам: кто первым взял заявку в работу, за тем она и закрепляется.
+          </div>
+          <div className="flex flex-col gap-1">
+            {ORDERS_SCOPES.map(sc => {
+              const checked = ordersScope === sc.id;
+              return (
+                <button key={sc.id}
+                  onClick={() => onChange({ ...permissions, orders_scope: sc.id as Permissions["orders_scope"] })}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition"
+                  style={{
+                    background: checked ? `${sc.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                    border: `1px solid ${checked ? `${sc.color}30` : border}`,
+                  }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${sc.color}18` }}>
+                    <Icon name={sc.icon} size={13} style={{ color: sc.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold truncate" style={{ color: text }}>{sc.label}</div>
+                    <div className="text-[10px] truncate" style={{ color: textSub }}>{sc.desc}</div>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: checked ? `${sc.color}25` : (isDark ? "rgba(255,255,255,0.04)" : "#f3f4f6"),
+                      border: `1.5px solid ${checked ? `${sc.color}60` : border}`,
+                    }}>
+                    {checked && <Icon name="Check" size={12} style={{ color: sc.color }} />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Редактирование только своих */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{
+              background: permissions.orders_edit_own_only ? "#f59e0b0e" : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+              border: `1px solid ${permissions.orders_edit_own_only ? "#f59e0b30" : border}`,
+            }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "#f59e0b18" }}>
+              <Icon name="Lock" size={13} style={{ color: "#f59e0b" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold truncate" style={{ color: text }}>Редактировать только свои</div>
+              <div className="text-[10px] truncate" style={{ color: textSub }}>Чужие заявки — только просмотр</div>
+            </div>
+            <Toggle checked={!!permissions.orders_edit_own_only} color="#f59e0b" isDark={isDark}
+              onChange={() => toggle("orders_edit_own_only")} title="Редактировать только свои заявки" />
+          </div>
+
+          {/* ── Календарь ── */}
+          <div className="flex items-center justify-between px-1 mt-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
+              Что видит в календаре
+            </span>
+            {!noCalRestriction && (
+              <button onClick={() => onChange({ ...permissions, calendar_event_types: [] })}
+                className="text-[10px] font-semibold transition" style={{ color: "#a78bfa" }}>
+                Показать все
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            {CALENDAR_EVENT_TYPES.map(t => {
+              const checked = isCalTypeChecked(t.id);
+              return (
+                <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                  style={{
+                    background: checked ? `${t.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                    border: `1px solid ${checked ? `${t.color}30` : border}`,
+                  }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${t.color}18` }}>
+                    <Icon name={t.icon} size={13} style={{ color: t.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold truncate" style={{ color: text }}>{t.label}</div>
+                  </div>
+                  <Toggle checked={checked} color={t.color} isDark={isDark}
+                    onChange={() => toggleCalType(t.id)} title="Виден сотруднику" />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Только события по своим заявкам */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{
+              background: permissions.calendar_own_only ? "#38bdf80e" : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+              border: `1px solid ${permissions.calendar_own_only ? "#38bdf830" : border}`,
+            }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "#38bdf818" }}>
+              <Icon name="CalendarCheck" size={13} style={{ color: "#38bdf8" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold truncate" style={{ color: text }}>Только по своим заявкам</div>
+              <div className="text-[10px] truncate" style={{ color: textSub }}>Скрыть события чужих клиентов</div>
+            </div>
+            <Toggle checked={!!permissions.calendar_own_only} color="#38bdf8" isDark={isDark}
+              onChange={() => toggle("calendar_own_only")} title="Только события по своим заявкам" />
+          </div>
+        </>
+      ) : activeTab === PIPELINE_TAB_INDEX ? (
         <>
           {/* Заголовок вкладки "Этапы" */}
           <div className="flex items-center justify-between px-1">
