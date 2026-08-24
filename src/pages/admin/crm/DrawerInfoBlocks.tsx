@@ -54,51 +54,88 @@ function SourceRow({ value, editable, onSave }: { value: string; editable: boole
 // Ответственный — кто закреплён за заявкой. По умолчанию проставляется автоматически
 // (кто первым тронул заявку), но при наличии права orders_reassign можно сменить вручную
 // через выпадающий список коллег. Владельцу/мастеру право доступно всегда.
-function AssignedRow({ data, onSave }: { data: Client; onSave: (userId: number | null) => void }) {
+//
+// Запрос на смену отправляется САМИМ компонентом (не через общий saveWithLog) —
+// тот меняет значение на экране оптимистично и не проверяет ответ сервера, поэтому
+// отказ backend'а (нет прав/сотрудник не найден) раньше был не виден: на экране
+// новое имя появлялось, но в базе ничего не менялось, и после обновления страницы
+// значение "откатывалось" — выглядело как "не сохраняется".
+function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved }: {
+  clientId: number;
+  assignedTo?: number | null;
+  assignedName?: string | null;
+  canReassign: boolean;
+  onSaved: (userId: number | null, name: string | null) => void;
+}) {
   const t = useTheme();
-  const { user } = useAuth();
-  const canReassign = hasPermission(user, "orders_reassign");
   const [members, setMembers] = useState<{ id: number; name: string }[]>([]);
-  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (!open || members.length) return;
+    if (!canReassign || loaded) return;
     crmFetch("team-members")
       .then(d => setMembers(((d as { members?: { id: number; name: string }[] })?.members) || []))
-      .catch(() => {});
-  }, [open, members.length]);
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [canReassign, loaded]);
 
   if (!canReassign) {
     return (
       <div className="flex items-center justify-between gap-2 py-1.5">
         <span className="text-xs" style={{ color: "#d4d4d4" }}>Ответственный</span>
         <span className="flex items-center gap-1.5 text-xs font-medium">
-          <Icon name={data.assigned_name ? "UserCheck" : "UserPlus"} size={11}
-            style={{ color: data.assigned_name ? "#34d399" : t.textMute }} />
-          <span style={{ color: data.assigned_name ? t.text : t.textMute }}>
-            {data.assigned_name || "Не назначен"}
+          <Icon name={assignedName ? "UserCheck" : "UserPlus"} size={11}
+            style={{ color: assignedName ? "#34d399" : t.textMute }} />
+          <span style={{ color: assignedName ? t.text : t.textMute }}>
+            {assignedName || "Не назначен"}
           </span>
         </span>
       </div>
     );
   }
 
+  const handleChange = async (raw: string) => {
+    setErr("");
+    setSaving(true);
+    const newId = raw ? Number(raw) : null;
+    const name = raw ? (members.find(m => m.id === newId)?.name || null) : null;
+    try {
+      const d = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ assigned_to: newId }) }, { id: String(clientId) }) as { error?: string };
+      if (d?.error) {
+        setErr(d.error);
+      } else {
+        onSaved(newId, name);
+      }
+    } catch {
+      setErr("Не удалось сохранить — проверьте связь");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-xs" style={{ color: "#d4d4d4" }}>Ответственный</span>
-      <select
-        value={data.assigned_to ?? ""}
-        onFocus={() => setOpen(true)}
-        onChange={e => onSave(e.target.value ? Number(e.target.value) : null)}
-        className="text-xs font-medium rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer"
-        style={{ background: t.surface2, border: `1px solid ${t.border}`, color: data.assigned_name ? "#34d399" : "#fff" }}
-      >
-        <option value="">Не назначен</option>
-        {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        {data.assigned_to && !members.find(m => m.id === data.assigned_to) && data.assigned_name && (
-          <option value={data.assigned_to}>{data.assigned_name}</option>
-        )}
-      </select>
+    <div className="py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs flex-shrink-0" style={{ color: "#d4d4d4" }}>Ответственный</span>
+        {/* w-auto + text-right — иначе <select> растягивался на всю ширину контейнера
+            и выглядел непропорционально большим и "съехавшим" влево */}
+        <select
+          value={assignedTo ?? ""}
+          disabled={saving}
+          onChange={e => handleChange(e.target.value)}
+          className="max-w-[140px] text-right text-xs font-medium rounded-md pl-1.5 pr-1 py-0.5 focus:outline-none cursor-pointer disabled:opacity-50"
+          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: assignedName ? "#34d399" : t.textMute }}
+        >
+          <option value="">Не назначен</option>
+          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {assignedTo && !members.find(m => m.id === assignedTo) && assignedName && (
+            <option value={assignedTo}>{assignedName}</option>
+          )}
+        </select>
+      </div>
+      {err && <div className="text-[10px] mt-1 text-right" style={{ color: "#ef4444" }}>{err}</div>}
     </div>
   );
 }
@@ -231,7 +268,9 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 }
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
-export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog, onGoToTouches }: InfoBlocksProps) {
+export function DrawerContactsBlock({ data, setData, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog, logAction, onGoToTouches }: InfoBlocksProps) {
+  const { user } = useAuth();
+  const canReassign = hasPermission(user, "orders_reassign");
   const id: BlockId = "contacts";
   const { isHidden, editMode } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
   const { call: callViaUis, calling } = useCallClient();
@@ -319,12 +358,14 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
       <AssignedRow
-        data={data}
-        onSave={userId => saveWithLog(
-          { assigned_to: userId },
-          userId ? "Назначен ответственный" : "Ответственный снят",
-          "UserCog", "#818cf8",
-        )}
+        clientId={data.id}
+        assignedTo={data.assigned_to}
+        assignedName={data.assigned_name}
+        canReassign={canReassign}
+        onSaved={(userId, name) => {
+          setData({ ...data, assigned_to: userId, assigned_name: name });
+          logAction("UserCog", "#818cf8", userId ? `Назначен ответственный: ${name}` : "Ответственный снят");
+        }}
       />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>

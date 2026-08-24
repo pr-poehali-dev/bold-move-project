@@ -931,6 +931,7 @@ def handler(event: dict, context) -> dict:
 
     company_id = None   # None = мастер, видит всё
     is_master  = True
+    is_owner   = False  # владелец компании (role='company') — полные права в своей компании
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
     # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
     allowed_statuses = None
@@ -957,6 +958,12 @@ def handler(event: dict, context) -> dict:
         if sess:
             authenticated = True
             uid, uemail, urole, ucompany_id, upermissions, current_user_name = sess
+            # Владелец компании (role='company') — не мастер (супер-админ), но имеет
+            # полные права внутри СВОЕЙ компании, как и hasPermission() на фронте
+            # (role === "company" → true всегда). Раньше это нигде не проверялось
+            # отдельно для orders_reassign, из-за чего владелец не мог назначить
+            # ответственного вручную — запрос тихо отклонялся с 403.
+            is_owner = (urole == "company")
             if uemail == "19.jeka.94@gmail.com":
                 is_master  = True
                 company_id = None   # мастер видит всё
@@ -1482,7 +1489,7 @@ def handler(event: dict, context) -> dict:
                 # выдано право orders_reassign. new_assigned_to == null — снять ответственного
                 # (заявка снова станет "ничьей"), число — назначить конкретного сотрудника.
                 if "assigned_to" in body:
-                    if not (is_master or orders_reassign):
+                    if not (is_master or is_owner or orders_reassign):
                         return err("Нет прав менять ответственного", 403)
                     new_assigned_to = body.get("assigned_to")
                     scope_company = company_id if company_id is not None else None
