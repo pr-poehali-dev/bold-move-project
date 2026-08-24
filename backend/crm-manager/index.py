@@ -1574,6 +1574,13 @@ def handler(event: dict, context) -> dict:
                             sets.append(f"{f} = %s")
                             vals.append(body[f] if body[f] != "" else None)
                 if not sets:
+                    # Запрос мог целиком состоять из assigned_to (смена ответственного) —
+                    # это поле не входит в ALL_CLIENT_FIELDS и обрабатывается отдельно
+                    # ВЫШЕ по коду, уже успешно. Раньше в этом случае здесь всё равно
+                    # возвращалась ошибка "nothing to update", и карточка показывала
+                    # красный текст под уже сохранённым ответственным.
+                    if "assigned_to" in body:
+                        return ok({"ok": True})
                     return err("nothing to update")
                 sets.append("updated_at = NOW()")
                 # Момент входа на этап — обновляем только при реальной смене статуса,
