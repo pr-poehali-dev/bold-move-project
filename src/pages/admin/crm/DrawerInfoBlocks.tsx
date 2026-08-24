@@ -72,6 +72,7 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
     if (!canReassign || loaded) return;
@@ -96,17 +97,27 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
     );
   }
 
+  // Технические тексты ошибки backend'а (например служебное "nothing to update" —
+  // означает, что сохранять больше нечего, т.к. само поле уже применилось отдельным
+  // запросом) заменяем на понятную формулировку, а не показываем как есть.
+  const humanizeError = (raw: string) =>
+    /nothing to update/i.test(raw) ? "" : raw;
+
   const handleChange = async (raw: string) => {
     setErr("");
+    setJustSaved(false);
     setSaving(true);
     const newId = raw ? Number(raw) : null;
     const name = raw ? (members.find(m => m.id === newId)?.name || null) : null;
     try {
       const d = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ assigned_to: newId }) }, { id: String(clientId) }) as { error?: string };
-      if (d?.error) {
-        setErr(d.error);
+      const humanErr = d?.error ? humanizeError(d.error) : "";
+      if (humanErr) {
+        setErr(humanErr);
       } else {
         onSaved(newId, name);
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2500);
       }
     } catch {
       setErr("Не удалось сохранить — проверьте связь");
@@ -136,6 +147,11 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
         </select>
       </div>
       {err && <div className="text-[10px] mt-1 text-right" style={{ color: "#ef4444" }}>{err}</div>}
+      {justSaved && !err && (
+        <div className="text-[10px] mt-1 text-right flex items-center justify-end gap-1" style={{ color: "#34d399" }}>
+          <Icon name="Check" size={10} /> Сохранено
+        </div>
+      )}
     </div>
   );
 }
