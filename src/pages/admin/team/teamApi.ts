@@ -145,14 +145,14 @@ export async function deleteTeamRole(token: string | null, roleId: number): Prom
 export async function showMemberPassword(
   token: string | null,
   memberId: number,
-): Promise<{ email: string; temp_password: string }> {
+): Promise<{ email: string; temp_password: string; email_sent: boolean }> {
   const res = await fetch(`${AUTH_URL}?action=team-show-password`, {
     method: "POST", headers: authHeaders(token),
     body: JSON.stringify({ member_id: memberId }),
   });
   const d = await res.json();
   if (!res.ok || d.error) throw new Error(d.error || "Не удалось получить пароль");
-  return { email: d.email, temp_password: d.temp_password };
+  return { email: d.email, temp_password: d.temp_password, email_sent: !!d.email_sent };
 }
 
 export async function removeMember(token: string | null, memberId: number): Promise<void> {
@@ -163,11 +163,14 @@ export async function removeMember(token: string | null, memberId: number): Prom
   if (!res.ok || d.error) throw new Error(d.error || "Не удалось удалить");
 }
 
-export async function resetMemberPassword(token: string | null, memberId: number): Promise<string> {
+export async function resetMemberPassword(
+  token: string | null,
+  memberId: number,
+): Promise<{ temp_password: string; email_sent: boolean }> {
   const res = await fetch(`${AUTH_URL}?action=team-reset-password`, {
     method: "POST", headers: authHeaders(token), body: JSON.stringify({ member_id: memberId }),
   });
   const d = await res.json();
   if (!res.ok || d.error) throw new Error(d.error || "Не удалось сбросить пароль");
-  return d.temp_password as string;
+  return { temp_password: d.temp_password as string, email_sent: !!d.email_sent };
 }

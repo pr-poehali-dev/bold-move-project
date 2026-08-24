@@ -16,6 +16,7 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
   const [confirmed, setConfirmed] = useState(false);
   const [busy,    setBusy]    = useState(false);
   const [tempPwd, setTempPwd] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [err,     setErr]     = useState("");
   const [copied,  setCopied]  = useState(false);
 
@@ -24,8 +25,8 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
     setBusy(true);
     setErr("");
     try {
-      const pwd = await resetMemberPassword(token, member.id);
-      setTempPwd(pwd); onReset?.();
+      const { temp_password, email_sent } = await resetMemberPassword(token, member.id);
+      setTempPwd(temp_password); setEmailSent(email_sent); onReset?.();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -112,6 +113,15 @@ export default function ResetPasswordModal({ isDark, member, onClose, onReset }:
                 style={{ background: "rgba(124,58,237,0.10)", border: "1.5px solid rgba(124,58,237,0.35)" }}>
                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#a78bfa" }}>Новый временный пароль</div>
                 <div className="text-lg font-mono font-black" style={{ color: "#a78bfa" }}>{tempPwd}</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5 text-[11px] flex items-start gap-2"
+                style={{ background: emailSent ? "rgba(16,185,129,0.10)" : "rgba(251,191,36,0.10)",
+                  border: `1px solid ${emailSent ? "rgba(16,185,129,0.28)" : "rgba(251,191,36,0.25)"}`,
+                  color: emailSent ? "#34d399" : "#fbbf24" }}>
+                <Icon name={emailSent ? "MailCheck" : "MailX"} size={12} className="mt-0.5 flex-shrink-0" />
+                <span>{emailSent
+                  ? `Письмо с новым паролем отправлено на ${member.email}.`
+                  : "Не удалось отправить письмо — передайте пароль сотруднику вручную."}</span>
               </div>
               <div className="rounded-xl px-3 py-2.5 text-[11px] flex items-start gap-2"
                 style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24" }}>

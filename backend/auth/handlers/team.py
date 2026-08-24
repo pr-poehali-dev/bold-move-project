@@ -1,6 +1,7 @@
 import json, secrets
 import psycopg2
 from shared import SCHEMA, MASTER_EMAIL, ok, err, hash_password
+from email_utils import send_team_password_email
 
 
 def handle(action, method, params, body, token, event, conn, cur):
@@ -392,17 +393,24 @@ def handle(action, method, params, body, token, event, conn, cur):
         company_clause = "" if is_master else "AND company_id=%s"
         params_ = (int(member_id),) if is_master else (int(member_id), owner_id)
         cur.execute(f"""
-            SELECT temp_password_plain FROM {SCHEMA}.users
+            SELECT temp_password_plain, email, name FROM {SCHEMA}.users
             WHERE id=%s {company_clause} AND removed_at IS NULL
         """, params_)
         row = cur.fetchone()
         if not row:
             return err("Сотрудник не найден", 404)
-        password = row[0]
+        password, member_email, member_name = row
         if password:
             cur.execute(f"UPDATE {SCHEMA}.users SET temp_password_plain=NULL WHERE id=%s", (int(member_id),))
             conn.commit()
-        return ok({"password": password})
+        # Письмо шлём только когда пароль реально показан впервые (password не пуст) —
+        # повторный вызов после очистки temp_password_plain письмо не дублирует.
+        email_sent = False
+        if password:
+            email_sent = send_team_password_email(member_email, member_name or "", password)
+        # Фронтенд (InviteMemberModal/teamApi.ts) ждёт именно поля email/temp_password —
+        # старое имя "password" оставлено для обратной совместимости.
+        return ok({"email": member_email, "temp_password": password, "password": password, "email_sent": email_sent})
 
     if action == "team-remove" and method == "POST":
         owner, e = get_owner_or_err()
@@ -432,11 +440,13 @@ def handle(action, method, params, body, token, event, conn, cur):
         company_clause = "" if is_master else "AND company_id=%s"
         params_ = (int(member_id),) if is_master else (int(member_id), owner_id)
         cur.execute(f"""
-            SELECT id FROM {SCHEMA}.users
+            SELECT email, name FROM {SCHEMA}.users
             WHERE id=%s {company_clause} AND removed_at IS NULL
         """, params_)
-        if not cur.fetchone():
+        target_row = cur.fetchone()
+        if not target_row:
             return err("Сотрудник не найден", 404)
+        target_email, target_name = target_row
         new_password = secrets.token_urlsafe(8)[:10]
         cur.execute(f"""
             UPDATE {SCHEMA}.users
@@ -447,6 +457,7 @@ def handle(action, method, params, body, token, event, conn, cur):
         # Завершаем ВСЕ активные сессии сотрудника — старый пароль (и его сессии) должны сразу перестать работать.
         cur.execute(f"UPDATE {SCHEMA}.user_sessions SET expires_at=NOW() WHERE user_id=%s", (int(member_id),))
         conn.commit()
-        return ok({"ok": True, "temp_password": new_password})
+        email_sent = send_team_password_email(target_email, target_name or "", new_password)
+        return ok({"ok": True, "temp_password": new_password, "password": new_password, "email_sent": email_sent})
 
     return None

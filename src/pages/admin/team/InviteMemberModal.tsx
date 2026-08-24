@@ -72,6 +72,7 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
 
   // Шаг 3: пароль
   const [tempPwd, setTempPwd] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [copied,  setCopied]  = useState(false);
 
   const bg     = isDark ? "#0e0e1c" : "#ffffff";
@@ -127,8 +128,9 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
     if (!member) return;
     setErr(""); setBusy(true);
     try {
-      const { temp_password } = await showMemberPassword(token, member.id);
+      const { temp_password, email_sent } = await showMemberPassword(token, member.id);
       setTempPwd(temp_password);
+      setEmailSent(email_sent);
       onUpdated({ ...member, has_pending_password: false });
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Ошибка");
@@ -241,6 +243,15 @@ export default function InviteMemberModal({ isDark, onClose, onInvited, onUpdate
                     style={{ background: "rgba(124,58,237,0.10)", border: "1.5px solid rgba(124,58,237,0.35)" }}>
                     <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#a78bfa" }}>Временный пароль</div>
                     <div className="text-lg font-mono font-black" style={{ color: "#a78bfa" }}>{tempPwd}</div>
+                  </div>
+                  <div className="rounded-xl px-3 py-2.5 text-[11px] flex items-start gap-2"
+                    style={{ background: emailSent ? "rgba(16,185,129,0.10)" : "rgba(251,191,36,0.10)",
+                      border: `1px solid ${emailSent ? "rgba(16,185,129,0.28)" : "rgba(251,191,36,0.25)"}`,
+                      color: emailSent ? "#34d399" : "#fbbf24" }}>
+                    <Icon name={emailSent ? "MailCheck" : "MailX"} size={12} className="mt-0.5 flex-shrink-0" />
+                    <span>{emailSent
+                      ? `Письмо с паролем отправлено на ${member?.email}.`
+                      : "Не удалось отправить письмо — передайте пароль сотруднику вручную."}</span>
                   </div>
                   <button onClick={copyAll}
                     className="w-full py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2"
