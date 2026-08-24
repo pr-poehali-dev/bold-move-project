@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "./themeContext";
-import { Client } from "./crmApi";
+import { Client, crmFetch } from "./crmApi";
 import { InlineField, Section } from "./drawerComponents";
 import { BlockId } from "./drawerTypes";
 import { RowWithToggle } from "./DrawerFinRowHelpers";
@@ -8,6 +8,7 @@ import { loadClientFields, saveClientFields, loadClientExtraValues, saveClientEx
 import { useOrderSources } from "@/hooks/useOrderSources";
 import Icon from "@/components/ui/icon";
 import { useCallClient } from "./useCallClient";
+import { useAuth, hasPermission } from "@/context/AuthContext";
 
 // Источник — маркетинговый канал (Авито/ВК/Сайт). Для заявок из интеграций (Avito, квиз)
 // определяется автоматически и не редактируется руками — редактирование разрешено только
@@ -46,6 +47,58 @@ function SourceRow({ value, editable, onSave }: { value: string; editable: boole
           {value && !current && <option value={value}>{value}</option>}
         </select>
       </div>
+    </div>
+  );
+}
+
+// Ответственный — кто закреплён за заявкой. По умолчанию проставляется автоматически
+// (кто первым тронул заявку), но при наличии права orders_reassign можно сменить вручную
+// через выпадающий список коллег. Владельцу/мастеру право доступно всегда.
+function AssignedRow({ data, onSave }: { data: Client; onSave: (userId: number | null) => void }) {
+  const t = useTheme();
+  const { user } = useAuth();
+  const canReassign = hasPermission(user, "orders_reassign");
+  const [members, setMembers] = useState<{ id: number; name: string }[]>([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || members.length) return;
+    crmFetch("team-members")
+      .then(d => setMembers(((d as { members?: { id: number; name: string }[] })?.members) || []))
+      .catch(() => {});
+  }, [open, members.length]);
+
+  if (!canReassign) {
+    return (
+      <div className="flex items-center justify-between gap-2 py-1.5">
+        <span className="text-xs" style={{ color: "#d4d4d4" }}>Ответственный</span>
+        <span className="flex items-center gap-1.5 text-xs font-medium">
+          <Icon name={data.assigned_name ? "UserCheck" : "UserPlus"} size={11}
+            style={{ color: data.assigned_name ? "#34d399" : t.textMute }} />
+          <span style={{ color: data.assigned_name ? t.text : t.textMute }}>
+            {data.assigned_name || "Не назначен"}
+          </span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5">
+      <span className="text-xs" style={{ color: "#d4d4d4" }}>Ответственный</span>
+      <select
+        value={data.assigned_to ?? ""}
+        onFocus={() => setOpen(true)}
+        onChange={e => onSave(e.target.value ? Number(e.target.value) : null)}
+        className="text-xs font-medium rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer"
+        style={{ background: t.surface2, border: `1px solid ${t.border}`, color: data.assigned_name ? "#34d399" : "#fff" }}
+      >
+        <option value="">Не назначен</option>
+        {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        {data.assigned_to && !members.find(m => m.id === data.assigned_to) && data.assigned_name && (
+          <option value={data.assigned_to}>{data.assigned_name}</option>
+        )}
+      </select>
     </div>
   );
 }
@@ -264,6 +317,14 @@ export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHi
         value={data.source || ""}
         editable={data.created_via === "manual"}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
+      />
+      <AssignedRow
+        data={data}
+        onSave={userId => saveWithLog(
+          { assigned_to: userId },
+          userId ? "Назначен ответственный" : "Ответственный снят",
+          "UserCog", "#818cf8",
+        )}
       />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>

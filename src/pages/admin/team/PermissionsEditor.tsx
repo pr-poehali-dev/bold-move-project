@@ -230,6 +230,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   const scopeActiveCount =
     (ordersScope !== "all" ? 1 : 0) +
     (permissions.orders_edit_own_only ? 1 : 0) +
+    (permissions.orders_reassign ? 1 : 0) +
     (noCalRestriction ? 0 : 1) +
     (permissions.calendar_own_only ? 1 : 0);
 
@@ -339,6 +340,24 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
             </div>
             <Toggle checked={!!permissions.orders_edit_own_only} color="#f59e0b" isDark={isDark}
               onChange={() => toggle("orders_edit_own_only")} title="Редактировать только свои заявки" />
+          </div>
+
+          {/* Может вручную менять ответственного */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{
+              background: permissions.orders_reassign ? "#818cf80e" : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+              border: `1px solid ${permissions.orders_reassign ? "#818cf830" : border}`,
+            }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "#818cf818" }}>
+              <Icon name="UserCog" size={13} style={{ color: "#818cf8" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold truncate" style={{ color: text }}>Может менять ответственного</div>
+              <div className="text-[10px] truncate" style={{ color: textSub }}>Без этого права ответственный назначается только автоматически</div>
+            </div>
+            <Toggle checked={!!permissions.orders_reassign} color="#818cf8" isDark={isDark}
+              onChange={() => toggle("orders_reassign")} title="Может вручную назначить ответственного" />
           </div>
 
           {/* ── Календарь ── */}

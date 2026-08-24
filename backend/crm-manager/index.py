@@ -938,6 +938,7 @@ def handler(event: dict, context) -> dict:
     # чтобы обновление ничего не изменило для уже заведённых сотрудников):
     orders_scope = "all"          # all | own | own_free — какие заявки видит
     orders_edit_own_only = False  # редактировать можно только свои заявки
+    orders_reassign = False       # может вручную сменить ответственного у заявки
     calendar_event_types = None   # None = видны все типы событий календаря
     calendar_own_only = False     # в календаре только события по своим заявкам
     # True только если токен реально проверен и найдена активная сессия в БД.
@@ -978,6 +979,7 @@ def handler(event: dict, context) -> dict:
                         if sc in ("all", "own", "own_free"):
                             orders_scope = sc
                         orders_edit_own_only = bool(upermissions.get("orders_edit_own_only"))
+                        orders_reassign = bool(upermissions.get("orders_reassign"))
                         # Календарь: типы событий и «только свои»
                         et = upermissions.get("calendar_event_types")
                         if isinstance(et, list) and len(et) > 0:
@@ -1183,6 +1185,28 @@ def handler(event: dict, context) -> dict:
                 )
                 conn.commit()
                 return ok({"ok": True})
+
+        # ── TEAM-MEMBERS: короткий список коллег для выбора ответственного ─────
+        # Отдельно от auth?action=team-list (тот доступен только владельцу).
+        # Здесь — любой авторизованный сотрудник компании может получить список
+        # коллег, чтобы выбрать, кому передать заявку (если у него есть право
+        # orders_reassign — проверяется на самой смене, не на чтении списка).
+        if resource == "team-members" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id
+            if owner_id is None:
+                # Мастер без привязки к конкретной компании — берём company_id из
+                # запроса (карточка заявки знает, какой компании она принадлежит)
+                cq = qs.get("company_id")
+                owner_id = int(cq) if cq else master_uid
+            cur.execute(f"""
+                SELECT id, COALESCE(NULLIF(name, ''), email) AS display_name
+                FROM {SCHEMA}.users
+                WHERE company_id=%s AND role='manager' AND removed_at IS NULL AND active IS NOT FALSE
+                ORDER BY display_name
+            """, (owner_id,))
+            return ok({"members": [{"id": r[0], "name": r[1]} for r in cur.fetchall()]})
 
         # ── CLIENTS ──────────────────────────────────────────────────────────
         if resource == "clients":
@@ -1452,6 +1476,34 @@ def handler(event: dict, context) -> dict:
                         conn.commit()
                     elif orders_edit_own_only and current_owner != master_uid:
                         return err("Заявка закреплена за другим сотрудником", 403)
+
+                # Ручная смена ответственного — отдельно от автозакрепления выше.
+                # Разрешено владельцу/мастеру всегда, сотруднику — только если ему явно
+                # выдано право orders_reassign. new_assigned_to == null — снять ответственного
+                # (заявка снова станет "ничьей"), число — назначить конкретного сотрудника.
+                if "assigned_to" in body:
+                    if not (is_master or orders_reassign):
+                        return err("Нет прав менять ответственного", 403)
+                    new_assigned_to = body.get("assigned_to")
+                    scope_company = company_id if company_id is not None else None
+                    if new_assigned_to is not None:
+                        # Проверяем, что назначаемый — сотрудник этой же компании
+                        check_company = scope_company
+                        if check_company is None:
+                            cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                            crow = cur.fetchone()
+                            check_company = crow[0] if crow else None
+                        cur.execute(f"""
+                            SELECT id FROM {SCHEMA}.users
+                            WHERE id=%s AND company_id=%s AND role='manager' AND removed_at IS NULL
+                        """, (int(new_assigned_to), check_company))
+                        if not cur.fetchone():
+                            return err("Сотрудник не найден в этой компании", 404)
+                        cur.execute(f"UPDATE {SCHEMA}.live_chats SET assigned_to=%s WHERE id=%s",
+                                    (int(new_assigned_to), int(cid)))
+                    else:
+                        cur.execute(f"UPDATE {SCHEMA}.live_chats SET assigned_to=NULL WHERE id=%s", (int(cid),))
+                    conn.commit()
 
                 # При переводе на этап «В работе» (call) без явно указанного подэтапа —
                 # автоматически ставим подэтап «Новый в работе» (если он есть у компании).
