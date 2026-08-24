@@ -18,6 +18,8 @@ interface Props {
   hideHidden: boolean;
   canEdit: boolean;
   canOrdersEdit: boolean;
+  /** Этапы воронки, разрешённые сотруднику (null = ограничений нет) */
+  allowedStatuses?: string[] | null;
   canFinance: boolean;
   canFiles: boolean;
   canFieldContacts: boolean;
@@ -34,7 +36,7 @@ interface Props {
 export function DrawerOrdersPanel({
   t, client, allClientOrders, selectedOrderId, setSelectedOrderId, orderData, setOrderData, setOrderInnerTab,
   ordersListOpen, setOrdersListOpen, saveOrder, hideHidden,
-  canEdit, canOrdersEdit, canFinance, canFiles, canFieldContacts, canFieldAddress, canFieldDates,
+  canEdit, canOrdersEdit, allowedStatuses = null, canFinance, canFiles, canFieldContacts, canFieldAddress, canFieldDates,
   canFieldFinance, canFieldFiles, canFieldCancel, onUpdated, onGoToTouches,
 }: Props) {
   return (
@@ -177,6 +179,7 @@ export function DrawerOrdersPanel({
             hideHidden={hideHidden}
             canEdit={canEdit}
             canOrdersEdit={canOrdersEdit}
+            allowedStatuses={allowedStatuses}
             canFinance={canFinance}
             canFiles={canFiles}
             canFieldContacts={canFieldContacts}

@@ -41,22 +41,35 @@ const STAGE_DETAIL: Record<string, string[]> = {
   "Монтаж":   ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"],
 };
 
-function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus }: {
+function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStatuses }: {
   status: string; subStatus: string | null;
   onSave: (s: string) => void; onSaveSubStatus: (v: string | null) => void;
+  /** null — ограничений нет (видны и доступны все этапы, как раньше) */
+  allowedStatuses: string[] | null;
 }) {
   const t = useTheme();
   const allSubs = useSubstatuses();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const currentStageIdx = FUNNEL_STAGES.findIndex(g => g.statuses.includes(status as never));
   const currentStage    = FUNNEL_STAGES[currentStageIdx];
-  const mainStages      = FUNNEL_STAGES.filter(g => g.label !== "Отказ");
 
-  // Кастомные подэтапы для конкретного этапа воронки (по tabId)
+  const isStatusAllowed = (s: string) => !allowedStatuses || allowedStatuses.includes(s);
+  // Этап целиком скрываем, если сотруднику не разрешён НИ ОДИН его статус — иначе
+  // право orders_edit открывало бы кликабельными вообще все этапы/подэтапы, даже
+  // явно снятые в настройках доступа (allowed_statuses фильтровал только то, что
+  // видно в списках заявок, а не сам селектор статуса в карточке).
+  const mainStages = FUNNEL_STAGES
+    .filter(g => g.label !== "Отказ")
+    .filter(g => g.statuses.some(isStatusAllowed));
+
+  // Кастомные подэтапы для конкретного этапа воронки (по tabId) — показываем только
+  // если у этапа вообще есть хоть один разрешённый статус (сам этап не скрыт)
   const subsFor = (tabId: string) => allSubs.filter(s => s.parent_status === tabId);
+  // Системные детали этапа (Замер/Монтаж), отфильтрованные по разрешённым статусам
+  const detailStatusesFor = (label: string) => (STAGE_DETAIL[label] || []).filter(isStatusAllowed);
   // У этапа есть что разворачивать, если есть системные детали ИЛИ кастомные подэтапы
   const hasDetail = (g: typeof FUNNEL_STAGES[number]) =>
-    !!STAGE_DETAIL[g.label] || subsFor(g.tabId).length > 0;
+    detailStatusesFor(g.label).length > 0 || subsFor(g.tabId).length > 0;
 
   return (
     <div className="pt-2 pb-2 space-y-2">
@@ -64,16 +77,19 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus }: {
         {mainStages.map((g, i, arr) => {
           const isActive = g.statuses.includes(status as never);
           const isPast   = currentStageIdx > i;
+          // Первый статус этапа, реально доступный сотруднику (а не обязательно
+          // g.statuses[0] — тот может быть запрещён при частичном разрешении этапа)
+          const firstAllowed = g.statuses.find(isStatusAllowed) ?? g.statuses[0];
           return (
             <div key={g.label} className="flex items-center flex-1 min-w-0">
               <button
                 onClick={() => {
                   if (hasDetail(g)) {
-                    // Переводим на первый статус этапа (если ещё не на нём) и разворачиваем подэтапы
-                    if (!g.statuses.includes(status as never)) onSave(g.statuses[0]);
+                    // Переводим на первый доступный статус этапа (если ещё не на нём) и разворачиваем подэтапы
+                    if (!g.statuses.includes(status as never)) onSave(firstAllowed);
                     setExpandedStage(expandedStage === g.label ? null : g.label);
                   } else {
-                    onSave(g.statuses[0]);
+                    onSave(firstAllowed);
                     setExpandedStage(null);
                   }
                 }}
@@ -100,29 +116,32 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus }: {
           );
         })}
 
-        <div className="w-1.5 flex-shrink-0" />
-
-        <button
-          onClick={() => { onSave("cancelled"); setExpandedStage(null); }}
-          className="flex flex-col items-center gap-1 py-2 px-2 rounded-xl transition flex-shrink-0"
-          style={{
-            background: status === "cancelled" ? "#ef444420" : "transparent",
-            border: `1.5px solid ${status === "cancelled" ? "#ef444460" : t.border2}`,
-            minHeight: 56,
-          }}>
-          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: status === "cancelled" ? "#ef4444" : t.surface }}>
-            <Icon name="XCircle" size={11} style={{ color: status === "cancelled" ? "#fff" : t.textMute }} />
-          </div>
-          <span className="text-[9px] font-semibold" style={{ color: status === "cancelled" ? "#ef4444" : t.textMute }}>
-            Отказ
-          </span>
-        </button>
+        {isStatusAllowed("cancelled") && (
+          <>
+            <div className="w-1.5 flex-shrink-0" />
+            <button
+              onClick={() => { onSave("cancelled"); setExpandedStage(null); }}
+              className="flex flex-col items-center gap-1 py-2 px-2 rounded-xl transition flex-shrink-0"
+              style={{
+                background: status === "cancelled" ? "#ef444420" : "transparent",
+                border: `1.5px solid ${status === "cancelled" ? "#ef444460" : t.border2}`,
+                minHeight: 56,
+              }}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: status === "cancelled" ? "#ef4444" : t.surface }}>
+                <Icon name="XCircle" size={11} style={{ color: status === "cancelled" ? "#fff" : t.textMute }} />
+              </div>
+              <span className="text-[9px] font-semibold" style={{ color: status === "cancelled" ? "#ef4444" : t.textMute }}>
+                Отказ
+              </span>
+            </button>
+          </>
+        )}
       </div>
 
       {expandedStage && (() => {
         const stage = FUNNEL_STAGES.find(g => g.label === expandedStage);
-        const detailStatuses = STAGE_DETAIL[expandedStage] || [];
+        const detailStatuses = detailStatusesFor(expandedStage);
         const subs = stage ? subsFor(stage.tabId) : [];
         if (detailStatuses.length === 0 && subs.length === 0) return null;
         return (
@@ -159,12 +178,24 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus }: {
 }
 
 // ── Барабан для мобиле ────────────────────────────────────────────────────
-function MobileDrum({ status, onSave }: { status: string; onSave: (s: string) => void }) {
+function MobileDrum({ status, onSave, allowedStatuses }: {
+  status: string; onSave: (s: string) => void;
+  /** null — ограничений нет */
+  allowedStatuses: string[] | null;
+}) {
   const t = useTheme();
   const [pending, setPending] = useState<string | null>(null);
 
-  const currentItem = DRUM_ITEMS.find(i => i.value === status) ?? DRUM_ITEMS[0];
-  const pendingItem = pending ? (DRUM_ITEMS.find(i => i.value === pending) ?? currentItem) : null;
+  // Недоступные сотруднику статусы убираем из барабана целиком — иначе он мог
+  // прокрутить и выбрать статус, явно снятый в настройках доступа. Текущий статус
+  // заявки оставляем видимым всегда (даже если он вдруг не в списке разрешённых) —
+  // иначе барабан не сможет корректно показать, где заявка находится сейчас.
+  const items = allowedStatuses
+    ? DRUM_ITEMS.filter(i => i.value === status || allowedStatuses.includes(i.value))
+    : DRUM_ITEMS;
+
+  const currentItem = items.find(i => i.value === status) ?? items[0];
+  const pendingItem = pending ? (items.find(i => i.value === pending) ?? currentItem) : null;
   const displayItem = pendingItem ?? currentItem;
   const hasChange   = pending !== null && pending !== status;
 
@@ -209,7 +240,7 @@ function MobileDrum({ status, onSave }: { status: string; onSave: (s: string) =>
         ["--drum-bg" as string]: t.surface2,
       }}>
         <DrumPicker
-          items={DRUM_ITEMS}
+          items={items}
           value={pending ?? status}
           onChange={handleChange}
           itemHeight={40}
@@ -238,10 +269,12 @@ function MobileDrum({ status, onSave }: { status: string; onSave: (s: string) =>
 }
 
 // ── Экспортируемый компонент ──────────────────────────────────────────────
-export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStatus, readOnly = false }: {
+export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStatus, readOnly = false, allowedStatuses = null }: {
   status: string; subStatus?: string | null;
   onSave: (s: string) => void; onSaveSubStatus?: (v: string | null) => void;
   readOnly?: boolean;
+  /** Этапы, разрешённые сотруднику (null = ограничений нет — как было раньше) */
+  allowedStatuses?: string[] | null;
 }) {
   if (readOnly) {
     // Только просмотр — без возможности смены
@@ -261,11 +294,11 @@ export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStat
       {/* Десктоп: воронка с кнопками */}
       <div className="hidden sm:block">
         <DesktopFunnel status={status} subStatus={subStatus} onSave={onSave}
-          onSaveSubStatus={onSaveSubStatus ?? (() => {})} />
+          onSaveSubStatus={onSaveSubStatus ?? (() => {})} allowedStatuses={allowedStatuses} />
       </div>
       {/* Мобиле: барабан с подтверждением */}
       <div className="sm:hidden">
-        <MobileDrum status={status} onSave={onSave} />
+        <MobileDrum status={status} onSave={onSave} allowedStatuses={allowedStatuses} />
       </div>
     </>
   );

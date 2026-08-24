@@ -13,7 +13,7 @@ import { useInboxUnread } from "./useInboxUnread";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { SubstatusContext } from "./substatusContext";
 import { crmFetch, Client } from "./crmApi";
-import { useAuth, hasPermission, type Permissions } from "@/context/AuthContext";
+import { useAuth, hasPermission, allowedStatusesOf, type Permissions } from "@/context/AuthContext";
 import { useSubstatuses } from "./OrdersTabs";
 import func2url from "@/../backend/func2url.json";
 
@@ -38,6 +38,11 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   const canClientsEdit  = hasPermission(user, "clients_edit");
   const canOrdersView   = hasPermission(user, "orders_view");
   const canOrdersEdit   = hasPermission(user, "orders_edit");
+  // Этапы воронки, разрешённые сотруднику (null = ограничений нет). Раньше право
+  // orders_edit давало возможность переключаться на ЛЮБОЙ статус/подэтап, даже если
+  // в настройках доступа этот этап явно снят — теперь StatusSelector его вообще не
+  // покажет среди кликабельных.
+  const allowedStatuses = allowedStatusesOf(user);
   const canKanban       = hasPermission(user, "kanban_view");
   const canKanbanEdit   = hasPermission(user, "kanban_edit");
   const canCalendar     = hasPermission(user, "calendar_view");
@@ -295,6 +300,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
                 onDrawerClose={calendarOpenId ? handleBackToCalendar : undefined}
                 canEdit={canClientsEdit}
                 canOrdersEdit={canOrdersEdit}
+                allowedStatuses={allowedStatuses}
                 canFinance={canFinance}
                 canFiles={canFilesEdit}
                 canFieldContacts={canFieldContacts}

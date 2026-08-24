@@ -32,6 +32,10 @@ interface Props {
   hideHidden?: boolean;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
+  /** Этапы воронки, разрешённые сотруднику (null = ограничений нет) — передаётся
+   *  в StatusSelector, чтобы недоступные статусы/подэтапы были скрыты, а не просто
+   *  нередактируемы (иначе включённое право orders_edit открывало ВСЕ статусы). */
+  allowedStatuses?: string[] | null;
   canFinance?:       boolean;
   canFiles?:         boolean;
   canFieldContacts?: boolean;
@@ -45,7 +49,7 @@ interface Props {
   onGoToTouches?: () => void;
 }
 
-export default function DrawerInfoTab({ data, client, setData, save, hideHidden, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload, onGoToTouches }: Props) {
+export default function DrawerInfoTab({ data, client, setData, save, hideHidden, canEdit = true, canOrdersEdit = true, allowedStatuses = null, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, onReload, onGoToTouches }: Props) {
   const t = useTheme();
   const { user } = useAuth();
 
@@ -334,6 +338,7 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
             status={data.status}
             subStatus={data.sub_status ?? null}
             readOnly={!canOrdersEdit}
+            allowedStatuses={allowedStatuses}
             onSave={s => {
               saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
             }}

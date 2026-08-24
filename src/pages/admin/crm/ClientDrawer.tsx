@@ -31,6 +31,8 @@ interface Props {
   defaultOrderId?: number;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
+  /** Этапы воронки, разрешённые сотруднику (null = ограничений нет) */
+  allowedStatuses?: string[] | null;
   canFinance?:       boolean;
   canFiles?:         boolean;
   canFieldContacts?: boolean;
@@ -44,7 +46,7 @@ interface Props {
   onOpenAgent?:   (client: Client) => void;
 }
 
-export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", contactMode = false, defaultOrderId, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
+export default function ClientDrawer({ client, allClientOrders, onClose, onUpdated, onDeleted, isLocalCard, defaultTab = "client", contactMode = false, defaultOrderId, canEdit = true, canOrdersEdit = true, allowedStatuses = null, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, statuses = [], onOpenBuilder, onOpenAgent }: Props) {
   const t = useTheme();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -204,6 +206,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
               hideHidden={hideHidden}
               canEdit={canEdit}
               canOrdersEdit={canOrdersEdit}
+              allowedStatuses={allowedStatuses}
               canFinance={canFinance}
               canFiles={canFiles}
               canFieldContacts={canFieldContacts}

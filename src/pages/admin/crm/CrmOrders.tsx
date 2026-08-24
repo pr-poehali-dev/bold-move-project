@@ -28,6 +28,10 @@ interface Props {
   onDrawerClose?: () => void;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
+  /** Этапы воронки, разрешённые сотруднику (null = ограничений нет) — пробрасывается
+   *  до StatusSelector, чтобы недоступные статусы/подэтапы были не просто нередактируемы,
+   *  а полностью скрыты, даже если у сотрудника есть общее право orders_edit. */
+  allowedStatuses?: string[] | null;
   canFinance?:       boolean;
   canFiles?:         boolean;
   canFieldContacts?: boolean;
@@ -40,7 +44,7 @@ interface Props {
   onSubstatusesChange?: (list: Substatus[]) => void;
 }
 
-export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, onDrawerClose, canEdit = true, canOrdersEdit = true, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
+export default function CrmOrders({ clients: allClients, loading, onStatusChange, onClientRemoved, onReload, initialOrderId, onDrawerClose, canEdit = true, canOrdersEdit = true, allowedStatuses = null, canFinance = true, canFiles = true, canFieldContacts = true, canFieldAddress = true, canFieldDates = true, canFieldFinance = true, canFieldFiles = true, canFieldCancel = true, substatuses = [], onSubstatusesChange = () => {} }: Props) {
   const t = useTheme();
   const [search, setSearch]       = useState("");
   const [activeTab, setActiveTab] = useState("leads");
@@ -207,6 +211,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           onDeleted={(deletedId) => { setSelected(null); onClientRemoved(deletedId); }}
           canEdit={canEdit}
           canOrdersEdit={canOrdersEdit}
+          allowedStatuses={allowedStatuses}
           canFinance={canFinance}
           canFiles={canFiles}
           canFieldContacts={canFieldContacts}
