@@ -54,7 +54,7 @@ export const PERM_TREE: PermSection[] = [
       { label: "Построитель",       icon: "PenTool",         color: "#f472b6", view: "plan_view",        desc: "Доступ к конструктору планировок" },
       { label: "Профиль",           icon: "User",            color: "#818cf8", view: "profile_view",     desc: "Просмотр и редактирование профиля" },
       { label: "Тарифы и пакеты",   icon: "Sparkles",        color: "#fbbf24", view: "tariffs_view",     desc: "Раздел тарифов и пакетов" },
-      { label: "Панель управления", icon: "Settings2",       color: "#34d399", view: "admin_panel_view", desc: "Административная панель компании" },
+      { label: "Настройки компании", icon: "Settings",       color: "#34d399", view: "admin_panel_view", desc: "Кнопка-шестерёнка «Настройки» в верхней панели" },
       { label: "Поддержка",         icon: "MessageCircle",   color: "#29b6f6", view: "support_view",     desc: "Раздел поддержки" },
       { label: "Заявки (журнал)",   icon: "Inbox",           color: "#38bdf8", view: "leads_log_view",   desc: "Журнал входящих заявок в верхней панели" },
       { label: "Баг-репорт",        icon: "Bug",             color: "#fb7185", view: "bug_report_view",  desc: "Кнопка отправки баг-репорта в верхней панели" },
@@ -149,7 +149,7 @@ function Toggle({ checked, color, isDark, onChange, title }: {
 
 // Короткие названия для табов. Две последние вкладки — особые, не входят в PERM_TREE:
 // "Этапы" (статусы воронки) и "Мои" (видимость по ответственному + календарь).
-const TAB_LABELS = ["Вкладки", "CRM", "Агент", "Карточка", "Этапы", "Мои"];
+const TAB_LABELS = ["Разделы", "CRM", "Агент", "Карточка", "Этапы", "Мои"];
 const PIPELINE_TAB_INDEX = TAB_LABELS.length - 2;
 const SCOPE_TAB_INDEX = TAB_LABELS.length - 1;
 

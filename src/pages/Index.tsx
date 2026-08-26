@@ -227,7 +227,11 @@ export default function Index() {
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>
               <Icon name="Bug" size={12} /> Баг-репорт
             </button>
-            {(user?.is_master || ["installer", "company"].includes(user?.role ?? "") || (user?.role === "manager" && navAllowed("admin_panel_view"))) && (
+            {/* Видимость целиком определяется правом «Настройки компании» (admin_panel_view):
+                hasPermission сам пропускает мастера, владельца компании и установщика,
+                а всем остальным сотрудникам кнопку открывает тумблер в настройках доступа —
+                раньше право учитывалось только для роли «manager». */}
+            {user && hasPermission(user, "admin_panel_view") && (
               <button onClick={() => navigate("/company")}
                 className="flex items-center justify-center px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.08]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}
