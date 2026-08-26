@@ -43,7 +43,8 @@ interface User {
 interface Props {
   mainTab: MainTab;
   canAgent: boolean;
-  hasTeam: boolean;
+  /** Доступ к каждой вкладке настроек по отдельности */
+  tabAccess: { team: boolean; ownAgent: boolean; integrations: boolean };
   isDark: boolean;
   agentTab: AgentSubTab;
   setAgentTab: (t: AgentSubTab) => void;
@@ -56,7 +57,7 @@ interface Props {
 }
 
 export function AdminPanelContent({
-  mainTab, canAgent, hasTeam,
+  mainTab, canAgent, tabAccess,
   isDark,
   agentTab, setAgentTab, agentPerms,
   authToken, newItemHint, handleItemAdded,
@@ -65,14 +66,14 @@ export function AdminPanelContent({
   return (
     <>
       {/* ── Команда ── */}
-      {mainTab === "team" && hasTeam && (
+      {mainTab === "team" && tabAccess.team && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <TeamPanel isDark={isDark} />
         </div>
       )}
 
       {/* ── Свой агент ── */}
-      {mainTab === "own-agent" && hasTeam && (
+      {mainTab === "own-agent" && tabAccess.ownAgent && (
         <div className="flex-1 flex flex-col overflow-hidden">
           {user?.has_own_agent
             ? <OwnAgentEditor isDark={isDark} />
@@ -81,7 +82,7 @@ export function AdminPanelContent({
       )}
 
       {/* ── Интеграции ── */}
-      {mainTab === "integrations" && hasTeam && (
+      {mainTab === "integrations" && tabAccess.integrations && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <TabIntegrations isDark={isDark} />
         </div>

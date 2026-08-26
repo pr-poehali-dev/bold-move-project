@@ -14,11 +14,21 @@ export const AGENT_TABS: { id: AgentSubTab; label: string; icon: string }[] = [
 
 export interface TabConfig { id: MainTab; icon: string; label: string; }
 
-export const buildMainTabs = (_canCrm: boolean, canAgent: boolean, hasTeam: boolean): TabConfig[] => [
-  ...(canAgent ? [{ id: "agent"     as MainTab, icon: "BrainCircuit",    label: "Агент"      }] : []),
-  ...(hasTeam  ? [{ id: "team"      as MainTab, icon: "Users",           label: "Команда"    }] : []),
-  ...(hasTeam  ? [{ id: "own-agent" as MainTab, icon: "Bot",             label: "Свой агент" }] : []),
-  ...(hasTeam  ? [{ id: "integrations" as MainTab, icon: "Plug",         label: "Интеграции" }] : []),
+// Каждая вкладка включается отдельно. Раньше все три «командные» вкладки
+// висели на одном флаге hasTeam (только владелец компании) — теперь каждая
+// управляется своим правом, поэтому передаём их по отдельности.
+export interface MainTabsAccess {
+  agent:        boolean;
+  team:         boolean;
+  ownAgent:     boolean;
+  integrations: boolean;
+}
+
+export const buildMainTabs = (access: MainTabsAccess): TabConfig[] => [
+  ...(access.agent        ? [{ id: "agent"        as MainTab, icon: "BrainCircuit", label: "Агент"      }] : []),
+  ...(access.team         ? [{ id: "team"         as MainTab, icon: "Users",        label: "Команда"    }] : []),
+  ...(access.ownAgent     ? [{ id: "own-agent"    as MainTab, icon: "Bot",          label: "Свой агент" }] : []),
+  ...(access.integrations ? [{ id: "integrations" as MainTab, icon: "Plug",         label: "Интеграции" }] : []),
 ];
 
 export function AgentTabDropdown({ tabs, active, isDark, onChange, activeLabel, activeIcon }: {

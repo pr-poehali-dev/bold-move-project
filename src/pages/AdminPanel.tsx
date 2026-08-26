@@ -51,8 +51,16 @@ export default function AdminPanel() {
     !managerDenied;
 
   const canAgent = hasPermission(user, "agent_view");
-  const hasTeam  = (user?.role === "company" || !!user?.is_master) && !user?.is_demo;
-  const mainTabs = buildMainTabs(false, canAgent, hasTeam);
+  // Демо-аккаунтам «командные» вкладки закрыты всегда, остальным доступ даёт
+  // право (hasPermission сам пропускает владельца компании, установщика и мастера).
+  const notDemo  = !!user && !user.is_demo;
+  const tabAccess = {
+    agent:        canAgent,
+    team:         notDemo && hasPermission(user, "team_view"),
+    ownAgent:     notDemo && hasPermission(user, "own_agent_view"),
+    integrations: notDemo && hasPermission(user, "integrations_view"),
+  };
+  const mainTabs = buildMainTabs(tabAccess);
 
   const agentPerms = {
     prices:      { view: hasPermission(user, "prices_view"),      edit: hasPermission(user, "prices_edit") },
@@ -70,11 +78,13 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (loading || !user) return;
-    const allowed = buildMainTabs(
-      false,
-      hasPermission(user, "agent_view"),
-      user.role === "company" || !!user.is_master,
-    );
+    const notDemoNow = !user.is_demo;
+    const allowed = buildMainTabs({
+      agent:        hasPermission(user, "agent_view"),
+      team:         notDemoNow && hasPermission(user, "team_view"),
+      ownAgent:     notDemoNow && hasPermission(user, "own_agent_view"),
+      integrations: notDemoNow && hasPermission(user, "integrations_view"),
+    });
     const preferred = urlTab ?? savedTab;
     const firstTab = allowed[0]?.id ?? "agent";
     const target = preferred && allowed.find(t => t.id === preferred) ? preferred : firstTab;
@@ -148,7 +158,7 @@ export default function AdminPanel() {
       <AdminPanelContent
         mainTab={mainTab}
         canAgent={canAgent}
-        hasTeam={hasTeam}
+        tabAccess={tabAccess}
         isDark={isDark}
         agentTab={agentTab}
         setAgentTab={setAgentTab}
