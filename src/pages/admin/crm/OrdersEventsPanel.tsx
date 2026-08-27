@@ -12,6 +12,19 @@ interface Props {
 const MEASURE_ACTIVE = ["new", "call", "measure"];
 const INSTALL_ACTIVE = ["contract", "prepaid", "install_scheduled"];
 
+// Событие на СЕГОДНЯ не считаем просроченным сразу как прошло его время —
+// у сотрудника должен быть весь рабочий день, чтобы обновить карточку.
+// Красным подсвечиваем только после этого часа. Событие за вчера и раньше
+// просрочено всегда, без исключений.
+const OVERDUE_TODAY_HOUR = 21;
+function isOverdue(dateStr: string, now: Date): boolean {
+  const d = new Date(dateStr);
+  if (d >= now) return false;
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday && now.getHours() < OVERDUE_TODAY_HOUR) return false;
+  return true;
+}
+
 // Порог «Нет действий N+ дней» — настраивается через шестерёнку (1–10 дней),
 // хранится локально в браузере, по умолчанию 7 (как было раньше).
 const LS_NO_ACTION_DAYS = "crm_no_action_days_threshold";
@@ -65,12 +78,12 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   // Просроченные замеры
   const overdueM = allClients.filter(c =>
-    MEASURE_ACTIVE.includes(c.status ?? "") && c.measure_date && new Date(c.measure_date) < now
+    MEASURE_ACTIVE.includes(c.status ?? "") && c.measure_date && isOverdue(c.measure_date, now)
   ).sort((a, b) => new Date(a.measure_date!).getTime() - new Date(b.measure_date!).getTime());
 
   // Просроченные монтажи
   const overdueI = allClients.filter(c =>
-    INSTALL_ACTIVE.includes(c.status ?? "") && c.install_date && new Date(c.install_date) < now
+    INSTALL_ACTIVE.includes(c.status ?? "") && c.install_date && isOverdue(c.install_date, now)
   ).sort((a, b) => new Date(a.install_date!).getTime() - new Date(b.install_date!).getTime());
 
   const overdueCount = overdueM.length + overdueI.length;
