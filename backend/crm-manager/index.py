@@ -1543,6 +1543,17 @@ def handler(event: dict, context) -> dict:
                         if srow:
                             body["sub_status"] = str(srow[0])
 
+                # Если менеджер вручную указывает дату замера (и явно не выбрал другой
+                # подэтап), а у заявки сейчас висит подэтап «Дата замера не назначена» —
+                # он потерял смысл (дата уже есть), поэтому снимаем его автоматически.
+                if body.get("measure_date") and "sub_status" not in body:
+                    cur.execute(f"""SELECT os.label FROM {SCHEMA}.live_chats lc
+                        LEFT JOIN {SCHEMA}.order_substatuses os ON os.id::text = lc.sub_status
+                        WHERE lc.id=%s""", (int(cid),))
+                    cur_sub_row = cur.fetchone()
+                    if cur_sub_row and cur_sub_row[0] == "Дата замера не назначена":
+                        body["sub_status"] = None
+
                 # Поля взаимоисключающие: если менеджер ставит «звонить не нужно» и явно
                 # не передал новую дату звонка — гасим next_call_date, чтобы в карточке
                 # не висело одновременно и напоминание, и отметка «звонить не нужно».

@@ -203,7 +203,7 @@ export function OrdersListView({
         {hasStageFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
-            {[...stageChips, ...subChips].map(x => (
+            {[...subChips, ...stageChips].map(x => (
               <button key={x.key} onClick={x.onClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                 style={{
