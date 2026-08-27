@@ -90,7 +90,11 @@ export const PERM_TREE: PermSection[] = [
     rows: [
       { label: "Контакты",     icon: "Phone",     color: "#a78bfa", view: "field_contacts", desc: "Телефон, email клиента" },
       { label: "Адрес объекта",icon: "MapPin",    color: "#60a5fa", view: "field_address",  desc: "Адрес замера/монтажа" },
-      { label: "Даты",         icon: "Calendar",  color: "#f59e0b", view: "field_dates",    desc: "Дата замера и монтажа" },
+      { label: "Даты",         icon: "Calendar",  color: "#f59e0b", view: "field_dates",    desc: "Показывать блок «Даты» в карточке вообще" },
+      { label: "└ Желаемый замер",   icon: "Ruler",  color: "#38bdf8", view: "dates_view_desired_measure", edit: "dates_edit_desired_measure_date", desc: "Ставит 1 линия со слов клиента" },
+      { label: "└ Желаемый монтаж",  icon: "Wrench", color: "#a78bfa", view: "dates_view_desired_install", edit: "dates_edit_desired_install_date", desc: "Ставит 1 линия со слов клиента" },
+      { label: "└ Факт. замер",      icon: "Ruler",  color: "#f59e0b", view: "dates_view_measure",  edit: "dates_edit_measure_date",  desc: "Ставит 2 линия после согласования" },
+      { label: "└ Факт. монтаж",     icon: "Wrench", color: "#f97316", view: "dates_view_install",  edit: "dates_edit_install_date",  desc: "Ставит 2 линия после согласования" },
       { label: "Финансы",      icon: "Wallet",    color: "#10b981", view: "field_finance",  desc: "Суммы и прибыль в карточке" },
       { label: "Примечания",   icon: "FileText",  color: "#94a3b8", view: "field_notes",    desc: "Комментарии и заметки" },
       { label: "Файлы",        icon: "Paperclip", color: "#6366f1", view: "field_files",    desc: "Блок файлов в карточке" },

@@ -897,7 +897,7 @@ ALL_CLIENT_FIELDS = [
     "responsible_phone", "map_link", "tags",
     "photo_before_url", "photo_after_url", "document_url",
     "material_cost", "measure_cost", "install_cost", "management_cost", "cancel_reason",
-    "project_id",
+    "project_id", "desired_measure_date", "desired_install_date",
 ]
 
 def handler(event: dict, context) -> dict:
@@ -942,6 +942,15 @@ def handler(event: dict, context) -> dict:
     orders_reassign = False       # может вручную сменить ответственного у заявки
     calendar_event_types = None   # None = видны все типы событий календаря
     calendar_own_only = False     # в календаре только события по своим заявкам
+    # Права на редактирование по каждому из 4 типов дат отдельно (желаемая/фактическая
+    # × замер/монтаж). По умолчанию True (без ограничений) — обратная совместимость
+    # для уже заведённых сотрудников, пока владелец явно не выключит право в настройках.
+    dates_edit_rights = {
+        "desired_measure_date": True,
+        "desired_install_date": True,
+        "measure_date": True,
+        "install_date": True,
+    }
     # True только если токен реально проверен и найдена активная сессия в БД.
     # Отсутствие токена НЕ должно трактоваться как доступ мастера (см. resource=="clients" ниже).
     authenticated = False
@@ -992,6 +1001,14 @@ def handler(event: dict, context) -> dict:
                         if isinstance(et, list) and len(et) > 0:
                             calendar_event_types = et
                         calendar_own_only = bool(upermissions.get("calendar_own_only"))
+                        # Права на даты: ключ permissions вида "dates_edit_measure_date".
+                        # Если ключа нет вообще (сотрудник не настроен персонально) — оставляем
+                        # True (значение по умолчанию выше), чтобы не сломать существующих.
+                        # Если ключ ЕСТЬ (хоть True, хоть False) — уважаем явное значение.
+                        for _df in dates_edit_rights:
+                            _k = f"dates_edit_{_df}"
+                            if _k in upermissions:
+                                dates_edit_rights[_df] = bool(upermissions.get(_k))
                 else:
                     company_id = uid
 
@@ -1240,6 +1257,7 @@ def handler(event: dict, context) -> dict:
                            lc.material_cost, lc.measure_cost, lc.install_cost, lc.management_cost, lc.cancel_reason,
                            lc.updated_at, lc.project_id, lc.avito_chat_url, lc.status_changed_at, lc.closed_at,
                            lc.next_call_date, lcall.last_call_at,
+                           lc.desired_measure_date, lc.desired_install_date,
                            GREATEST(lc.updated_at, COALESCE(lact.last_touch_at, lc.updated_at)) AS last_activity_at,
                            COALESCE(missed.has_missed_call, FALSE) AS has_missed_call,
                            COALESCE(u.is_demo, FALSE) AS is_demo,
@@ -1583,6 +1601,13 @@ def handler(event: dict, context) -> dict:
                         if srow:
                             body["sub_status"] = str(srow[0])
 
+                # Проверка прав на редактирование дат: мастер/владелец могут всегда,
+                # сотруднику — только если явно не запрещено (dates_edit_rights).
+                if not (is_master or is_owner):
+                    for _df in ("desired_measure_date", "desired_install_date", "measure_date", "install_date"):
+                        if _df in body and not dates_edit_rights.get(_df, True):
+                            return err("Нет прав редактировать эту дату", 403)
+
                 # Если менеджер вручную указывает дату замера (и явно не выбрал другой
                 # подэтап), а у заявки сейчас висит подэтап «Дата замера не назначена» —
                 # он потерял смысл (дата уже есть), поэтому снимаем его автоматически.
@@ -1723,6 +1748,31 @@ def handler(event: dict, context) -> dict:
                     else:
                         if ex:
                             cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
+
+                # Синхронизируем желаемые даты замера/монтажа в календаре — их ставит
+                # 1 линия при первом контакте с клиентом, ещё не согласовано со
+                # специалистом. Отдельные типы событий, чтобы не путать с фактическими.
+                DESIRED_DATE_SYNC = [
+                    ("desired_measure_date", "desired_measure", "Желаемый замер", "#38bdf8"),
+                    ("desired_install_date", "desired_install", "Желаемый монтаж", "#a78bfa"),
+                ]
+                for date_field, ev_type, ev_title, ev_color in DESIRED_DATE_SYNC:
+                    if date_field in body:
+                        cur.execute(f"SELECT client_name FROM {SCHEMA}.live_chats WHERE id = %s", (int(cid),))
+                        nr = cur.fetchone()
+                        name = (nr[0] if nr else "") or "Клиент"
+                        cur.execute(f"SELECT id FROM {SCHEMA}.calendar_events WHERE client_id=%s AND event_type=%s LIMIT 1", (int(cid), ev_type))
+                        ex = cur.fetchone()
+                        if body[date_field]:
+                            if ex:
+                                cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time=%s, title=%s, company_id=COALESCE(company_id,%s) WHERE id=%s",
+                                            (body[date_field], f"{ev_title}: {name}", company_id, ex[0]))
+                            else:
+                                cur.execute(f"""INSERT INTO {SCHEMA}.calendar_events (client_id,title,event_type,start_time,color,company_id)
+                                    VALUES (%s,%s,%s,%s,%s,%s)""", (int(cid), f"{ev_title}: {name}", ev_type, body[date_field], ev_color, company_id))
+                        else:
+                            if ex:
+                                cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
 
                 # Синхронизируем дату следующего звонка в календаре (блок «Касания»,
                 # заполняется вручную сотрудником — напоминание для повторного созвона).

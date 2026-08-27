@@ -239,15 +239,37 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
             </div>
           </div>
 
-          {(c.measure_date || c.install_date || (c.next_call_date && !isDone && !isCancelled)) && (
+          {(c.measure_date || c.install_date || c.desired_measure_date || c.desired_install_date || (c.next_call_date && !isDone && !isCancelled)) && (
             <div className="flex gap-2 mb-3 flex-wrap">
+              {/* Желаемая дата показывается только пока фактическая ещё не согласована —
+                  как только 2 линия назначит факт. дату, желаемая чипом больше не дублируется. */}
+              {c.desired_measure_date && !c.measure_date && (
+                <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                  style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8" }}>
+                  <Icon name="Ruler" size={9} />
+                  <div>
+                    <div className="font-medium">{new Date(c.desired_measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
+                    <div className="opacity-60">Желаемый замер</div>
+                  </div>
+                </div>
+              )}
+              {c.desired_install_date && !c.install_date && (
+                <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
+                  style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>
+                  <Icon name="Wrench" size={9} />
+                  <div>
+                    <div className="font-medium">{new Date(c.desired_install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
+                    <div className="opacity-60">Желаемый монтаж</div>
+                  </div>
+                </div>
+              )}
               {c.measure_date && (
                 <div className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-md"
                   style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
                   <Icon name="Ruler" size={9} />
                   <div>
                     <div className="font-medium">{new Date(c.measure_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
-                    <div className="opacity-60">Замер</div>
+                    <div className="opacity-60">Факт. замер</div>
                   </div>
                 </div>
               )}
@@ -257,7 +279,7 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                   <Icon name="Wrench" size={9} />
                   <div>
                     <div className="font-medium">{new Date(c.install_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
-                    <div className="opacity-60">Монтаж</div>
+                    <div className="opacity-60">Факт. монтаж</div>
                   </div>
                 </div>
               )}

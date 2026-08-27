@@ -129,17 +129,21 @@ export const STATUS_COLORS: Record<string, string> = {
 };
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
-  measure:    "Замер",
-  install:    "Монтаж",
-  next_call:  "Следующий звонок",
-  last_call:  "Последний звонок",
+  measure:         "Замер",
+  install:         "Монтаж",
+  desired_measure: "Желаемый замер",
+  desired_install: "Желаемый монтаж",
+  next_call:       "Следующий звонок",
+  last_call:       "Последний звонок",
 };
 
 export const EVENT_TYPE_COLORS: Record<string, string> = {
-  measure:    "#f59e0b",
-  install:    "#f97316",
-  next_call:  "#3b82f6",
-  last_call:  "#8b5cf6",
+  measure:         "#f59e0b",
+  install:         "#f97316",
+  desired_measure: "#38bdf8",
+  desired_install: "#a78bfa",
+  next_call:       "#3b82f6",
+  last_call:       "#8b5cf6",
 };
 
 export const PRIORITY_LABELS: Record<string, string> = {
@@ -182,8 +186,14 @@ export interface Client {
   phone: string;
   status: string;
   client_status: string | null;
+  /** Фактическая дата замера — согласована со специалистом, ставит 2 линия. */
   measure_date: string | null;
+  /** Фактическая дата монтажа — согласована со специалистом, ставит 2 линия. */
   install_date: string | null;
+  /** Желаемая дата замера — со слов клиента, ставит 1 линия при первом контакте. */
+  desired_measure_date?: string | null;
+  /** Желаемая дата монтажа — со слов клиента, ставит 1 линия при первом контакте. */
+  desired_install_date?: string | null;
   notes: string | null;
   /** Блок «Комментарий» — 4 отдельных поля + 2 Summary (см. DrawerCommentsBlock). Опциональны — локальные демо-карточки их не создают. */
   comment_order?: string | null;

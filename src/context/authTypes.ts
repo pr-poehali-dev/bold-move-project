@@ -298,6 +298,20 @@ export interface Permissions {
   // Показывать только события, привязанные к заявкам этого сотрудника
   calendar_own_only?: boolean;
 
+  // ── Уровень 3: Даты в карточке — видимость/редактирование по каждому из 4
+  // типов отдельно (желаемая/фактическая × замер/монтаж). Заменяет общее поле
+  // field_dates для тонкой настройки: например 1 линия видит и ставит только
+  // «желаемые» даты, а «фактические» — видит, но не редактирует.
+  // Отсутствие ключа = разрешено (обратная совместимость, как раньше при field_dates=true).
+  dates_view_desired_measure?: boolean;
+  dates_edit_desired_measure_date?: boolean;
+  dates_view_desired_install?: boolean;
+  dates_edit_desired_install_date?: boolean;
+  dates_view_measure?: boolean;
+  dates_edit_measure_date?: boolean;
+  dates_view_install?: boolean;
+  dates_edit_install_date?: boolean;
+
   // ── Устаревшие (для обратной совместимости) ─────────────────────────────
   crm_edit?:   boolean;
   finance?:    boolean;

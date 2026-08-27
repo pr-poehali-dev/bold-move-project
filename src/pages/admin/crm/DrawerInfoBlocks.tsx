@@ -289,9 +289,7 @@ function useInfoBlock(id: BlockId, hiddenBlocks: Set<BlockId>, editingBlock: Blo
 }
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
-export function DrawerContactsBlock({ data, setData, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog, logAction, onGoToTouches }: InfoBlocksProps) {
-  const { user } = useAuth();
-  const canReassign = hasPermission(user, "orders_reassign");
+export function DrawerContactsBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog, onGoToTouches }: InfoBlocksProps) {
   const id: BlockId = "contacts";
   const { isHidden, editMode } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
   const { call: callViaUis, calling } = useCallClient();
@@ -378,30 +376,19 @@ export function DrawerContactsBlock({ data, setData, hiddenBlocks, editingBlock,
         editable={data.created_via === "manual"}
         onSave={v => saveWithLog({ source: v } as Partial<Client>, `Источник: ${v}`, "Radio", "#10b981")}
       />
-      <AssignedRow
-        clientId={data.id}
-        label="Ответственный"
-        field="assigned_to"
-        assignedTo={data.assigned_to}
-        assignedName={data.assigned_name}
-        canReassign={canReassign}
-        onSaved={(userId, name) => {
-          setData({ ...data, assigned_to: userId, assigned_name: name });
-          logAction("UserCog", "#818cf8", userId ? `Назначен ответственный: ${name}` : "Ответственный снят");
-        }}
-      />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
     </Section>
   );
 }
 
 // ── Assigned roles (блок «Ответственные») ───────────────────────────────────────
-// 4 дополнительные роли, помимо менеджера 1 линии (тот остаётся в блоке «Контакты»
-// как AssignedRow «Ответственный» — исторически он там, трогать не будем, чтобы
-// не ломать привычный UX). Права те же — orders_reassign.
-const ASSIGNED_ROLES: { field: "assigned_manager2" | "assigned_measurer" | "assigned_technologist" | "assigned_installer";
-  nameField: "assigned_manager2_name" | "assigned_measurer_name" | "assigned_technologist_name" | "assigned_installer_name";
+// Все 5 ролей воронки, включая менеджера 1 линии (раньше он назывался «Ответственный»
+// и жил отдельно в блоке «Контакты» — перенесён сюда и переименован для единообразия
+// с остальными 4 ролями, чтобы все ответственные были в одном месте).
+const ASSIGNED_ROLES: { field: "assigned_to" | "assigned_manager2" | "assigned_measurer" | "assigned_technologist" | "assigned_installer";
+  nameField: "assigned_name" | "assigned_manager2_name" | "assigned_measurer_name" | "assigned_technologist_name" | "assigned_installer_name";
   label: string }[] = [
+  { field: "assigned_to",           nameField: "assigned_name",              label: "Менеджер (1 линия)" },
   { field: "assigned_manager2",     nameField: "assigned_manager2_name",     label: "Менеджер (2 линия)" },
   { field: "assigned_measurer",     nameField: "assigned_measurer_name",     label: "Замерщик" },
   { field: "assigned_technologist", nameField: "assigned_technologist_name", label: "Технолог" },
@@ -471,26 +458,72 @@ export function DrawerObjectBlock({ data, hiddenBlocks, editingBlock, toggleHidd
 }
 
 // ── Dates ─────────────────────────────────────────────────────────────────────
+// Блок разбит на 2 подгруппы: «Желаемые» (ставит 1 линия со слов клиента, ещё не
+// согласовано со специалистом) и «Фактические» (measure_date/install_date — ставит
+// 2 линия после согласования). Видимость/редактирование каждого поля — по правам
+// dates_view_*/dates_edit_* (см. authTypes.ts), отсутствие ключа = разрешено
+// (обратная совместимость с прежним общим полем field_dates).
+const DATE_ROWS: { key: "desired_measure_date" | "desired_install_date" | "measure_date" | "install_date";
+  def: string; icon: string; color: string; group: "desired" | "actual";
+  viewPerm: keyof import("@/context/AuthContext").Permissions;
+  editPerm: keyof import("@/context/AuthContext").Permissions }[] = [
+  { key: "desired_measure_date", def: "Желаемый замер",  icon: "Ruler",  color: "#38bdf8", group: "desired",
+    viewPerm: "dates_view_desired_measure", editPerm: "dates_edit_desired_measure_date" },
+  { key: "desired_install_date", def: "Желаемый монтаж", icon: "Wrench", color: "#a78bfa", group: "desired",
+    viewPerm: "dates_view_desired_install", editPerm: "dates_edit_desired_install_date" },
+  { key: "measure_date", def: "Фактическая дата замера",  icon: "Ruler",  color: "#f59e0b", group: "actual",
+    viewPerm: "dates_view_measure", editPerm: "dates_edit_measure_date" },
+  { key: "install_date", def: "Фактическая дата монтажа", icon: "Wrench", color: "#f97316", group: "actual",
+    viewPerm: "dates_view_install", editPerm: "dates_edit_install_date" },
+];
+
+function saveDateField(saveWithLog: InfoBlocksProps["saveWithLog"], key: string, label: string, icon: string, color: string) {
+  return (v: string) => saveWithLog({ [key]: v || null }, v ? `${label}: ${new Date(v).toLocaleDateString("ru-RU")}` : `${label} удалена`, icon, color);
+}
+
 export function DrawerDatesBlock({ data, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, saveWithLog }: InfoBlocksProps) {
+  const { user } = useAuth();
   const id: BlockId = "dates";
   const { isHidden, editMode, getLabel, renameLabel, hideRow, isVisible, extraRows, addExtraRow, updateExtraRow, renameExtraRow, deleteExtraRow } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
 
-  const rows: { key: keyof Client; def: string; valFn: () => string; save: (v: string) => void }[] = [
-    { key: "measure_date", def: "Дата замера",  valFn: () => data.measure_date ? data.measure_date.slice(0, 16) : "", save: v => saveWithLog({ measure_date: v || null }, v ? `Замер: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата замера удалена",  "Ruler",  "#f97316") },
-    { key: "install_date", def: "Дата монтажа", valFn: () => data.install_date ? data.install_date.slice(0, 16) : "", save: v => saveWithLog({ install_date: v || null }, v ? `Монтаж: ${new Date(v).toLocaleDateString("ru-RU")}` : "Дата монтажа удалена", "Wrench", "#f97316") },
-  ];
+  // Отсутствие ключа в permissions = разрешено (как было раньше с общим field_dates),
+  // поэтому проверяем явное false, а не через hasPermission (у которой отсутствие = false).
+  const permAllows = (permKey: keyof import("@/context/AuthContext").Permissions) => {
+    if (!user) return false;
+    if (user.is_master || user.role === "company" || user.role === "installer") return true;
+    if (!user.permissions) return true;
+    return user.permissions[permKey] !== false;
+  };
+
+  const renderGroup = (group: "desired" | "actual", title: string) => {
+    const rows = DATE_ROWS.filter(r => r.group === group && isVisible(r.key) && permAllows(r.viewPerm));
+    if (rows.length === 0) return null;
+    return (
+      <div className="mb-2 last:mb-0">
+        <div className="text-[9px] uppercase tracking-wider font-bold mb-0.5 opacity-50">{title}</div>
+        {rows.map(r => {
+          const canEdit = permAllows(r.editPerm);
+          const val = data[r.key] ? String(data[r.key]).slice(0, 16) : "";
+          return (
+            <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
+              editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
+              onDelete={() => hideRow(r.key)}>
+              <InlineField label={getLabel(r.key, r.def)} value={val}
+                onSave={saveDateField(saveWithLog, r.key, getLabel(r.key, r.def), r.icon, r.color)}
+                type="datetime-local" placeholder={canEdit ? "Добавить дату" : "Не указана"} readOnly={!canEdit} />
+            </RowWithToggle>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Section icon="Calendar" title="Даты" color="#f97316" hidden={isHidden}
       onToggleHidden={() => toggleHidden(id)}
       onEdit={!isHidden ? () => setEditingBlock(editMode ? null : id) : undefined}>
-      {rows.filter(r => isVisible(r.key)).map(r => (
-        <RowWithToggle key={r.key} rowKey={r.key} visible onToggle={() => {}} editMode={editMode}
-          editableLabel={getLabel(r.key, r.def)} onLabelChange={l => renameLabel(r.key, l)}
-          onDelete={() => hideRow(r.key)}>
-          <InlineField label={getLabel(r.key, r.def)} value={r.valFn()} onSave={r.save} type="datetime-local" placeholder="Добавить дату" />
-        </RowWithToggle>
-      ))}
+      {renderGroup("desired", "Желаемые")}
+      {renderGroup("actual", "Фактические")}
       {extraRows.map((row, i) => (
         <RowWithToggle key={`extra_${i}`} rowKey={`extra_${i}`} visible onToggle={() => {}} editMode={editMode}
           editableLabel={row.label} onLabelChange={l => renameExtraRow(i, l)}

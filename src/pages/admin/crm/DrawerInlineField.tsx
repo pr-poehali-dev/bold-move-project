@@ -23,7 +23,7 @@ function isPhoneValid(masked: string): boolean {
   return masked.replace(/\D/g, "").length === 11;
 }
 
-export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline, onCall, calling, onMessage }: {
+export function InlineField({ label, value, onSave, type = "text", placeholder = "—", hideLabel, labelExtra, multiline, onCall, calling, onMessage, readOnly }: {
   label: string;
   value: string | number | null | undefined;
   onSave: (v: string) => void;
@@ -38,6 +38,8 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   calling?: boolean;
   /** Если задано — рядом со значением телефона появляется иконка «написать» (переход на вкладку «Касания») */
   onMessage?: () => void;
+  /** Значение видно, но клик по нему не открывает редактирование (нет права edit) */
+  readOnly?: boolean;
 }) {
   const t = useTheme();
   const [editing,      setEditing]      = useState(false);
@@ -60,6 +62,7 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
   };
 
   const startEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (readOnly) return;
     if (isDatetime) {
       setAnchorRect(e.currentTarget.getBoundingClientRect());
       setDatePickerOpen(true);
@@ -100,10 +103,11 @@ export function InlineField({ label, value, onSave, type = "text", placeholder =
 
         {isDatetime ? (
           <>
-            <button onClick={startEdit} className="flex-1 text-right text-sm transition hover:opacity-70 truncate py-2">
+            <button onClick={startEdit} disabled={readOnly}
+              className={`flex-1 text-right text-sm transition truncate py-2 ${readOnly ? "cursor-default" : "hover:opacity-70"}`}>
               {displayVal()
                 ? <span style={{ color: "#fff" }}>{displayVal()}</span>
-                : <span className="text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed">{placeholder}</span>}
+                : <span className={readOnly ? "text-xs" : "text-xs text-violet-400/60 underline underline-offset-2 decoration-dashed"} style={readOnly ? { color: "#6b7280" } : undefined}>{placeholder}</span>}
             </button>
             {datePickerOpen && (
               <DateTimePickerPopup
