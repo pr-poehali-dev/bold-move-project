@@ -11,7 +11,7 @@ import { DrawerCustomBlock } from "./DrawerCustomBlock";
 import { DrawerIncomeBlock, DrawerCostsBlock } from "./DrawerFinBlocks";
 import {
   DrawerContactsBlock, DrawerObjectBlock, DrawerDatesBlock,
-  DrawerFilesBlock, DrawerCancelBlock, DrawerCallDatesBlock,
+  DrawerFilesBlock, DrawerCancelBlock, DrawerCallDatesBlock, DrawerAssignedRolesBlock,
 } from "./DrawerInfoBlocks";
 import { DrawerCommentsBlock } from "./DrawerCommentsBlock";
 
@@ -110,6 +110,7 @@ export function DrawerColumns(props: ColumnsProps) {
       case "object":   return canFieldAddress  ? <DrawerObjectBlock   {...infoProps} /> : null;
       case "dates":    return canFieldDates     ? <DrawerDatesBlock    {...infoProps} /> : null;
       case "call_dates": return canFieldDates   ? <DrawerCallDatesBlock {...infoProps} /> : null;
+      case "assigned_roles": return canFieldContacts ? <DrawerAssignedRolesBlock {...infoProps} /> : null;
       case "notes":    return null; // notes рендерится отдельно
       case "comments": return canFieldContacts ? <DrawerCommentsBlock data={data} saveWithLog={saveWithLog} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} /> : null;
       case "files":    return (canFiles && canFieldFiles)    ? <DrawerFilesBlock clientId={data.id} hiddenBlocks={hiddenBlocks} toggleHidden={toggleHidden} logAction={logAction} editingBlock={editingBlock} setEditingBlock={setEditingBlock} /> : null;

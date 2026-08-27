@@ -60,8 +60,13 @@ function SourceRow({ value, editable, onSave }: { value: string; editable: boole
 // отказ backend'а (нет прав/сотрудник не найден) раньше был не виден: на экране
 // новое имя появлялось, но в базе ничего не менялось, и после обновления страницы
 // значение "откатывалось" — выглядело как "не сохраняется".
-function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved }: {
+// field — какое поле заявки редактируем (assigned_to, assigned_manager2, assigned_measurer,
+// assigned_technologist, assigned_installer) — так один компонент обслуживает все 5 ролей
+// блока «Ответственные», а не только менеджера 1 линии.
+function AssignedRow({ clientId, label, field, assignedTo, assignedName, canReassign, onSaved }: {
   clientId: number;
+  label: string;
+  field: string;
   assignedTo?: number | null;
   assignedName?: string | null;
   canReassign: boolean;
@@ -85,7 +90,7 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
   if (!canReassign) {
     return (
       <div className="flex items-center justify-between gap-2 py-1.5">
-        <span className="text-xs" style={{ color: "#d4d4d4" }}>Ответственный</span>
+        <span className="text-xs" style={{ color: "#d4d4d4" }}>{label}</span>
         <span className="flex items-center gap-1.5 text-xs font-medium">
           <Icon name={assignedName ? "UserCheck" : "UserPlus"} size={11}
             style={{ color: assignedName ? "#34d399" : t.textMute }} />
@@ -110,7 +115,7 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
     const newId = raw ? Number(raw) : null;
     const name = raw ? (members.find(m => m.id === newId)?.name || null) : null;
     try {
-      const d = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ assigned_to: newId }) }, { id: String(clientId) }) as { error?: string };
+      const d = await crmFetch("clients", { method: "PUT", body: JSON.stringify({ [field]: newId }) }, { id: String(clientId) }) as { error?: string };
       const humanErr = d?.error ? humanizeError(d.error) : "";
       if (humanErr) {
         setErr(humanErr);
@@ -129,7 +134,7 @@ function AssignedRow({ clientId, assignedTo, assignedName, canReassign, onSaved 
   return (
     <div className="py-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs flex-shrink-0" style={{ color: "#d4d4d4" }}>Ответственный</span>
+        <span className="text-xs flex-shrink-0" style={{ color: "#d4d4d4" }}>{label}</span>
         {/* w-auto + text-right — иначе <select> растягивался на всю ширину контейнера
             и выглядел непропорционально большим и "съехавшим" влево */}
         <select
@@ -375,6 +380,8 @@ export function DrawerContactsBlock({ data, setData, hiddenBlocks, editingBlock,
       />
       <AssignedRow
         clientId={data.id}
+        label="Ответственный"
+        field="assigned_to"
         assignedTo={data.assigned_to}
         assignedName={data.assigned_name}
         canReassign={canReassign}
@@ -384,6 +391,47 @@ export function DrawerContactsBlock({ data, setData, hiddenBlocks, editingBlock,
         }}
       />
       {editMode && <AddRowInline color="#10b981" onAdd={addCustomField} />}
+    </Section>
+  );
+}
+
+// ── Assigned roles (блок «Ответственные») ───────────────────────────────────────
+// 4 дополнительные роли, помимо менеджера 1 линии (тот остаётся в блоке «Контакты»
+// как AssignedRow «Ответственный» — исторически он там, трогать не будем, чтобы
+// не ломать привычный UX). Права те же — orders_reassign.
+const ASSIGNED_ROLES: { field: "assigned_manager2" | "assigned_measurer" | "assigned_technologist" | "assigned_installer";
+  nameField: "assigned_manager2_name" | "assigned_measurer_name" | "assigned_technologist_name" | "assigned_installer_name";
+  label: string }[] = [
+  { field: "assigned_manager2",     nameField: "assigned_manager2_name",     label: "Менеджер (2 линия)" },
+  { field: "assigned_measurer",     nameField: "assigned_measurer_name",     label: "Замерщик" },
+  { field: "assigned_technologist", nameField: "assigned_technologist_name", label: "Технолог" },
+  { field: "assigned_installer",    nameField: "assigned_installer_name",    label: "Монтажник" },
+];
+
+export function DrawerAssignedRolesBlock({ data, setData, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock, logAction }: InfoBlocksProps) {
+  const { user } = useAuth();
+  const canReassign = hasPermission(user, "orders_reassign");
+  const id: BlockId = "assigned_roles";
+  const { isHidden } = useInfoBlock(id, hiddenBlocks, editingBlock, toggleHidden, setEditingBlock);
+
+  return (
+    <Section icon="UsersRound" title="Ответственные" color="#818cf8" hidden={isHidden}
+      onToggleHidden={() => toggleHidden(id)}>
+      {ASSIGNED_ROLES.map(r => (
+        <AssignedRow
+          key={r.field}
+          clientId={data.id}
+          label={r.label}
+          field={r.field}
+          assignedTo={data[r.field]}
+          assignedName={data[r.nameField]}
+          canReassign={canReassign}
+          onSaved={(userId, name) => {
+            setData({ ...data, [r.field]: userId, [r.nameField]: name } as Client);
+            logAction("UserCog", "#818cf8", userId ? `${r.label}: ${name}` : `${r.label} снят`);
+          }}
+        />
+      ))}
     </Section>
   );
 }

@@ -1245,10 +1245,22 @@ def handler(event: dict, context) -> dict:
                            COALESCE(u.is_demo, FALSE) AS is_demo,
                            COALESCE(cfv.custom_costs_total, 0) AS custom_costs_total,
                            lc.assigned_to,
-                           COALESCE(NULLIF(au.name, ''), au.email) AS assigned_name
+                           COALESCE(NULLIF(au.name, ''), au.email) AS assigned_name,
+                           lc.assigned_manager2,
+                           COALESCE(NULLIF(am2.name, ''), am2.email) AS assigned_manager2_name,
+                           lc.assigned_measurer,
+                           COALESCE(NULLIF(ams.name, ''), ams.email) AS assigned_measurer_name,
+                           lc.assigned_technologist,
+                           COALESCE(NULLIF(ate.name, ''), ate.email) AS assigned_technologist_name,
+                           lc.assigned_installer,
+                           COALESCE(NULLIF(ain.name, ''), ain.email) AS assigned_installer_name
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     LEFT JOIN {SCHEMA}.users au ON au.id = lc.assigned_to
+                    LEFT JOIN {SCHEMA}.users am2 ON am2.id = lc.assigned_manager2
+                    LEFT JOIN {SCHEMA}.users ams ON ams.id = lc.assigned_measurer
+                    LEFT JOIN {SCHEMA}.users ate ON ate.id = lc.assigned_technologist
+                    LEFT JOIN {SCHEMA}.users ain ON ain.id = lc.assigned_installer
                     LEFT JOIN (
                         -- Кастомные статьи затрат заказа (Технолог, Логистика, Менеджер и т.п.),
                         -- заведённые через "+ Добавить строку" в блоке "Затраты". Тип статьи
@@ -1511,6 +1523,34 @@ def handler(event: dict, context) -> dict:
                     else:
                         cur.execute(f"UPDATE {SCHEMA}.live_chats SET assigned_to=NULL WHERE id=%s", (int(cid),))
                     conn.commit()
+
+                # Остальные 4 роли ответственных (2 линия, замерщик, технолог, монтажник) —
+                # та же логика прав, что и у assigned_to: менять может владелец/мастер
+                # или сотрудник с правом orders_reassign. Каждая роль — независимое поле,
+                # заявка может быть одновременно закреплена за разными людьми по ролям.
+                ROLE_FIELDS = ["assigned_manager2", "assigned_measurer", "assigned_technologist", "assigned_installer"]
+                for role_field in ROLE_FIELDS:
+                    if role_field in body:
+                        if not (is_master or is_owner or orders_reassign):
+                            return err("Нет прав менять ответственного", 403)
+                        new_val = body.get(role_field)
+                        if new_val is not None:
+                            check_company = company_id
+                            if check_company is None:
+                                cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                                crow = cur.fetchone()
+                                check_company = crow[0] if crow else None
+                            cur.execute(f"""
+                                SELECT id FROM {SCHEMA}.users
+                                WHERE id=%s AND company_id=%s AND role='manager' AND removed_at IS NULL
+                            """, (int(new_val), check_company))
+                            if not cur.fetchone():
+                                return err("Сотрудник не найден в этой компании", 404)
+                            cur.execute(f"UPDATE {SCHEMA}.live_chats SET {role_field}=%s WHERE id=%s",
+                                        (int(new_val), int(cid)))
+                        else:
+                            cur.execute(f"UPDATE {SCHEMA}.live_chats SET {role_field}=NULL WHERE id=%s", (int(cid),))
+                        conn.commit()
 
                 # При переводе на этап «В работе» (call) без явно указанного подэтапа —
                 # автоматически ставим подэтап «Новый в работе» (если он есть у компании).

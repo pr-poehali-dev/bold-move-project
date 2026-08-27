@@ -2,7 +2,7 @@
 
 export type BuiltinBlockId =
   | "status" | "tags" | "contacts" | "object" | "dates" | "notes"
-  | "pl" | "income" | "costs" | "files" | "cancel" | "call_dates" | "comments";
+  | "pl" | "income" | "costs" | "files" | "cancel" | "call_dates" | "comments" | "assigned_roles";
 
 export type BlockId = BuiltinBlockId | string; // custom_TIMESTAMP
 
@@ -73,8 +73,9 @@ export const DEFAULT_BLOCKS: BlockDef[] = [
   { id: "object",     col: 0, order: 3 },
   { id: "dates",      col: 0, order: 4 },
   { id: "call_dates", col: 0, order: 5 },
-  { id: "notes",      col: 0, order: 6, wide: true },
-  { id: "comments",   col: 0, order: 7, wide: true },
+  { id: "assigned_roles", col: 0, order: 6 },
+  { id: "notes",      col: 0, order: 7, wide: true },
+  { id: "comments",   col: 0, order: 8, wide: true },
   { id: "income",     col: 1, order: 0 },
   { id: "costs",      col: 1, order: 1 },
   { id: "files",      col: 1, order: 2 },

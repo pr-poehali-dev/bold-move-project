@@ -252,12 +252,21 @@ export interface Client {
    *  (например: клиент подтвердил закрытие / финальный расчёт сверен).
    *  Только для этапа "done", на остальных этапах не используется. */
   is_confirmed?: boolean;
-  /** Ответственный сотрудник — id пользователя, за которым закреплена заявка.
+  /** Ответственный менеджер 1 линии — id пользователя, за которым закреплена заявка.
    *  Проставляется автоматически: кто первым взял заявку в работу, тот и ответственный.
    *  null — заявка ничья (новая), её можно взять. */
   assigned_to?: number | null;
   /** Имя ответственного сотрудника (или email, если имя не заполнено) — приходит с сервера */
   assigned_name?: string | null;
+  /** Блок «Ответственные» — остальные 4 роли, назначаются вручную (см. AssignedRolesBlock). */
+  assigned_manager2?: number | null;
+  assigned_manager2_name?: string | null;
+  assigned_measurer?: number | null;
+  assigned_measurer_name?: string | null;
+  assigned_technologist?: number | null;
+  assigned_technologist_name?: string | null;
+  assigned_installer?: number | null;
+  assigned_installer_name?: string | null;
 }
 
 export function fmt(n: number): string {
