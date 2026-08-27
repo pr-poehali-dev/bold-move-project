@@ -144,8 +144,13 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   const fmtOverdue = (iso: string) => {
     const d = new Date(iso);
-    const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
-    if (diff === 0) return "Сегодня (не обновлён)";
+    // Считаем разницу в КАЛЕНДАРНЫХ сутках (полночь-полночь), а не по «прошло ли
+    // 24 часа» — иначе событие вчера в 18:17 при сейчас 10:00 показывало бы
+    // «Сегодня» (прошло меньше 24ч), хотя календарно это уже вчерашний день.
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+    const eventDay = new Date(d); eventDay.setHours(0, 0, 0, 0);
+    const diff = Math.round((today.getTime() - eventDay.getTime()) / 86400000);
+    if (diff <= 0) return "Сегодня (не обновлён)";
     if (diff === 1) return "Вчера";
     return `${diff} дн. назад`;
   };
