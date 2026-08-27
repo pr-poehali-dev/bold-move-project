@@ -4712,22 +4712,20 @@ def handler(event: dict, context) -> dict:
 
             # Ищем клиента по последним 10 цифрам номера — UIS иногда присылает
             # номер в разных форматах (с +7/8/без кода и т.п.).
+            last10 = call["phone"][-10:] if call["phone"] else None
             client_row = None
-            if call["phone"]:
-                last10 = call["phone"][-10:]
+            if last10:
                 cur.execute(f"""
-                    SELECT id FROM {SCHEMA}.touch_clients
+                    SELECT id, crm_contact_id FROM {SCHEMA}.touch_clients
                     WHERE company_id=%s AND phone IS NOT NULL
                       AND right(regexp_replace(phone,'\\D','','g'),10)=%s
                     LIMIT 1
                 """, (owner_id, last10))
                 client_row = cur.fetchone()
 
-            is_new_client = False
             if not client_row and call["phone"]:
-                is_new_client = True
                 cur.execute(
-                    f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id",
+                    f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id, crm_contact_id",
                     (owner_id, call["phone"]))
                 client_row = cur.fetchone()
                 conn.commit()
@@ -4735,30 +4733,46 @@ def handler(event: dict, context) -> dict:
             if not client_row:
                 return ok({"skipped": True})  # нет ни номера, ни известного клиента — нечего привязать
 
-            client_id = client_row[0]
+            client_id, existing_contact_id = client_row
 
-            # Новый клиент по звонку — сразу создаём заявку в CRM (как и для Avito),
-            # чтобы звонок не терялся без карточки. Только для ВХОДЯЩИХ звонков —
-            # если это мы сами кому-то позвонили (direction='out', например через
-            # ручной набор в UIS, не через кнопку «Позвонить»), заявку не создаём:
-            # исходящий звонок не означает нового клиента, обратившегося к нам.
-            if is_new_client and call["direction"] == "in":
-                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
-                master_row = cur.fetchone()
-                master_id = master_row[0] if master_row else None
-                final_company_id = owner_id or master_id
+            # Звонок ни разу не привязан к заявке — не важно, звонили этому номеру
+            # раньше вручную (touch_client уже был, но без заявки) или это первый
+            # контакт вообще. Раньше заявка создавалась ТОЛЬКО для совсем нового
+            # номера — из-за этого повторный входящий звонок уже известного, но
+            # ещё не заведённого в CRM клиента, нигде не появлялся. Теперь для
+            # любого входящего без заявки сначала ищем подходящую заявку по
+            # телефону (вдруг клиент уже есть в CRM, просто с этим номером ещё
+            # не сопоставлен) — и только если такой нет, заводим новую.
+            if call["direction"] == "in" and not existing_contact_id and last10:
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.live_chats
-                        (session_id, client_name, phone, status, notes, source, created_via, company_id, next_call_date, status_changed_at)
-                    VALUES (%s, %s, %s, 'new', %s, 'Звонок на прямую', 'call', %s, %s, NOW())
-                    RETURNING id
-                """, (f"uis_{call['session_id'] or uuid.uuid4().hex}", "Клиент по звонку", call["phone"],
-                      "Первый звонок через АТС UIS", final_company_id, default_next_call_date()))
-                new_order_id = cur.fetchone()[0]
-                cur.execute(
-                    f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
-                    (new_order_id, client_id))
-                conn.commit()
+                    SELECT id FROM {SCHEMA}.live_chats
+                    WHERE company_id=%s AND phone IS NOT NULL AND status != 'deleted'
+                      AND right(regexp_replace(phone,'\\D','','g'),10)=%s
+                    ORDER BY created_at DESC LIMIT 1
+                """, (owner_id, last10))
+                found = cur.fetchone()
+                if found:
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
+                        (found[0], client_id))
+                    conn.commit()
+                else:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email='mospotolkipro@gmail.com'")
+                    master_row = cur.fetchone()
+                    master_id = master_row[0] if master_row else None
+                    final_company_id = owner_id or master_id
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.live_chats
+                            (session_id, client_name, phone, status, notes, source, created_via, company_id, next_call_date, status_changed_at)
+                        VALUES (%s, %s, %s, 'new', %s, 'Звонок на прямую', 'call', %s, %s, NOW())
+                        RETURNING id
+                    """, (f"uis_{call['session_id'] or uuid.uuid4().hex}", "Клиент по звонку", call["phone"],
+                          "Первый звонок через АТС UIS", final_company_id, default_next_call_date()))
+                    new_order_id = cur.fetchone()[0]
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
+                        (new_order_id, client_id))
+                    conn.commit()
 
             # Дедупликация: если запись уже создана кнопкой click-to-call (черновик
             # status='initiated' с тем же external_id=session_id) — дополняем её,
@@ -4848,20 +4862,39 @@ def handler(event: dict, context) -> dict:
             # Клиент в модуле «Касания»: находим по id (если передан) или по телефону, иначе создаём
             client_row = None
             if client_id_q:
-                cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
+                cur.execute(f"SELECT id, crm_contact_id FROM {SCHEMA}.touch_clients WHERE id=%s AND company_id=%s",
                             (client_id_q, owner_id))
                 client_row = cur.fetchone()
             if not client_row:
-                cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND phone=%s",
+                cur.execute(f"SELECT id, crm_contact_id FROM {SCHEMA}.touch_clients WHERE company_id=%s AND phone=%s",
                             (owner_id, contact_phone))
                 client_row = cur.fetchone()
                 if not client_row:
                     cur.execute(
-                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id",
+                        f"INSERT INTO {SCHEMA}.touch_clients (company_id, phone) VALUES (%s, %s) RETURNING id, crm_contact_id",
                         (owner_id, contact_phone))
                     client_row = cur.fetchone()
                     conn.commit()
-            client_id = client_row[0]
+            client_id, existing_contact_id = client_row
+
+            # Звонок из карточки заявки (кнопка «Позвонить» рядом с телефоном), но
+            # этот touch_client ещё не привязан ни к одной заявке — довязываем по
+            # номеру телефона, чтобы звонок сразу лёг в ленту «Касания» этой заявки,
+            # а не потерялся в отдельной, не связанной с заявкой истории.
+            if not existing_contact_id:
+                last10 = contact_phone[-10:]
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.live_chats
+                    WHERE company_id=%s AND phone IS NOT NULL AND status != 'deleted'
+                      AND right(regexp_replace(phone,'\\D','','g'),10)=%s
+                    ORDER BY created_at DESC LIMIT 1
+                """, (owner_id, last10))
+                found = cur.fetchone()
+                if found:
+                    cur.execute(
+                        f"UPDATE {SCHEMA}.touch_clients SET crm_contact_id=%s WHERE id=%s",
+                        (found[0], client_id))
+                    conn.commit()
 
             session_id, call_err = uis_start_call(api_key, virtual_number, operator_phone, contact_phone)
             if call_err:
