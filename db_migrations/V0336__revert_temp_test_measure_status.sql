@@ -1,0 +1,1 @@
+UPDATE live_chats SET status='new', sub_status=NULL WHERE id=662;

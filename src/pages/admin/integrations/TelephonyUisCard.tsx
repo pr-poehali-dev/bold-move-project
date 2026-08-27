@@ -38,6 +38,7 @@ export default function TelephonyUisCard({
   const [callsCount, setCallsCount] = useState(0);
   const [lastEventAt, setLastEventAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedRoute, setCopiedRoute] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [savingPhone, setSavingPhone] = useState<number | null>(null);
@@ -152,6 +153,57 @@ export default function TelephonyUisCard({
           <Icon name={saving ? "Loader2" : "Save"} size={11} className={saving ? "animate-spin" : ""} />
           {saved ? "Сохранено" : "Сохранить ключи"}
         </button>
+      </div>
+
+      {/* Маршрутизация по линиям */}
+      <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${cardBrd}` }}>
+        <div className="text-[11px] font-semibold mb-1.5" style={{ color: txtSub }}>
+          Отделы UIS для маршрутизации по линиям
+        </div>
+        <div className="flex flex-col gap-2.5">
+          <input
+            value={values.uis_line1_department ?? ""}
+            onChange={e => setValues(v => ({ ...v, uis_line1_department: e.target.value }))}
+            placeholder="Название отдела — 1 линия"
+            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
+            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
+          />
+          <input
+            value={values.uis_line2_department ?? ""}
+            onChange={e => setValues(v => ({ ...v, uis_line2_department: e.target.value }))}
+            placeholder="Название отдела — 2 линия"
+            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
+            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
+          />
+          <button
+            onClick={() => toggleEnabled(enabled)}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition w-fit disabled:opacity-50"
+            style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
+            <Icon name={saving ? "Loader2" : "Save"} size={11} className={saving ? "animate-spin" : ""} />
+            {saved ? "Сохранено" : "Сохранить отделы"}
+          </button>
+        </div>
+        {webhookUrl && (
+          <div className="flex items-center gap-1.5 mt-2.5">
+            <div className="flex-1 min-w-0 text-xs px-3 py-2 rounded-xl truncate font-mono"
+              style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
+              {webhookUrl.replace("r=uis-webhook", "r=uis-route-call")}
+            </div>
+            <button onClick={() => {
+              navigator.clipboard.writeText(webhookUrl.replace("r=uis-webhook", "r=uis-route-call"));
+              setCopiedRoute(true);
+              setTimeout(() => setCopiedRoute(false), 1500);
+            }}
+              className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-bold transition flex-shrink-0"
+              style={{ background: copiedRoute ? "rgba(16,185,129,0.15)" : "rgba(124,58,237,0.14)", color: copiedRoute ? "#10b981" : "#a78bfa" }}>
+              <Icon name={copiedRoute ? "Check" : "Copy"} size={12} /> {copiedRoute ? "Скопировано" : "Копировать"}
+            </button>
+          </div>
+        )}
+        <div className="text-[10px] mt-1.5" style={{ color: txtSub }}>
+          Этот адрес вставьте в узел «Интерактивная обработка вызова» в конструкторе сценария UIS.
+        </div>
       </div>
 
       {/* Адрес вебхука */}

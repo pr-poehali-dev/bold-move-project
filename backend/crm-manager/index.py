@@ -4686,6 +4686,65 @@ def handler(event: dict, context) -> dict:
 
             return err("unknown action")
 
+        # ── UIS-ROUTE-CALL: узел "Интерактивная обработка вызова" в сценарии UIS ───
+        # UIS дёргает этот адрес ВО ВРЕМЯ звонка (до соединения с сотрудником) и
+        # спрашивает, на какую линию направить клиента. Мы смотрим на этап сделки
+        # в CRM по номеру телефона и отвечаем "line1" или "line2". Защита — тот же
+        # секретный ключ, что и у uis-webhook (сервис ровно тот же — UIS этой же
+        # компании, отдельный ключ не нужен).
+        if resource == "uis-route-call":
+            company_id_q = qs.get("company_id")
+            webhook_key  = qs.get("key", "")
+            if not company_id_q or not webhook_key:
+                return err("company_id и key обязательны", 401)
+            try:
+                owner_id = int(company_id_q)
+            except ValueError:
+                return err("company_id invalid")
+
+            cur.execute(f"SELECT config FROM {SCHEMA}.integrations WHERE company_id=%s", (owner_id,))
+            row = cur.fetchone()
+            cfg = row[0] if row else None
+            if not cfg or cfg.get("_uis_webhook_key") != webhook_key:
+                return err("неверный ключ", 401)
+
+            # Номер клиента может прийти и в query, и в теле — UIS настраивается
+            # по-разному в зависимости от узла. Берём из обоих источников.
+            flat = _uis_flatten(body or {})
+            flat.update(qs)
+            raw_phone = _uis_pick(flat, [
+                "contact_phone_number", "contact_phone", "phone", "numa", "caller_number", "from",
+            ])
+            contact_phone = normalize_phone(raw_phone) if raw_phone else ""
+            last10 = contact_phone[-10:] if contact_phone else None
+
+            line = "line1"  # по умолчанию — новый/неизвестный клиент идёт на 1-ю линию
+            if last10:
+                cur.execute(f"""
+                    SELECT status, sub_status FROM {SCHEMA}.live_chats
+                    WHERE company_id=%s AND phone IS NOT NULL AND status NOT IN ('deleted')
+                      AND right(regexp_replace(phone,'\\D','','g'),10)=%s
+                    ORDER BY created_at DESC LIMIT 1
+                """, (owner_id, last10))
+                deal = cur.fetchone()
+                if deal:
+                    status, sub_status = deal
+                    if status in ("new", "call"):
+                        line = "line1"
+                    elif status == "measure":
+                        cur.execute(f"""
+                            SELECT id FROM {SCHEMA}.order_substatuses
+                            WHERE company_id=%s AND parent_status='measures' AND label='Новый замер'
+                        """, (owner_id,))
+                        srow = cur.fetchone()
+                        new_zamer_id = str(srow[0]) if srow else None
+                        line = "line1" if (new_zamer_id and sub_status == new_zamer_id) else "line2"
+                    else:
+                        line = "line2"
+
+            department = cfg.get(f"uis_{line}_department") or ""
+            return ok({"line": line, "department": department, "phone": contact_phone})
+
         # ── UIS-WEBHOOK: приём событий звонков от АТС UIS (шлёт сама UIS) ──────────
         # URL регистрируется в личном кабинете UIS. Защита — company_id+key в query,
         # как у avito-webhook. Отвечаем максимально быстро — БЕЗ расшифровки и ИИ

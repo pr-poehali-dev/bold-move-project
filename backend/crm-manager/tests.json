@@ -13,6 +13,18 @@
       "expectedStatus": 200
     },
     {
+      "name": "GET uis-route-call without company_id/key is rejected",
+      "method": "GET",
+      "path": "/?r=uis-route-call",
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET uis-route-call with wrong key is rejected",
+      "method": "GET",
+      "path": "/?r=uis-route-call&company_id=8&key=wrongkey",
+      "expectedStatus": 401
+    },
+    {
       "name": "GET clients without auth is rejected",
       "method": "GET",
       "path": "/?r=clients",
