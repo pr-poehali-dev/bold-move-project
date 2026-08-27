@@ -5029,21 +5029,30 @@ def handler(event: dict, context) -> dict:
             if not cfg.get("uis_enabled"):
                 return err("Телефония UIS отключена в настройках", 400)
             api_key = decrypt_secret(cfg.get("uis_api_key"))
-            virtual_number_raw = cfg.get("uis_virtual_phone_number")
-            if not api_key or not virtual_number_raw:
-                return err("Заполните API-ключ и виртуальный номер в настройках телефонии", 400)
+            if not api_key:
+                return err("Заполните API-ключ в настройках телефонии", 400)
+
+            # Два отдельных номера УИС — один на линию (без платной функции
+            # "Интерактивная обработка вызова"). Каждый сотрудник привязан к своей
+            # линии (users.uis_line: 1 или 2) — звонок уходит с номера ЕГО линии.
+            # Нет привязки к линии → используем номер линии 1 (обратная совместимость).
+            cur.execute(f"SELECT uis_phone, uis_line FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
+            urow = cur.fetchone()
+            operator_phone = normalize_phone(urow[0]) if urow and urow[0] else None
+            operator_line = (urow[1] if urow else None) or 1
+            if not operator_phone:
+                return err("У вас не указан номер в АТС — заполните его в настройках телефонии", 400)
+
+            virtual_number_raw = cfg.get("uis_virtual_phone_number") if operator_line == 1 \
+                else (cfg.get("uis_line2_virtual_phone_number") or cfg.get("uis_virtual_phone_number"))
+            if not virtual_number_raw:
+                return err("Заполните виртуальный номер в настройках телефонии", 400)
             # UIS принимает номер только цифрами (+7XXXXXXXXXX) — в настройках номер
             # мог быть введён с пробелами/скобками ("+7 (495) 487-74-77"), из-за чего
             # API отвечал "Invalid parameter value" по полю virtual_phone_number.
             virtual_number = normalize_phone(virtual_number_raw)
             if not virtual_number:
                 return err("Виртуальный номер в настройках телефонии указан некорректно", 400)
-
-            cur.execute(f"SELECT uis_phone FROM {SCHEMA}.users WHERE id=%s", (master_uid,))
-            urow = cur.fetchone()
-            operator_phone = normalize_phone(urow[0]) if urow and urow[0] else None
-            if not operator_phone:
-                return err("У вас не указан номер в АТС — заполните его в настройках телефонии", 400)
 
             # Клиент в модуле «Касания»: находим по id (если передан) или по телефону, иначе создаём
             client_row = None
@@ -5741,13 +5750,13 @@ def handler(event: dict, context) -> dict:
 
             if method == "GET":
                 cur.execute(f"""
-                    SELECT id, name, phone, uis_phone FROM {SCHEMA}.users
+                    SELECT id, name, phone, uis_phone, uis_line FROM {SCHEMA}.users
                     WHERE removed_at IS NULL AND (id=%s OR (company_id=%s AND role='manager'))
                     ORDER BY (id=%s) DESC, name
                 """, (owner_id, owner_id, owner_id))
                 rows = cur.fetchall()
                 return ok({"employees": [
-                    {"id": r[0], "name": r[1], "phone": r[2], "uis_phone": r[3]} for r in rows
+                    {"id": r[0], "name": r[1], "phone": r[2], "uis_phone": r[3], "uis_line": r[4] or 1} for r in rows
                 ]})
 
             if method == "POST":
@@ -5755,11 +5764,22 @@ def handler(event: dict, context) -> dict:
                 uis_phone_val = (body.get("uis_phone") or "").strip() or None
                 if not user_id:
                     return err("user_id required")
+                sets = ["uis_phone=%s"]
+                vals = [uis_phone_val]
+                # uis_line — необязательное поле: линия сотрудника (1 или 2), к какому
+                # номеру УИС он привязан для исходящих звонков (click-to-call).
+                if "uis_line" in body:
+                    line_val = body.get("uis_line")
+                    if line_val not in (1, 2, None):
+                        return err("uis_line должен быть 1 или 2")
+                    sets.append("uis_line=%s")
+                    vals.append(line_val)
+                vals += [int(user_id), owner_id, owner_id]
                 cur.execute(f"""
-                    UPDATE {SCHEMA}.users SET uis_phone=%s
+                    UPDATE {SCHEMA}.users SET {', '.join(sets)}
                     WHERE id=%s AND (id=%s OR company_id=%s)
                     RETURNING id
-                """, (uis_phone_val, int(user_id), owner_id, owner_id))
+                """, vals)
                 updated = cur.fetchone()
                 if not updated:
                     return err("Сотрудник не найден", 404)

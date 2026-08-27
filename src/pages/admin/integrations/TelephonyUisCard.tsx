@@ -17,6 +17,7 @@ interface Employee {
   name: string | null;
   phone: string | null;
   uis_phone: string | null;
+  uis_line: 1 | 2;
 }
 
 function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
@@ -38,7 +39,6 @@ export default function TelephonyUisCard({
   const [callsCount, setCallsCount] = useState(0);
   const [lastEventAt, setLastEventAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [copiedRoute, setCopiedRoute] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [savingPhone, setSavingPhone] = useState<number | null>(null);
@@ -108,6 +108,17 @@ export default function TelephonyUisCard({
     setSavingPhone(null);
   };
 
+  const saveEmployeeLine = async (userId: number, line: 1 | 2) => {
+    setSavingPhone(userId);
+    try {
+      await crmFetch("uis-employees", {
+        method: "POST", body: JSON.stringify({ user_id: userId, uis_line: line }),
+      });
+      setEmployees(list => list.map(e => e.id === userId ? { ...e, uis_line: line } : e));
+    } catch { /* тихо */ }
+    setSavingPhone(null);
+  };
+
   return (
     <div className="rounded-2xl p-4" style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
       <div className="flex items-start gap-3 mb-3">
@@ -138,10 +149,21 @@ export default function TelephonyUisCard({
           className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
           style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
         />
+        <div className="text-[11px] font-semibold mt-1" style={{ color: txtSub }}>
+          Номера линий — 2 отдельных номера UIS (без платной интерактивной обработки).
+          Настройте в UIS переадресацию каждого номера на нужную группу сотрудников.
+        </div>
         <input
           value={values.uis_virtual_phone_number ?? ""}
           onChange={e => setValues(v => ({ ...v, uis_virtual_phone_number: e.target.value }))}
-          placeholder="Виртуальный номер UIS, например +7..."
+          placeholder="Номер 1 линии (колл-центр), например +7..."
+          className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
+          style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
+        />
+        <input
+          value={values.uis_line2_virtual_phone_number ?? ""}
+          onChange={e => setValues(v => ({ ...v, uis_line2_virtual_phone_number: e.target.value }))}
+          placeholder="Номер 2 линии (наш менеджер), например +7..."
           className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
           style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
         />
@@ -153,57 +175,6 @@ export default function TelephonyUisCard({
           <Icon name={saving ? "Loader2" : "Save"} size={11} className={saving ? "animate-spin" : ""} />
           {saved ? "Сохранено" : "Сохранить ключи"}
         </button>
-      </div>
-
-      {/* Маршрутизация по линиям */}
-      <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${cardBrd}` }}>
-        <div className="text-[11px] font-semibold mb-1.5" style={{ color: txtSub }}>
-          Отделы UIS для маршрутизации по линиям
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <input
-            value={values.uis_line1_department ?? ""}
-            onChange={e => setValues(v => ({ ...v, uis_line1_department: e.target.value }))}
-            placeholder="Название отдела — 1 линия"
-            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
-            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
-          />
-          <input
-            value={values.uis_line2_department ?? ""}
-            onChange={e => setValues(v => ({ ...v, uis_line2_department: e.target.value }))}
-            placeholder="Название отдела — 2 линия"
-            className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none transition placeholder:text-white placeholder:font-semibold"
-            style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}
-          />
-          <button
-            onClick={() => toggleEnabled(enabled)}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition w-fit disabled:opacity-50"
-            style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
-            <Icon name={saving ? "Loader2" : "Save"} size={11} className={saving ? "animate-spin" : ""} />
-            {saved ? "Сохранено" : "Сохранить отделы"}
-          </button>
-        </div>
-        {webhookUrl && (
-          <div className="flex items-center gap-1.5 mt-2.5">
-            <div className="flex-1 min-w-0 text-xs px-3 py-2 rounded-xl truncate font-mono"
-              style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
-              {webhookUrl.replace("r=uis-webhook", "r=uis-route-call")}
-            </div>
-            <button onClick={() => {
-              navigator.clipboard.writeText(webhookUrl.replace("r=uis-webhook", "r=uis-route-call"));
-              setCopiedRoute(true);
-              setTimeout(() => setCopiedRoute(false), 1500);
-            }}
-              className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-bold transition flex-shrink-0"
-              style={{ background: copiedRoute ? "rgba(16,185,129,0.15)" : "rgba(124,58,237,0.14)", color: copiedRoute ? "#10b981" : "#a78bfa" }}>
-              <Icon name={copiedRoute ? "Check" : "Copy"} size={12} /> {copiedRoute ? "Скопировано" : "Копировать"}
-            </button>
-          </div>
-        )}
-        <div className="text-[10px] mt-1.5" style={{ color: txtSub }}>
-          Этот адрес вставьте в узел «Интерактивная обработка вызова» в конструкторе сценария UIS.
-        </div>
       </div>
 
       {/* Адрес вебхука */}
@@ -242,10 +213,11 @@ export default function TelephonyUisCard({
         </div>
       </div>
 
-      {/* Сотрудники — номера в АТС */}
+      {/* Сотрудники — номера в АТС и линия */}
       <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${cardBrd}` }}>
         <div className="text-[11px] font-semibold mb-2" style={{ color: txtSub }}>
-          Номера сотрудников в UIS (нужны для кнопки «Позвонить»)
+          Сотрудники: номер в UIS (для кнопки «Позвонить») и линия — определяет, с какого
+          номера уходит звонок при клике на «Позвонить» в карточке клиента.
         </div>
         {employees.length === 0 ? (
           <div className="text-[11px]" style={{ color: txtSub }}>Сотрудников пока нет.</div>
@@ -256,6 +228,14 @@ export default function TelephonyUisCard({
                 <div className="flex-1 min-w-0 text-xs truncate" style={{ color: txt }}>
                   {emp.name || emp.phone || `Сотрудник #${emp.id}`}
                 </div>
+                <select
+                  value={emp.uis_line}
+                  onChange={e => saveEmployeeLine(emp.id, Number(e.target.value) as 1 | 2)}
+                  className="text-xs rounded-lg px-2 py-1.5 focus:outline-none transition"
+                  style={{ background: inputBg, border: `1px solid ${inputBrd}`, color: txt }}>
+                  <option value={1}>1 линия</option>
+                  <option value={2}>2 линия</option>
+                </select>
                 <input
                   defaultValue={emp.uis_phone ?? ""}
                   onBlur={e => {
