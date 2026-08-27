@@ -23,7 +23,11 @@ export function useStageDateGuard(
 
   /** Пытаемся сменить статус. Вернёт true, если ушёл запрос; false — открыта модалка. */
   const requestStatusChange = async (client: Client, nextStatus: string): Promise<boolean> => {
-    if (needStageDate(client, nextStatus)) {
+    // Быстрый перевод на «Замер» (кнопка «Далее», drag&drop) не спрашивает дату —
+    // backend сам подставит подэтап «Дата замера не назначена», менеджер укажет
+    // дату позже, когда согласует её с клиентом. Модалка с датой остаётся только
+    // для монтажа и для ручного выбора конкретного подэтапа замера в карточке.
+    if (nextStatus !== "measure" && needStageDate(client, nextStatus)) {
       setPending({ client, nextStatus });
       return false;
     }

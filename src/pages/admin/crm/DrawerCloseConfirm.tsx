@@ -2,7 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { DateFieldCompact } from "./DateFieldCompact";
-import { stageDateRule } from "./stageDateRules";
+import { stageDateRule, MEASURE_DATE_OPTIONAL_SUBSTATUS_LABEL } from "./stageDateRules";
 
 // Какое поле комментария (из блока «Комментарий» карточки клиента) относится к
 // текущему этапу воронки — чтобы менеджер мог сразу дописать пару слов по делу,
@@ -30,6 +30,8 @@ interface Props {
   currentStageComment?: string | null;
   /** Текущая дата этапа (замера/монтажа), если статус её требует. Пустая — закрыть карточку нельзя. */
   currentStageDate?: string | null;
+  /** Ярлык текущего подэтапа — для «Дата замера не назначена» дату закрытием карточки не требуем */
+  currentSubStatusLabel?: string | null;
   /** Сохранить выбор (next_call_date и/или no_call_needed, и опционально комментарий/дату этапа) и закрыть карточку */
   onConfirm: (patch: {
     next_call_date: string | null; no_call_needed: boolean;
@@ -45,7 +47,7 @@ interface Props {
 // Кнопка «Сохранить и закрыть» заблокирована, пока не заполнена дата следующего
 // звонка (или не отмечена галочка «Звонить не нужно») — точно так же, как для
 // обязательной даты этапа (замер/монтаж).
-export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, currentStatus, currentStageComment, currentStageDate, onConfirm, onCancel }: Props) {
+export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, currentStatus, currentStageComment, currentStageDate, currentSubStatusLabel, onConfirm, onCancel }: Props) {
   const [noCall, setNoCall] = useState(!!currentNoCallNeeded);
   const [nextCall, setNextCall] = useState<string | null>(currentNextCall ?? null);
   const [comment, setComment] = useState(currentStageComment || "");
@@ -54,7 +56,10 @@ export function DrawerCloseConfirm({ t, currentNextCall, currentNoCallNeeded, cu
   const stageField = currentStatus ? STAGE_COMMENT_FIELD[currentStatus] : undefined;
   // Если заявка стоит на этапе «замер/монтаж назначен», а даты нет — закрыть
   // карточку нельзя, пока дату не поставят (то же правило и на сервере).
-  const dateRule = stageDateRule(currentStatus);
+  // Исключение — подэтап «Дата замера не назначена»: клиент ещё не согласовал
+  // время, заявка намеренно висит на этапе «Замер» без даты.
+  const isMeasureDateOptional = currentStatus === "measure" && currentSubStatusLabel === MEASURE_DATE_OPTIONAL_SUBSTATUS_LABEL;
+  const dateRule = isMeasureDateOptional ? undefined : stageDateRule(currentStatus);
   const stageDateMissing = !!dateRule && !stageDate;
   // Дата следующего звонка тоже обязательна — либо она указана, либо отмечена
   // галочка «Звонить не нужно». Пустое и то и другое — закрыть карточку нельзя.

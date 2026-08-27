@@ -1527,6 +1527,22 @@ def handler(event: dict, context) -> dict:
                         if srow:
                             body["sub_status"] = str(srow[0])
 
+                # При быстром переводе на этап «Замер» (кнопка «Далее», drag&drop) без явной
+                # даты и без явного подэтапа — не открываем модалку "укажите дату", а сразу
+                # ставим подэтап «Дата замера не назначена». Дату менеджер добавит позже,
+                # когда согласует её с клиентом.
+                if new_status_val == "measure" and "sub_status" not in body and not body.get("measure_date"):
+                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                    orow = cur.fetchone()
+                    owner_cmp = (orow[0] if orow else None) or company_id
+                    if owner_cmp is not None:
+                        cur.execute(f"""SELECT id FROM {SCHEMA}.order_substatuses
+                            WHERE company_id=%s AND parent_status='measures' AND label='Дата замера не назначена'
+                            ORDER BY position, id LIMIT 1""", (owner_cmp,))
+                        srow = cur.fetchone()
+                        if srow:
+                            body["sub_status"] = str(srow[0])
+
                 # Поля взаимоисключающие: если менеджер ставит «звонить не нужно» и явно
                 # не передал новую дату звонка — гасим next_call_date, чтобы в карточке
                 # не висело одновременно и напоминание, и отметка «звонить не нужно».
@@ -1561,7 +1577,17 @@ def handler(event: dict, context) -> dict:
                         cur.execute(f"SELECT {date_field} FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
                         d_row = cur.fetchone()
                         date_val = d_row[0] if d_row else None
-                    if not date_val:
+                    # Исключение: подэтап «Дата замера не назначена» специально придуман
+                    # для замера без даты (клиент ещё не согласовал время) — для него
+                    # дату не требуем, в отличие от остальных подэтапов замера.
+                    skip_date_check = False
+                    if new_st == "measure" and body.get("sub_status"):
+                        cur.execute(f"""SELECT label FROM {SCHEMA}.order_substatuses WHERE id=%s""",
+                                    (int(body["sub_status"]),))
+                        lb_row = cur.fetchone()
+                        if lb_row and lb_row[0] == "Дата замера не назначена":
+                            skip_date_check = True
+                    if not date_val and not skip_date_check:
                         return err(err_msg)
 
                 sets, vals = [], []

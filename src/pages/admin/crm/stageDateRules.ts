@@ -41,6 +41,14 @@ export const STAGE_DATE_RULES: Record<string, {
   },
 };
 
+/**
+ * Ярлык подэтапа замера, для которого дата специально необязательна — клиент
+ * ещё не согласовал время, но заявку уже нужно видеть на этапе «Замер».
+ * Название должно совпадать с label в order_substatuses (backend дублирует
+ * эту же проверку по тому же тексту, см. crm-manager).
+ */
+export const MEASURE_DATE_OPTIONAL_SUBSTATUS_LABEL = "Дата замера не назначена";
+
 /** Требует ли этот статус даты — и какой именно. Undefined, если не требует. */
 export function stageDateRule(status: string | null | undefined) {
   return status ? STAGE_DATE_RULES[status] : undefined;
@@ -49,9 +57,12 @@ export function stageDateRule(status: string | null | undefined) {
 /**
  * Нужно ли спросить дату, прежде чем переводить заявку в новый статус.
  * Возвращает правило, если дата обязательна и её ещё нет в карточке.
+ * subStatusLabel — ярлык уже выбранного (или проставляемого автоматически)
+ * подэтапа; для «Дата замера не назначена» дату не спрашиваем.
  */
-export function needStageDate(client: Client, nextStatus: string) {
+export function needStageDate(client: Client, nextStatus: string, subStatusLabel?: string | null) {
   const rule = stageDateRule(nextStatus);
   if (!rule) return undefined;
+  if (nextStatus === "measure" && subStatusLabel === MEASURE_DATE_OPTIONAL_SUBSTATUS_LABEL) return undefined;
   return client[rule.field] ? undefined : rule;
 }

@@ -146,17 +146,8 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStat
         if (detailStatuses.length === 0 && subs.length === 0) return null;
         return (
           <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-            {/* Системные статусы этапа (Замер/Монтаж) */}
-            {detailStatuses.map(s => (
-              <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
-                style={status === s
-                  ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
-                  : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
-                {STATUS_LABELS[s]}
-              </button>
-            ))}
-            {/* Кастомные подэтапы (те же, что на карточке): «Новый в работе», «На прогреве» и т.п. */}
+            {/* Кастомные подэтапы (те же, что на карточке): «Дата замера не назначена», «Новый в работе» и т.п.
+                Идут первыми — «Дата замера не назначена» должна быть самым первым вариантом на этапе «Замер». */}
             {subs.map(s => {
               const active = subStatus === String(s.id);
               return (
@@ -170,6 +161,16 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStat
                 </button>
               );
             })}
+            {/* Системные статусы этапа (Замер/Монтаж) */}
+            {detailStatuses.map(s => (
+              <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
+                style={status === s
+                  ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
+                  : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
           </div>
         );
       })()}

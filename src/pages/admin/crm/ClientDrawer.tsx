@@ -17,6 +17,7 @@ import { DrawerCloseConfirm } from "./DrawerCloseConfirm";
 import { useUnreadTouches } from "./useUnreadTouches";
 import { useClientDrawerState } from "./useClientDrawerState";
 import { useAutoSummary } from "./useAutoSummary";
+import { useSubstatuses } from "./substatusContext";
 
 interface Props {
   client: Client;
@@ -65,6 +66,8 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
   } = useClientDrawerState(client, allClientOrders, isLocalCard, defaultTab, defaultOrderId, contactMode, onUpdated, onDeleted);
 
   const unreadTouches = useUnreadTouches(data.id, data.phone || undefined, drawerTab === "touches");
+  const allSubs = useSubstatuses();
+  const currentSubStatusLabel = allSubs.find(s => String(s.id) === orderData.sub_status)?.label ?? null;
 
   // Комментарий заявки = краткая ИИ-сводка по общению. Обновляем при открытии
   // карточки (не чаще раза в час), результат подтягиваем в поля формы.
@@ -266,6 +269,7 @@ export default function ClientDrawer({ client, allClientOrders, onClose, onUpdat
             : orderData.status === "install_scheduled" ? orderData.install_date
             : null
           }
+          currentSubStatusLabel={currentSubStatusLabel}
           onConfirm={confirmCloseSave}
           onCancel={() => setConfirmClose(false)}
         />
