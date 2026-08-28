@@ -40,8 +40,11 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
           const isCall = tt.channel === "call";
           const quoted = tt.reply_to_id ? touches.find(x => x.id === tt.reply_to_id) : null;
           const atts = attachmentsOf(tt.attachments);
-          const nonImageAttachments = atts.filter(a => a.type !== "image" && a.type !== "video");
-          const videos = atts.filter(a => a.type === "video");
+          // Типы без файла (контакт/геолокация/опрос/история) — приходят без url,
+          // показываем отдельной подписанной строкой с иконкой, не как файл-ссылку.
+          const metaAtts = atts.filter(a => !a.url && ["contact", "location", "poll", "story"].includes(a.type));
+          const nonImageAttachments = atts.filter((a): a is typeof a & { url: string } => !!a.url && a.type !== "image" && a.type !== "video");
+          const videos = atts.filter((a): a is typeof a & { url: string } => a.type === "video" && !!a.url);
           const reactions = reactionsOf(tt.reactions);
           const failed = out && tt.status === "error";
           return (
@@ -189,9 +192,22 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                         <span className="text-xs truncate" style={{ color: t.textSub }}>{a.filename || "Файл"}</span>
                       </a>
                     ))}
-                    {(tt.text || !atts.length) && (
+                    {/* Контакт/геолокация/опрос/история — вложение без файла */}
+                    {metaAtts.map((a, i) => {
+                      const metaIcon: Record<string, string> = { contact: "Contact", location: "MapPin", poll: "BarChart2", story: "CircleUser" };
+                      return (
+                        <div key={i} className="mb-1.5 flex items-center gap-2 rounded-lg px-2.5 py-2"
+                          style={{ background: t.bg + "55", border: `1px solid ${t.border}` }}>
+                          <Icon name={metaIcon[a.type] || "Paperclip"} size={16} style={{ color: t.accentLight }} />
+                          <span className="text-xs" style={{ color: t.textSub }}>{a.filename}</span>
+                        </div>
+                      );
+                    })}
+                    {(tt.text || (!atts.length)) && (
                       <div className="text-xs sm:text-sm whitespace-pre-wrap break-words" style={{ color: t.text }}>
-                        {tt.text || <span style={{ color: t.textMute }}>(без текста)</span>}
+                        {tt.text || (metaAtts.length === 0 && (
+                          <span style={{ color: t.textMute }}>Вложение не распозналось</span>
+                        ))}
                       </div>
                     )}
                     {/* Реакции на сообщение */}

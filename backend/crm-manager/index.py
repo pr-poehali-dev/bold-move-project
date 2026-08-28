@@ -483,15 +483,21 @@ def ok(data):
 # Расширять список синонимов можно здесь одной строкой, не трогая эндпоинты.
 _MEDIA_TYPE_ALIASES = {
     "image": "image", "photo": "image", "picture": "image", "img": "image", "sticker": "image",
-    "voice": "voice", "audio": "voice", "voice_note": "voice", "ogg": "voice",
-    "video": "video", "video_note": "video", "animation": "video", "gif": "video",
-    "document": "file", "file": "file", "doc": "file",
+    "static_sticker": "image", "webp_sticker": "image",
+    "voice": "voice", "audio": "voice", "voice_note": "voice", "ogg": "voice", "music": "voice",
+    "video": "video", "video_note": "video", "video_message": "video", "round_video": "video",
+    "animation": "video", "gif": "video", "animated_sticker": "video", "video_sticker": "video",
+    "document": "file", "file": "file", "doc": "file", "pdf": "file",
+    # Типы без файла — своя иконка/подпись вместо «пустого» сообщения
+    "contact": "contact", "location": "location", "venue": "location", "poll": "poll",
+    "story": "story", "invoice": "file",
 }
 
 _MEDIA_EXT_TYPES = {
-    "jpg": "image", "jpeg": "image", "png": "image", "gif": "image", "webp": "image", "heic": "image", "bmp": "image",
+    "jpg": "image", "jpeg": "image", "png": "image", "gif": "image", "webp": "image", "heic": "image", "bmp": "image", "svg": "image",
     "ogg": "voice", "oga": "voice", "opus": "voice", "mp3": "voice", "m4a": "voice", "wav": "voice", "aac": "voice",
-    "mp4": "video", "mov": "video", "webm": "video", "mkv": "video", "avi": "video",
+    "mp4": "video", "mov": "video", "webm": "video", "mkv": "video", "avi": "video", "3gp": "video",
+    "pdf": "file", "doc": "file", "docx": "file", "xls": "file", "xlsx": "file", "zip": "file", "rar": "file", "txt": "file",
 }
 
 
@@ -507,6 +513,11 @@ def _media_type_from(raw_type, url, filename):
 
 def normalize_incoming_media(body):
     """Собирает вложения входящего сообщения из любых поддерживаемых полей.
+
+    Понимает и обычные файлы (фото/видео/голос/документ по URL), и типы БЕЗ файла
+    (контакт, геолокация, опрос) — их воркер присылает отдельными полями, а не
+    ссылкой. Раньше такие сообщения сохранялись пустыми («без текста»), хотя
+    содержимое у них есть — просто оно не файл.
 
     Возвращает (attachments_list, audio_url, duration_sec):
     attachments_list — список вложений в формате CRM (или None, если их нет);
@@ -525,6 +536,13 @@ def normalize_incoming_media(body):
             "duration_sec": duration if isinstance(duration, int) else None,
         })
 
+    def add_meta(kind, label):
+        """Вложение без файла — контакт/геолокация/опрос. Вместо url кладём
+        читаемое summary, фронт покажет его как подпись с нужной иконкой."""
+        if not label:
+            return
+        items.append({"type": kind, "url": None, "filename": label, "duration_sec": None})
+
     raw_list = body.get("attachments") or body.get("media") or body.get("files")
     if isinstance(raw_list, list):
         for a in raw_list:
@@ -536,24 +554,46 @@ def normalize_incoming_media(body):
                     a.get("filename") or a.get("file_name") or a.get("name"),
                     a.get("duration_sec") or a.get("duration"))
 
-    # Одиночное вложение отдельными полями
-    add(body.get("media_url") or body.get("file_url") or body.get("attachment_url"),
+    # Одиночное вложение отдельными полями — расширенный набор синонимов,
+    # чтобы не зависеть от того, как конкретно воркер назвал поле.
+    add(body.get("media_url") or body.get("file_url") or body.get("attachment_url")
+        or body.get("document_url") or body.get("doc_url"),
         body.get("media_type") or body.get("attachment_type"),
         body.get("file_name") or body.get("filename"),
         body.get("duration_sec") or body.get("duration"))
-    add(body.get("photo_url") or body.get("image_url"), "image",
+    add(body.get("photo_url") or body.get("image_url") or body.get("sticker_url")
+        or body.get("emoji_url"), "image",
         body.get("file_name") or body.get("filename"))
-    add(body.get("video_url"), "video", body.get("file_name") or body.get("filename"))
-    add(body.get("voice_url") or body.get("audio_url"), "voice",
+    add(body.get("video_url") or body.get("video_note_url") or body.get("round_video_url")
+        or body.get("gif_url") or body.get("animation_url"), "video",
+        body.get("file_name") or body.get("filename"))
+    add(body.get("voice_url") or body.get("audio_url") or body.get("music_url"), "voice",
         body.get("file_name") or body.get("filename"),
         body.get("duration_sec") or body.get("duration"))
 
-    # Убираем дубли по URL, сохраняя порядок
+    # Типы без файла — контакт, геолокация, опрос, история (story)
+    contact = body.get("contact") if isinstance(body.get("contact"), dict) else None
+    if contact or body.get("contact_phone") or body.get("contact_name"):
+        name = (contact or {}).get("name") or body.get("contact_name") or ""
+        phone = (contact or {}).get("phone") or body.get("contact_phone") or ""
+        add_meta("contact", f"{name} {phone}".strip() or "Контакт")
+    lat = body.get("latitude") or (body.get("location") or {}).get("lat") if isinstance(body.get("location"), dict) else body.get("latitude")
+    lon = body.get("longitude") or (body.get("location") or {}).get("lon") if isinstance(body.get("location"), dict) else body.get("longitude")
+    if lat and lon:
+        add_meta("location", f"Геолокация: {lat}, {lon}")
+    poll = body.get("poll") if isinstance(body.get("poll"), dict) else None
+    if poll or body.get("poll_question"):
+        add_meta("poll", (poll or {}).get("question") or body.get("poll_question") or "Опрос")
+    if body.get("is_story") or body.get("story_url"):
+        add_meta("story", "Пересланная история")
+
+    # Убираем дубли по URL (а для типов без url — по filename), сохраняя порядок
     seen, uniq = set(), []
     for it in items:
-        if it["url"] in seen:
+        key = it["url"] or f"meta:{it['type']}:{it['filename']}"
+        if key in seen:
             continue
-        seen.add(it["url"])
+        seen.add(key)
         uniq.append(it)
 
     audio_url = next((it["url"] for it in uniq if it["type"] == "voice"), None)
@@ -4175,11 +4215,20 @@ def handler(event: dict, context) -> dict:
                               or body.get("first_name") or body.get("username") or None)
             # Как подписывать карточку: у группы — её название, у личного чата — имя контакта
             display_name_v = (group_title_v if chat_type_v != "private" else contact_name_v)
+            if chat_type_v == "private" and not contact_name_v:
+                print(f"[worker-incoming] NO NAME channel={channel_v} chat_id={chat_id_v} raw_body={json.dumps(body, ensure_ascii=False)}")
 
             # Вложения из мессенджера. Воркер может прислать их в разных видах:
             # готовым списком attachments или одиночными полями media_url/media_type.
             # Приводим всё к единому формату CRM: [{type, url, filename, duration_sec}].
             incoming_atts, incoming_audio, incoming_dur = normalize_incoming_media(body)
+
+            # Сообщение пришло совсем пустым: ни текста, ни распознанного вложения.
+            # Логируем сырое тело целиком — единственный способ понять, что именно
+            # воркер прислал в этот раз (новый тип контента, который мы ещё не умеем
+            # разбирать), не имея прямого доступа к самому воркеру на VPS.
+            if not text_v and not incoming_atts:
+                print(f"[worker-incoming] EMPTY payload channel={channel_v} raw_body={json.dumps(body, ensure_ascii=False)}")
 
             if channel_v not in ("telegram", "max"):
                 return err("unknown channel")

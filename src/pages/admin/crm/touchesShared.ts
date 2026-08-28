@@ -3,8 +3,10 @@
 // (лента сообщений, поле ввода, шапка).
 
 export interface AttachmentItem {
-  type: "image" | "file" | "voice" | "video";
-  url: string;
+  // contact/location/poll/story — вложения без файла (url null), показываются
+  // подписанной строкой с иконкой, а не файлом-ссылкой.
+  type: "image" | "file" | "voice" | "video" | "contact" | "location" | "poll" | "story";
+  url: string | null;
   filename?: string;
   duration_sec?: number;
 }
@@ -56,11 +58,12 @@ export interface Touch {
 export function attachmentsOf(attachments: unknown): AttachmentItem[] {
   if (!Array.isArray(attachments)) return [];
   return attachments
-    .filter((a): a is AttachmentItem => !!a && typeof a === "object" && typeof (a as AttachmentItem).url === "string")
+    .filter((a): a is AttachmentItem => !!a && typeof a === "object"
+      && (typeof (a as AttachmentItem).url === "string" || (a as AttachmentItem).url === null))
     .map(a => ({ ...a, type: (a.type as AttachmentItem["type"]) || "file" }));
 }
 export function imagesOf(attachments: unknown): string[] {
-  return attachmentsOf(attachments).filter(a => a.type === "image").map(a => a.url);
+  return attachmentsOf(attachments).filter((a): a is AttachmentItem & { url: string } => a.type === "image" && !!a.url).map(a => a.url);
 }
 
 // Линия (аккаунт) компании в Telegram/MAX — для ручного выбора, с какого

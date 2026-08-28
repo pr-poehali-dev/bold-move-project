@@ -99,12 +99,20 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
           <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>{fmtWhen(d.last_at)}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
+          {/* Ошибка отправки видна сразу в списке — не нужно открывать переписку,
+              чтобы понять, что сообщение не дошло. */}
+          {d.last_status === "error" && (
+            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold" style={{ color: "#ef4444" }}
+              title="Сообщение не отправлено">
+              <Icon name="AlertTriangle" size={11} />
+            </span>
+          )}
           {/* Направление последнего сообщения видно цветом: зелёное — написали мы,
               красное — написал клиент. Так менеджер с одного взгляда видит, за кем ход. */}
           <span className="text-xs truncate flex-1"
-            style={{ color: d.last_direction === "out" ? "#10b981" : "#f43f5e", fontWeight: unread ? 600 : 400 }}>
+            style={{ color: d.last_status === "error" ? "#ef4444" : d.last_direction === "out" ? "#10b981" : "#f43f5e", fontWeight: unread ? 600 : 400 }}>
             {d.last_direction === "out" && <span style={{ opacity: 0.75 }}>Вы: </span>}
-            {d.last_text || "(без текста)"}
+            {d.last_text || (d.last_has_attachments ? "📎 Вложение" : "Вложение не распозналось")}
           </span>
           {unread > 0 && (
             <span className="flex-shrink-0 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold text-white"
