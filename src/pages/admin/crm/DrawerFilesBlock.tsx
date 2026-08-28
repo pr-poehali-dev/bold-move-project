@@ -124,6 +124,9 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
     setUploadError(null);
     const category = labels[catIdx];
     let anyFailed = false;
+    // Конкретная причина от первого сбоя — «Файл 12 МБ, максимум 4 МБ» полезнее,
+    // чем общее «не удалось загрузить» (особенно на телефоне, где непонятно почему).
+    let firstError: string | null = null;
     for (const file of picked) {
       try {
         const url = await uploadFile(file);
@@ -133,6 +136,7 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
         }) as Partial<RemoteFile> & { error?: string };
         if (!saved || saved.error || !saved.id) {
           anyFailed = true;
+          if (!firstError) firstError = saved?.error || `«${file.name}»: сервер не сохранил файл`;
           continue;
         }
         // Оптимистично показываем файл сразу
@@ -144,12 +148,17 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
           }];
         });
         logAction("Paperclip", "#06b6d4", `${category}: ${file.name}`);
-      } catch {
+      } catch (e) {
         anyFailed = true;
+        if (!firstError) {
+          firstError = e instanceof Error && e.message
+            ? `«${file.name}»: ${e.message}`
+            : `«${file.name}»: не удалось загрузить, проверьте соединение`;
+        }
       }
     }
     if (anyFailed) {
-      setUploadError("Не удалось загрузить часть файлов. Проверьте соединение и попробуйте снова.");
+      setUploadError(firstError || "Не удалось загрузить часть файлов. Проверьте соединение и попробуйте снова.");
     }
     setUploading(null);
     if (inputRefs.current[catIdx]) inputRefs.current[catIdx]!.value = "";
@@ -324,10 +333,13 @@ export function DrawerFilesBlock({ clientId, hiddenBlocks, toggleHidden, logActi
                       </span>}
                 </button>
               </div>
+              {/* Без ограничения типов: перечень accept на iPhone делал фото в формате
+                  HEIC (стандарт съёмки на новых айфонах) недоступными для выбора —
+                  они были видны, но не нажимались. Проверка размера и сжатие
+                  происходят при загрузке (см. uploadFile), поэтому фильтр здесь не нужен. */}
               <input
                 ref={el => { inputRefs.current[catIdx] = el; }}
                 type="file" multiple className="hidden"
-                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
                 onChange={e => handleUpload(catIdx, e)}
               />
 

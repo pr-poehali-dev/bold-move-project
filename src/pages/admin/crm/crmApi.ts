@@ -72,8 +72,63 @@ export async function crmAiFetch(resource: string, opts?: RequestInit, extra?: R
   return fetchFrom(AI_BASE, resource, opts, extra);
 }
 
+/** Предел размера файла после подготовки: сервер принимает запрос ~6 МБ,
+ *  а base64 раздувает данные на треть — поэтому потолок исходника ~4 МБ. */
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+/** Понятный размер для сообщений пользователю: 4.2 МБ вместо 4404019 байт */
+export const fmtBytes = (n: number) =>
+  n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} МБ` : `${Math.max(1, Math.round(n / 1024))} КБ`;
+
+/**
+ * Сжимает фото прямо в браузере, если оно тяжелее лимита.
+ * Зачем: снимок с iPhone весит 3–8 МБ и не проходит по размеру запроса, а после
+ * base64 раздувается ещё на треть. Уменьшаем сторону до 2000px и жмём в JPEG —
+ * для смет, чертежей и фото объекта качества более чем достаточно.
+ * Побочный плюс: HEIC с айфона браузер декодирует сам и отдаёт готовый JPEG,
+ * поэтому файл, который сервер бы не понял, становится обычной картинкой.
+ * Не картинка или сжать не удалось — возвращаем исходный файл без изменений.
+ */
+async function compressImage(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size <= MAX_UPLOAD_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const MAX_SIDE = 2000;
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    // Подбираем качество, пока не уложимся в лимит
+    for (const quality of [0.82, 0.7, 0.55, 0.4]) {
+      const blob: Blob | null = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+      if (blob && blob.size <= MAX_UPLOAD_BYTES) {
+        const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+        return new File([blob], newName, { type: "image/jpeg" });
+      }
+    }
+    return file;
+  } catch {
+    return file; // формат не поддержан браузером — пусть решает проверка размера ниже
+  }
+}
+
 export async function uploadFile(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
+  // 1. Тяжёлое фото — сжимаем (иначе не пройдёт по размеру запроса)
+  const prepared = await compressImage(file);
+
+  // 2. Слишком большой файл — говорим об этом понятно, а не «не удалось загрузить»
+  if (prepared.size > MAX_UPLOAD_BYTES) {
+    throw new Error(
+      `Файл ${fmtBytes(prepared.size)} — слишком большой (максимум ${fmtBytes(MAX_UPLOAD_BYTES)}). ` +
+      `Уменьшите файл или отправьте ссылкой.`
+    );
+  }
+
+  const buf = await prepared.arrayBuffer();
   const bytes = new Uint8Array(buf);
   // btoa через спред падает на больших файлах (stack overflow) — конвертируем чанками
   let b64 = "";
@@ -82,11 +137,25 @@ export async function uploadFile(file: File): Promise<string> {
     b64 += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   b64 = btoa(b64);
-  const res = await crmFetch("upload", {
-    method: "POST",
-    body: JSON.stringify({ data: b64, filename: file.name, content_type: file.type }),
-  });
-  return res.url as string;
+
+  // 3. Мобильная сеть рвётся — повторяем отправку до 3 раз. Загрузка идемпотентна
+  // (каждый раз новый файл в хранилище), поэтому дубль в худшем случае — лишний
+  // файл, а не потерянный: для пользователя это лучше, чем «загрузить не вышло».
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await crmFetch("upload", {
+        method: "POST",
+        body: JSON.stringify({ data: b64, filename: prepared.name, content_type: prepared.type }),
+      }) as { url?: string; error?: string };
+      if (res?.url) return res.url;
+      lastErr = new Error(res?.error || "Сервер не принял файл");
+    } catch (e) {
+      lastErr = e;
+    }
+    if (attempt < 2) await sleep(attempt === 0 ? 800 : 2000);
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Не удалось загрузить файл");
 }
 
 // ── Воронка ────────────────────────────────────────────────────────────────
