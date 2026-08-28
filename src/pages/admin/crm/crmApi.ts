@@ -116,19 +116,43 @@ async function compressImage(file: File): Promise<File> {
   }
 }
 
-export async function uploadFile(file: File): Promise<string> {
-  // 1. Тяжёлое фото — сжимаем (иначе не пройдёт по размеру запроса)
-  const prepared = await compressImage(file);
-
-  // 2. Слишком большой файл — говорим об этом понятно, а не «не удалось загрузить»
-  if (prepared.size > MAX_UPLOAD_BYTES) {
-    throw new Error(
-      `Файл ${fmtBytes(prepared.size)} — слишком большой (максимум ${fmtBytes(MAX_UPLOAD_BYTES)}). ` +
-      `Уменьшите файл или отправьте ссылкой.`
-    );
+/**
+ * Прямая загрузка в S3, в обход сервера: backend выдаёт одноразовую подписанную
+ * ссылку (upload-presign), браузер сам грузит файл PUT-запросом напрямую в
+ * bucket.poehali.dev. Файл не проходит через base64/JSON — лимита запроса
+ * ~6 МБ тут нет, поэтому подходит для крупных файлов (видео, большие документы).
+ */
+async function uploadFileDirect(file: File): Promise<string> {
+  const presign = await crmFetch("upload-presign", {
+    method: "POST",
+    body: JSON.stringify({ filename: file.name, content_type: file.type || "application/octet-stream" }),
+  }) as { put_url?: string; url?: string; error?: string };
+  if (!presign?.put_url || !presign?.url) {
+    throw new Error(presign?.error || "Не удалось получить ссылку для загрузки");
   }
 
-  const buf = await prepared.arrayBuffer();
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(presign.put_url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (res.ok) return presign.url;
+      lastErr = new Error(`Хранилище отклонило файл (код ${res.status})`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (attempt < 2) await sleep(attempt === 0 ? 800 : 2000);
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Не удалось загрузить файл");
+}
+
+/** Отправка через base64 в JSON (старый, простой путь) — надёжен для мелких файлов,
+ *  но упирается в лимит запроса сервера ~6 МБ. */
+async function uploadFileViaServer(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
   // btoa через спред падает на больших файлах (stack overflow) — конвертируем чанками
   let b64 = "";
@@ -138,7 +162,7 @@ export async function uploadFile(file: File): Promise<string> {
   }
   b64 = btoa(b64);
 
-  // 3. Мобильная сеть рвётся — повторяем отправку до 3 раз. Загрузка идемпотентна
+  // Мобильная сеть рвётся — повторяем отправку до 3 раз. Загрузка идемпотентна
   // (каждый раз новый файл в хранилище), поэтому дубль в худшем случае — лишний
   // файл, а не потерянный: для пользователя это лучше, чем «загрузить не вышло».
   let lastErr: unknown = null;
@@ -146,7 +170,7 @@ export async function uploadFile(file: File): Promise<string> {
     try {
       const res = await crmFetch("upload", {
         method: "POST",
-        body: JSON.stringify({ data: b64, filename: prepared.name, content_type: prepared.type }),
+        body: JSON.stringify({ data: b64, filename: file.name, content_type: file.type }),
       }) as { url?: string; error?: string };
       if (res?.url) return res.url;
       lastErr = new Error(res?.error || "Сервер не принял файл");
@@ -156,6 +180,20 @@ export async function uploadFile(file: File): Promise<string> {
     if (attempt < 2) await sleep(attempt === 0 ? 800 : 2000);
   }
   throw lastErr instanceof Error ? lastErr : new Error("Не удалось загрузить файл");
+}
+
+export async function uploadFile(file: File): Promise<string> {
+  // 1. Тяжёлое фото — сжимаем (для смет/чертежей/фото объекта этого обычно
+  // достаточно, чтобы уложиться в лимит простого пути через сервер).
+  const prepared = await compressImage(file);
+
+  // 2. Если после сжатия всё ещё большой файл (видео, тяжёлый документ, скан
+  // в высоком разрешении) — грузим напрямую в S3, минуя лимит запроса сервера.
+  if (prepared.size > MAX_UPLOAD_BYTES) {
+    return uploadFileDirect(prepared);
+  }
+
+  return uploadFileViaServer(prepared);
 }
 
 // ── Воронка ────────────────────────────────────────────────────────────────

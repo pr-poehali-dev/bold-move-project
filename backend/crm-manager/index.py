@@ -1073,6 +1073,31 @@ def handler(event: dict, context) -> dict:
             cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
             return ok({"url": cdn_url, "key": key})
 
+        # ── UPLOAD-PRESIGN: прямая загрузка в S3, в обход сервера ──────────────
+        # Обычный "upload" гоняет файл через base64 в JSON — упирается в лимит
+        # запроса (~6 МБ), поэтому крупные файлы (видео) не проходят. Здесь вместо
+        # этого выдаём одноразовую подписанную ссылку: браузер сам грузит файл PUT-
+        # запросом НАПРЯМУЮ в S3 (bucket.poehali.dev), сервер вообще не видит байты
+        # файла — только имя и тип. Лимита размера запроса тут нет.
+        if resource == "upload-presign" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            filename = body.get("filename", "file")
+            content_type = body.get("content_type", "application/octet-stream")
+            folder = (body.get("folder") or "crm").strip("/")
+            if not re.fullmatch(r"[A-Za-z0-9_\-]+", folder):
+                folder = "crm"
+            ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
+            key = f"{folder}/{uuid.uuid4()}.{ext}"
+            s3 = get_s3()
+            put_url = s3.generate_presigned_url(
+                "put_object",
+                Params={"Bucket": "files", "Key": key, "ContentType": content_type},
+                ExpiresIn=600,  # 10 минут — с запасом на медленную мобильную сеть
+            )
+            cdn_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+            return ok({"put_url": put_url, "url": cdn_url, "key": key})
+
         # ── BUG REPORTS ──────────────────────────────────────────────────────
         if resource == "bug_reports":
             # Статусы, менять которые может только мастер
