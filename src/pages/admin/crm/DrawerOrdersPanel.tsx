@@ -14,7 +14,7 @@ interface Props {
   setOrderInnerTab: (tab: "info" | "estimate") => void;
   ordersListOpen: boolean;
   setOrdersListOpen: (v: boolean) => void;
-  saveOrder: (patch: Partial<Client>) => void;
+  saveOrder: (patch: Partial<Client>) => Promise<boolean>;
   hideHidden: boolean;
   canEdit: boolean;
   canOrdersEdit: boolean;

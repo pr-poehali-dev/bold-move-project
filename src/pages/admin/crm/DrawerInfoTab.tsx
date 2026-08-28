@@ -28,7 +28,8 @@ interface Props {
   data: Client;
   client: Client;
   setData: (c: Client) => void;
-  save: (patch: Partial<Client>) => void;
+  /** true — сервер принял изменение, false — отклонил (нужно откатить/сообщить об ошибке) */
+  save: (patch: Partial<Client>) => Promise<boolean>;
   hideHidden?: boolean;
   canEdit?:          boolean;
   canOrdersEdit?:    boolean;
@@ -175,9 +176,18 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
     }).then(() => setActivityReload(k => k + 1)).catch(() => {});
   };
 
-  const saveWithLog = (patch: Partial<Client>, logText: string, icon = "Edit3", color = "#8b5cf6") => {
-    save(patch);
-    logAction(icon, color, logText);
+  // Пишем в историю ТОЛЬКО если сервер реально принял изменение — иначе
+  // журнал показывал бы "Статус → Замер выполнен", хотя заявка молча
+  // осталась на прежнем статусе (сервер отклонил запрос, например из-за
+  // нехватки прав или недостающей даты).
+  const saveWithLog = async (patch: Partial<Client>, logText: string, icon = "Edit3", color = "#8b5cf6") => {
+    const okSaved = await save(patch);
+    if (okSaved) {
+      logAction(icon, color, logText);
+    } else {
+      alert("Не удалось сохранить изменение. Попробуйте ещё раз.");
+    }
+    return okSaved;
   };
 
   // ── видимость блоков ─────────────────────────────────────────────────────────

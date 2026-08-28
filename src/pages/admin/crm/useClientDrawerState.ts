@@ -22,22 +22,39 @@ export function useClientDrawerState(
     allClientOrders.find(o => o.id === selectedOrderId) ?? allClientOrders[0] ?? data
   );
 
-  const save = async (patch: Partial<Client>) => {
-    setData(prev => ({ ...prev, ...patch }));
-    if (isLocalCard) return;
+  // Возвращают true — сохранилось; false — сервер отклонил (например, статус
+  // требовал дату, прав не хватило и т.п.). При ошибке локальное изменение
+  // откатывается — иначе экран показывал бы то, что на деле не сохранилось
+  // (именно так пропадал переход статуса: карточка "переключалась" визуально,
+  // а на сервере запрос падал молча).
+  const save = async (patch: Partial<Client>): Promise<boolean> => {
+    const prev = data;
+    setData(p => ({ ...p, ...patch }));
+    if (isLocalCard) return true;
     setSaving(true);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) });
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) }) as { error?: string };
     setSaving(false);
+    if (res?.error) {
+      setData(prev);
+      return false;
+    }
     onUpdated();
+    return true;
   };
 
-  const saveOrder = async (patch: Partial<Client>) => {
-    setOrderData(prev => ({ ...prev, ...patch }));
-    if (isLocalCard) return;
+  const saveOrder = async (patch: Partial<Client>): Promise<boolean> => {
+    const prev = orderData;
+    setOrderData(p => ({ ...p, ...patch }));
+    if (isLocalCard) return true;
     setSaving(true);
-    await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) });
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) }) as { error?: string };
     setSaving(false);
+    if (res?.error) {
+      setOrderData(prev);
+      return false;
+    }
     onUpdated();
+    return true;
   };
 
   const ord = drawerTab === "orders" ? orderData : data;
