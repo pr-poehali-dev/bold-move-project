@@ -502,6 +502,168 @@ def handler(event: dict, context) -> dict:
 
             return ok({"touch_id": touch_id, "text": text})
 
+        # ── ANALYZE-LAST-ACTIONS: батч ИИ-сводка "что там с клиентом" для блока
+        # "Нет действий N+ дней" ─────────────────────────────────────────────────
+        # Один вызов ИИ на весь видимый список (а не по запросу на карточку).
+        # Результат кэшируется в live_chats.last_action_summary — пока
+        # last_activity_at клиента не изменился с момента последнего анализа
+        # (last_action_analyzed_for >= last_activity_at), отдаём сохранённый
+        # текст без повторного обращения к ИИ.
+        if resource == "analyze-last-actions" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            raw_ids = body.get("client_ids") if isinstance(body, dict) else None
+            if not isinstance(raw_ids, list) or not raw_ids:
+                return err("client_ids required")
+            try:
+                client_ids = [int(x) for x in raw_ids][:40]
+            except (TypeError, ValueError):
+                return err("client_ids must be numbers")
+
+            cur.execute(f"""
+                SELECT lc.id, lc.client_name, lc.phone,
+                       lc.last_action_summary, lc.last_action_analyzed_for,
+                       GREATEST(lc.updated_at, COALESCE(lact.last_touch_at, lc.updated_at)) AS last_activity_at
+                FROM {SCHEMA}.live_chats lc
+                LEFT JOIN (
+                    SELECT tc.crm_contact_id AS contact_id, MAX(te.created_at) AS last_touch_at
+                    FROM {SCHEMA}.touch_clients tc
+                    JOIN {SCHEMA}.touch_events te ON te.client_id = tc.id
+                    WHERE tc.crm_contact_id IS NOT NULL
+                    GROUP BY tc.crm_contact_id
+                ) lact ON lact.contact_id = lc.id
+                WHERE lc.id = ANY(%s) AND lc.company_id = %s
+            """, (client_ids, owner_id))
+            rows = cur.fetchall()
+
+            summaries = {}
+            stale_ids = []
+            last_activity_by_id = {}
+            name_phone_by_id = {}
+            for r in rows:
+                cid, name, phone, cached_summary, analyzed_for, last_activity = r
+                last_activity_by_id[cid] = last_activity
+                name_phone_by_id[cid] = (name, phone)
+                is_fresh = analyzed_for is not None and last_activity is not None and analyzed_for >= last_activity
+                if is_fresh and cached_summary:
+                    summaries[cid] = cached_summary
+                else:
+                    stale_ids.append(cid)
+
+            if not stale_ids:
+                return ok({"summaries": summaries})
+
+            polza_key = os.environ.get("POLZA_API_KEY", "")
+            if not polza_key:
+                # ИИ недоступен — отдаём то, что уже закэшировано, без ошибки на весь запрос
+                return ok({"summaries": summaries, "warning": "AI недоступен — нет ключа"})
+
+            # Последние 3 касания по каждому "устаревшему" клиенту — минимум
+            # контекста, достаточный, чтобы честно описать, что было в последний раз.
+            cur.execute(f"""
+                SELECT tc.crm_contact_id AS client_id, te.channel, te.direction, te.text, te.duration_sec, te.status, te.created_at
+                FROM {SCHEMA}.touch_clients tc
+                JOIN LATERAL (
+                    SELECT * FROM {SCHEMA}.touch_events te
+                    WHERE te.client_id = tc.id
+                    ORDER BY te.created_at DESC LIMIT 3
+                ) te ON true
+                WHERE tc.crm_contact_id = ANY(%s)
+                ORDER BY tc.crm_contact_id, te.created_at ASC
+            """, (stale_ids,))
+            events_by_client = {}
+            for row in cur.fetchall():
+                cid, ch, direction, text, dur, status, created = row
+                events_by_client.setdefault(cid, []).append((ch, direction, text, dur, status, created))
+
+            now = datetime.now()
+            blocks = []
+            for cid in stale_ids:
+                name, phone = name_phone_by_id.get(cid, (None, None))
+                last_activity = last_activity_by_id.get(cid)
+                days_idle = (now - last_activity).days if last_activity else None
+                evs = events_by_client.get(cid, [])
+                if evs:
+                    lines = []
+                    for ch, direction, text, dur, status, created in evs:
+                        who = "Клиент" if direction == "in" else "Мы"
+                        when = created.strftime("%d.%m %H:%M") if created else ""
+                        if ch == "call":
+                            body_txt = f"звонок {dur or 0} сек, статус {status}" + (f": {text}" if text else "")
+                        else:
+                            body_txt = (text or "(без текста)")[:200]
+                        lines.append(f"  [{when}] ({ch}) {who}: {body_txt}")
+                    ev_text = "\n".join(lines)
+                else:
+                    ev_text = "  (сообщений и звонков не было — менялись только поля карточки)"
+                blocks.append(
+                    f"Клиент id={cid} ({name or 'без имени'}, {phone or 'без телефона'}), "
+                    f"последняя активность {days_idle if days_idle is not None else '?'} дн. назад:\n{ev_text}"
+                )
+            batch_text = "\n\n".join(blocks)
+
+            sys_prompt = (
+                "Отвечай только валидным JSON без markdown и пояснений. "
+                "Опирайся СТРОГО на переданные факты по каждому клиенту — не придумывай "
+                "детали и не додумывай реакции клиента, которых нет в тексте."
+            )
+            user_prompt = (
+                "Для каждого клиента ниже составь ОДНУ короткую фразу (до 80 символов) на русском "
+                "о том, что происходило последним по этой заявке — это покажется менеджеру как "
+                "напоминание в списке 'нет действий'. Примеры хорошего тона:\n"
+                '  "Написали клиенту о сроках — ответа нет 3 дня"\n'
+                '  "Клиент ответил, ждём решения"\n'
+                '  "Пропущенный звонок, не перезвонили"\n'
+                '  "Карточка не менялась, касаний не было"\n'
+                "Правило: если последнее событие — наше сообщение/звонок без ответа клиента, "
+                "явно скажи, что ответа нет (и сколько дней активности не было — эту цифру бери "
+                "из 'последняя активность N дн. назад', она уже верно посчитана, не пересчитывай). "
+                "Если последнее — от клиента, скажи, что клиент написал/ответил и (кратко) что. "
+                "Верни ТОЛЬКО JSON: "
+                '{"clients": [{"id": <int>, "summary": "<фраза>"}, ...]}\n\n'
+                f"{batch_text}"
+            )
+            payload = json.dumps({
+                "model": "openai/gpt-4o-mini",
+                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "max_tokens": 2000, "temperature": 0.1,
+            }).encode()
+            req = _ureq.Request(
+                "https://api.polza.ai/api/v1/chat/completions", data=payload,
+                headers={"Authorization": f"Bearer {polza_key}", "Content-Type": "application/json"}, method="POST")
+            try:
+                with _ureq.urlopen(req, timeout=40) as r:
+                    ai_resp = json.loads(r.read().decode())
+                content = ai_resp["choices"][0]["message"]["content"]
+                m = re.search(r'\{[\s\S]*\}', content)
+                if not m:
+                    return ok({"summaries": summaries, "warning": "AI вернул неожиданный формат"})
+                parsed = json.loads(m.group(0))
+            except Exception as e:
+                return ok({"summaries": summaries, "warning": f"AI ошибка: {str(e)[:200]}"})
+
+            for item in (parsed.get("clients") or []):
+                try:
+                    cid = int(item.get("id"))
+                except (TypeError, ValueError):
+                    continue
+                summary = (item.get("summary") or "").strip()
+                if not summary or cid not in stale_ids:
+                    continue
+                summaries[cid] = summary
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.live_chats
+                    SET last_action_summary=%s, last_action_summary_at=NOW(), last_action_analyzed_for=%s
+                    WHERE id=%s
+                """, (summary, last_activity_by_id.get(cid), cid))
+            conn.commit()
+
+            return ok({"summaries": summaries})
+
         return err("unknown resource", 404)
 
     except Exception as e:

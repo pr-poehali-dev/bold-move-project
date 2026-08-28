@@ -34,6 +34,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "POST analyze-last-actions without auth is rejected",
+      "method": "POST",
+      "path": "/?r=analyze-last-actions",
+      "body": {"client_ids": [1]},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Требуется авторизация"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "GET unknown resource",
       "method": "GET",
       "path": "/?r=unknown-thing",

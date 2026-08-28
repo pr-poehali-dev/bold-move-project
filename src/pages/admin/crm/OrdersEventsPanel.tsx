@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
-import { Client } from "./crmApi";
+import { Client, crmAiFetch } from "./crmApi";
 import { useTheme } from "./themeContext";
 
 interface Props {
@@ -90,18 +90,49 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
   const upcomingCount = upcomingMeasures.length + upcomingInstalls.length;
   const hasEvents = upcomingCount > 0;
 
-  // Нет действий N+ дней: статус активный, updated_at не менялся N+ дней (порог настраивается через шестерёнку)
+  // Нет действий N+ дней: статус активный, ПОСЛЕДНЕЕ ДЕЙСТВИЕ (last_activity_at —
+  // правка карточки ИЛИ звонок ИЛИ сообщение в любом канале, что свежее) не было
+  // N+ дней. Раньше здесь смотрели только на updated_at (правки полей карточки),
+  // из-за чего переписка и звонки не считались действием — заявка с активной
+  // перепиской вчера всё равно попадала в «нет действий». last_activity_at уже
+  // приходит с сервера посчитанным правильно (см. crm-manager, GREATEST по touch_events).
+  const lastActionOf = (c: Client) =>
+    c.last_activity_at ? new Date(c.last_activity_at)
+      : c.updated_at ? new Date(c.updated_at)
+      : new Date(c.created_at);
   const noActionThreshold = new Date(now); noActionThreshold.setDate(now.getDate() - noActionDays);
   const ACTIVE_STATUSES = [...MEASURE_ACTIVE, ...INSTALL_ACTIVE];
   const noAction = allClients.filter(c => {
     if (!ACTIVE_STATUSES.includes(c.status)) return false;
-    const lastActivity = c.updated_at ? new Date(c.updated_at) : new Date(c.created_at);
-    return lastActivity < noActionThreshold;
-  }).sort((a, b) => {
-    const ta = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.created_at).getTime();
-    const tb = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.created_at).getTime();
-    return ta - tb;
-  });
+    return lastActionOf(c) < noActionThreshold;
+  }).sort((a, b) => lastActionOf(a).getTime() - lastActionOf(b).getTime());
+
+  // ИИ-сводка последнего действия по каждой карточке блока «Нет действий» —
+  // один батч-запрос на весь видимый список (не по запросу на карточку).
+  // Backend сам решает, что уже посчитано и не устарело (кэш по last_activity_at),
+  // и тратит вызов ИИ только на реально новые/изменившиеся заявки.
+  const [aiSummaries, setAiSummaries] = useState<Record<number, string>>({});
+  const [aiLoading, setAiLoading] = useState(false);
+  const noActionIdsKey = noAction.map(c => c.id).join(",");
+  useEffect(() => {
+    if (!noActionIdsKey) return;
+    let cancelled = false;
+    setAiLoading(true);
+    crmAiFetch("analyze-last-actions", {
+      method: "POST",
+      body: JSON.stringify({ client_ids: noActionIdsKey.split(",").map(Number) }),
+    }).then(res => {
+      if (cancelled) return;
+      const summaries = (res as { summaries?: Record<string, string> })?.summaries;
+      if (summaries) {
+        const parsed: Record<number, string> = {};
+        for (const [k, v] of Object.entries(summaries)) parsed[Number(k)] = v;
+        setAiSummaries(parsed);
+      }
+    }).catch(() => { /* тихо: сводка — не критичная функция, список карточек и без неё рабочий */ })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, [noActionIdsKey]);
 
   // Push-уведомление при загрузке если есть просроченные
   useEffect(() => {
@@ -159,28 +190,43 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
 
   return (
     <>
-      {/* ── НЕТ ДЕЙСТВИЙ N+ ДНЕЙ ────────────────────────────────────────────── */}
-      {noAction.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.22)" }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Icon name="Clock" size={15} style={{ color: "#f59e0b" }} />
-            <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>Нет действий {noActionDays}+ дней</span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-bold"
-              style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b" }}>
-              {noAction.length}
-            </span>
-            <span className="text-xs ml-1" style={{ color: "#fbbf24" }}>— требуют внимания</span>
-            <button onClick={() => setNoActionSettingsOpen(true)}
-              title="Настроить порог дней"
-              className="ml-auto p-1 rounded-md transition hover:bg-white/10 flex-shrink-0"
-              style={{ color: "#f59e0b" }}>
-              <Icon name="Settings" size={13} />
-            </button>
+      {/* ── НЕТ ДЕЙСТВИЙ N+ ДНЕЙ ──────────────────────────────────────────────
+          Шапка (заголовок + шестерёнка настройки порога) видна ВСЕГДА, даже
+          если под текущий порог никто не попал — иначе, выставив большой
+          порог, пользователь физически не может открыть настройки, чтобы
+          уменьшить его обратно (блок раньше исчезал целиком). Прячется только
+          список карточек, когда он пуст. */}
+      <div className="rounded-2xl p-4" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.22)" }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Icon name="Clock" size={15} style={{ color: "#f59e0b" }} />
+          <span className="text-sm font-bold" style={{ color: "#f59e0b" }}>Нет действий {noActionDays}+ дней</span>
+          {noAction.length > 0 && (
+            <>
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b" }}>
+                {noAction.length}
+              </span>
+              <span className="text-xs ml-1" style={{ color: "#fbbf24" }}>— требуют внимания</span>
+            </>
+          )}
+          <button onClick={() => setNoActionSettingsOpen(true)}
+            title="Настроить порог дней"
+            className="ml-auto p-1 rounded-md transition hover:bg-white/10 flex-shrink-0"
+            style={{ color: "#f59e0b" }}>
+            <Icon name="Settings" size={13} />
+          </button>
+        </div>
+        {noAction.length === 0 ? (
+          <div className="flex items-center gap-2 py-1 text-xs" style={{ color: t.textMute }}>
+            <Icon name="CheckCircle2" size={13} className="opacity-50" />
+            Нет заявок без действий дольше {noActionDays} {noActionDays === 1 ? "дня" : "дней"}
           </div>
+        ) : (
           <div className="space-y-2">
             {noAction.map(c => {
-              const lastActivity = c.updated_at ? new Date(c.updated_at) : new Date(c.created_at);
+              const lastActivity = lastActionOf(c);
               const daysIdle = Math.floor((now.getTime() - lastActivity.getTime()) / 86400000);
+              const aiText = aiSummaries[c.id];
               return (
                 <div key={c.id}
                   onClick={() => onSelect(c)}
@@ -201,6 +247,16 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
                         {c.address}
                       </div>
                     )}
+                    {/* ИИ-сводка последнего действия — что было в последний раз по заявке
+                        (написали/ответил/пропущенный звонок), не только дата правки полей */}
+                    <div className="flex items-center gap-1 mt-1">
+                      <Icon name="Sparkles" size={10} className="flex-shrink-0" style={{ color: "#a78bfa" }} />
+                      {aiText ? (
+                        <span className="text-[10px] truncate" style={{ color: t.textSub }}>{aiText}</span>
+                      ) : aiLoading ? (
+                        <span className="text-[10px] italic" style={{ color: t.textMute }}>Анализирую…</span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <div className="text-[10px] font-bold" style={{ color: "#f59e0b" }}>
@@ -215,8 +271,8 @@ export function OrdersEventsPanel({ allClients, loading, onSelect }: Props) {
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── ПРОСРОЧЕННЫЕ ────────────────────────────────────────────────────── */}
       {overdueCount > 0 && (
