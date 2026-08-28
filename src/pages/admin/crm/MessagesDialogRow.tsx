@@ -99,8 +99,11 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
           <span className="text-[10px] flex-shrink-0" style={{ color: t.textMute }}>{fmtWhen(d.last_at)}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-xs truncate flex-1" style={{ color: unread ? t.text : t.textMute, fontWeight: unread ? 600 : 400 }}>
-            {d.last_direction === "out" && <span style={{ color: t.textMute }}>Вы: </span>}
+          {/* Направление последнего сообщения видно цветом: зелёное — написали мы,
+              красное — написал клиент. Так менеджер с одного взгляда видит, за кем ход. */}
+          <span className="text-xs truncate flex-1"
+            style={{ color: d.last_direction === "out" ? "#10b981" : "#f43f5e", fontWeight: unread ? 600 : 400 }}>
+            {d.last_direction === "out" && <span style={{ opacity: 0.75 }}>Вы: </span>}
             {d.last_text || "(без текста)"}
           </span>
           {unread > 0 && (
