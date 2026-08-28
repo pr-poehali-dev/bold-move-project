@@ -4122,6 +4122,52 @@ def handler(event: dict, context) -> dict:
             items = [{"external_id": r[0], "channel": r[1], "phone": r[2]} for r in cur.fetchall()]
             return ok({"accounts": items})
 
+        # ── WORKER-NAMES-PENDING: контакты MAX/Telegram без имени (для дозаполнения
+        # задним числом) — воркер по каждому chat_id спрашивает имя у мессенджера
+        # напрямую (у него открыта сессия), CRM своими силами это узнать не может.
+        if resource == "worker-names-pending" and method == "GET":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            channel_q = qs.get("channel")
+            cur.execute(f"""
+                SELECT id, channel_ids, phone
+                FROM {SCHEMA}.touch_clients
+                WHERE company_id=%s AND chat_type='private'
+                      AND (name IS NULL OR name = '')
+                      AND channel_ids IS NOT NULL AND channel_ids != '{{}}'::jsonb
+                ORDER BY id DESC
+                LIMIT 200
+            """, (owner_id,))
+            items = []
+            for cid, channel_ids, phone in cur.fetchall():
+                for ch, chat_id in (channel_ids or {}).items():
+                    if ch not in ("telegram", "max"):
+                        continue
+                    if channel_q and ch != channel_q:
+                        continue
+                    items.append({"client_id": cid, "channel": ch, "chat_id": chat_id, "phone": phone})
+            return ok({"items": items})
+
+        # ── WORKER-NAMES-UPDATE: воркер присылает найденное имя контакта ───────────
+        if resource == "worker-names-update" and method == "POST":
+            owner_id = _messenger_worker_owner()
+            if not owner_id:
+                return err("неверный ключ", 401)
+            cid = body.get("client_id")
+            name_v = (body.get("name") or "").strip()
+            if not cid or not name_v:
+                return err("client_id и name обязательны")
+            # COALESCE(NULLIF(...)) — не затираем имя, если его кто-то уже ввёл руками
+            # между запросом списка и ответом воркера (защита от гонки).
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_clients
+                SET name = COALESCE(NULLIF(name, ''), %s)
+                WHERE id=%s AND company_id=%s
+            """, (name_v, int(cid), owner_id))
+            conn.commit()
+            return ok({"ok": True})
+
         # ── WORKER-AUTH-PENDING: линии, ожидающие действий по авторизации ──────────
         if resource == "worker-auth-pending" and method == "GET":
             owner_id = _messenger_worker_owner()
