@@ -5,6 +5,7 @@ import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
 import { TabDef, Props } from "./ordersTabsShared";
 import { TabSettingsPopup } from "./OrdersTabSettingsPopup";
+import { ChannelsSelfTestButton } from "./ChannelsSelfTestButton";
 
 // Реэкспорт для обратной совместимости с существующими импортами из "./OrdersTabs"
 export type { Substatus } from "./ordersTabsShared";
@@ -188,6 +189,12 @@ export function OrdersTabs({
             <Icon name="Plus" size={13} />
           </button>
         )}
+
+        {/* Живая проверка каналов — доступна всем сотрудникам, не только владельцу
+            в настройках интеграций. Прижата вправо через ml-auto. */}
+        <div className="ml-auto flex-shrink-0">
+          <ChannelsSelfTestButton />
+        </div>
       </div>
     </div>
   );

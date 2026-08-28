@@ -145,66 +145,6 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
     try { await loadAccounts(); } finally { setCheckingStatus(false); }
   };
 
-  // ── Живая проверка каналов ────────────────────────────────────────────────
-  // Отправляет РЕАЛЬНОЕ сообщение в Telegram и MAX на указанный номер и ждёт,
-  // чем закончилась доставка. В отличие от «Проверить статус» (который лишь
-  // показывает, авторизована ли линия) — это сквозная проверка всей цепочки:
-  // CRM → очередь → воркер на VPS → сам мессенджер.
-  const [testPhone, setTestPhone] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<Record<string, { state: string; error?: string }> | null>(null);
-
-  const runSelfTest = async () => {
-    if (!testPhone.trim()) return;
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const d = await crmFetch("channels-selftest", {
-        method: "POST",
-        body: JSON.stringify({ phone: testPhone.trim() }),
-      }) as { results?: Record<string, { ok: boolean; touch_id?: number; error?: string }>; error?: string };
-
-      if (d?.error) {
-        setTestResult({ telegram: { state: "error", error: d.error }, max: { state: "error", error: d.error } });
-        return;
-      }
-      const res = d?.results || {};
-      // Сообщения, которые реально ушли в очередь — за ними и следим
-      const idToChannel: Record<number, string> = {};
-      const initial: Record<string, { state: string; error?: string }> = {};
-      Object.entries(res).forEach(([ch, r]) => {
-        if (r.ok && r.touch_id) { idToChannel[r.touch_id] = ch; initial[ch] = { state: "sending" }; }
-        else initial[ch] = { state: "error", error: r.error };
-      });
-      setTestResult({ ...initial });
-
-      const ids = Object.keys(idToChannel);
-      if (!ids.length) return;
-
-      // Опрашиваем статус до 30 секунд — воркеру нужно время забрать и отправить
-      for (let i = 0; i < 15; i++) {
-        await new Promise(r => setTimeout(r, 2000));
-        const st = await crmFetch("channels-selftest-status", undefined, { ids: ids.join(",") }) as
-          { items?: { touch_id: number; channel: string; status: string }[] };
-        const items = st?.items || [];
-        const next = { ...initial };
-        items.forEach(it => {
-          next[it.channel] = it.status === "sent" || it.status === "received"
-            ? { state: "ok" }
-            : it.status === "error"
-            ? { state: "error", error: "Сообщение не доставлено" }
-            : { state: "sending" };
-        });
-        setTestResult({ ...next });
-        if (items.every(it => it.status !== "pending" && it.status !== "sending")) break;
-      }
-    } catch {
-      setTestResult({ telegram: { state: "error", error: "Ошибка связи" }, max: { state: "error", error: "Ошибка связи" } });
-    } finally {
-      setTesting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="rounded-2xl p-6 flex items-center justify-center" style={{ background: cardBg, border: `1px solid ${cardBrd}` }}>
@@ -282,52 +222,6 @@ export default function MessengerLinesCard({ cardBg, cardBrd, inputBg, inputBrd,
                   <Icon name="RotateCw" size={12} className={regenerating ? "animate-spin" : ""} />
                 </button>
               </div>
-            </div>
-
-            {/* Живая проверка каналов — реальное сообщение в Telegram и MAX */}
-            <div className="rounded-xl p-3 mt-3" style={{ background: inputBg, border: `1px solid ${inputBrd}` }}>
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: txtSub }}>
-                <Icon name="Activity" size={12} /> Проверка каналов
-              </div>
-              <div className="text-[10px] mb-2" style={{ color: txtSub }}>
-                Отправим реальное сообщение в Telegram и MAX на указанный номер и покажем, дошло ли оно.
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <input value={testPhone} onChange={e => setTestPhone(e.target.value)}
-                  placeholder="+7 977 606 09 01"
-                  className="flex-1 min-w-[150px] text-xs rounded-xl px-3 py-2 focus:outline-none"
-                  style={{ background: isDark ? "#0e0e1c" : "#fff", border: `1px solid ${inputBrd}`, color: txt }} />
-                <button onClick={runSelfTest} disabled={testing || !testPhone.trim()}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition disabled:opacity-50 flex-shrink-0"
-                  style={{ background: "rgba(124,58,237,0.14)", color: "#a78bfa" }}>
-                  <Icon name={testing ? "Loader2" : "Send"} size={12} className={testing ? "animate-spin" : ""} />
-                  {testing ? "Проверяем…" : "Проверить"}
-                </button>
-              </div>
-
-              {testResult && (
-                <div className="flex flex-col gap-1 mt-2">
-                  {(["telegram", "max"] as const).map(ch => {
-                    const r = testResult[ch];
-                    if (!r) return null;
-                    const label = ch === "telegram" ? "Telegram" : "MAX";
-                    const view = r.state === "ok"
-                      ? { text: "Работает", color: "#10b981", icon: "CheckCircle2" }
-                      : r.state === "sending"
-                      ? { text: "Отправляем…", color: "#f59e0b", icon: "Loader2" }
-                      : { text: r.error || "Не работает", color: "#ef4444", icon: "AlertTriangle" };
-                    return (
-                      <div key={ch} className="flex items-center gap-2 text-[11px] px-2.5 py-1.5 rounded-lg"
-                        style={{ background: `${view.color}12`, border: `1px solid ${view.color}30` }}>
-                        <Icon name={view.icon} size={13} style={{ color: view.color }}
-                          className={r.state === "sending" ? "animate-spin" : ""} />
-                        <span className="font-bold" style={{ color: txt }}>{label}</span>
-                        <span style={{ color: view.color }}>{view.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
             <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${cardBrd}` }}>
