@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { Permissions } from "@/context/AuthContext";
+import { useSubstatuses } from "@/pages/admin/crm/useSubstatuses";
 
 // ── Типы ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ type PermRow = {
   view?: BoolPermKey;   // ключ "видимость"
   edit?: BoolPermKey;   // ключ "редактирование"
   desc?: string;
+  children?: PermRow[]; // вложенные подпункты — сворачиваются под родителем
 };
 
 type PermSection = {
@@ -54,10 +56,12 @@ export const PERM_TREE: PermSection[] = [
       { label: "Построитель",       icon: "PenTool",         color: "#f472b6", view: "plan_view",        desc: "Доступ к конструктору планировок" },
       { label: "Профиль",           icon: "User",            color: "#818cf8", view: "profile_view",     desc: "Просмотр и редактирование профиля" },
       { label: "Тарифы и пакеты",   icon: "Sparkles",        color: "#fbbf24", view: "tariffs_view",     desc: "Раздел тарифов и пакетов" },
-      { label: "Настройки компании", icon: "Settings",       color: "#34d399", view: "admin_panel_view", desc: "Кнопка-шестерёнка «Настройки» в верхней панели" },
-      { label: "└ Команда",          icon: "Users",           color: "#34d399", view: "team_view",         desc: "Вкладка «Команда» внутри настроек" },
-      { label: "└ Свой агент",       icon: "Bot",             color: "#34d399", view: "own_agent_view",    desc: "Вкладка «Свой агент» внутри настроек" },
-      { label: "└ Интеграции",       icon: "Plug",            color: "#34d399", view: "integrations_view", desc: "Вкладка «Интеграции» внутри настроек" },
+      { label: "Настройки компании", icon: "Settings",       color: "#34d399", view: "admin_panel_view", desc: "Кнопка-шестерёнка «Настройки» в верхней панели",
+        children: [
+          { label: "Команда",          icon: "Users",  color: "#34d399", view: "team_view",         desc: "Вкладка «Команда» внутри настроек" },
+          { label: "Свой агент",       icon: "Bot",    color: "#34d399", view: "own_agent_view",    desc: "Вкладка «Свой агент» внутри настроек" },
+          { label: "Интеграции",       icon: "Plug",   color: "#34d399", view: "integrations_view", desc: "Вкладка «Интеграции» внутри настроек" },
+        ] },
       { label: "Поддержка",         icon: "MessageCircle",   color: "#29b6f6", view: "support_view",     desc: "Раздел поддержки" },
       { label: "Заявки (журнал)",   icon: "Inbox",           color: "#38bdf8", view: "leads_log_view",   desc: "Журнал входящих заявок в верхней панели" },
       { label: "Баг-репорт",        icon: "Bug",             color: "#fb7185", view: "bug_report_view",  desc: "Кнопка отправки баг-репорта в верхней панели" },
@@ -67,6 +71,7 @@ export const PERM_TREE: PermSection[] = [
     title: "Что видит в CRM",
     rows: [
       { label: "Клиенты",          icon: "Users",        color: "#a78bfa", view: "clients_view",  edit: "clients_edit",  desc: "Список клиентов" },
+      { label: "Сообщения",        icon: "MessagesSquare", color: "#38bdf8", view: "messages_view", desc: "Вкладка «Сообщения» — переписка с клиентами" },
       { label: "Заказы",           icon: "GitBranch",    color: "#34d399", view: "orders_view",   edit: "orders_edit",   desc: "Список заказов и статус заявок" },
       { label: "Канбан",           icon: "LayoutGrid",   color: "#818cf8", view: "kanban_view",   edit: "kanban_edit",   desc: "Доска канбан" },
       { label: "Календарь",        icon: "Calendar",     color: "#f59e0b", view: "calendar_view", edit: "calendar_edit", desc: "График замеров и монтажей" },
@@ -90,11 +95,13 @@ export const PERM_TREE: PermSection[] = [
     rows: [
       { label: "Контакты",     icon: "Phone",     color: "#a78bfa", view: "field_contacts", desc: "Телефон, email клиента" },
       { label: "Адрес объекта",icon: "MapPin",    color: "#60a5fa", view: "field_address",  desc: "Адрес замера/монтажа" },
-      { label: "Даты",         icon: "Calendar",  color: "#f59e0b", view: "field_dates",    desc: "Показывать блок «Даты» в карточке вообще" },
-      { label: "└ Желаемый замер",   icon: "Ruler",  color: "#38bdf8", view: "dates_view_desired_measure", edit: "dates_edit_desired_measure_date", desc: "Ставит 1 линия со слов клиента" },
-      { label: "└ Желаемый монтаж",  icon: "Wrench", color: "#a78bfa", view: "dates_view_desired_install", edit: "dates_edit_desired_install_date", desc: "Ставит 1 линия со слов клиента" },
-      { label: "└ Факт. замер",      icon: "Ruler",  color: "#f59e0b", view: "dates_view_measure",  edit: "dates_edit_measure_date",  desc: "Ставит 2 линия после согласования" },
-      { label: "└ Факт. монтаж",     icon: "Wrench", color: "#f97316", view: "dates_view_install",  edit: "dates_edit_install_date",  desc: "Ставит 2 линия после согласования" },
+      { label: "Даты",         icon: "Calendar",  color: "#f59e0b", view: "field_dates",    desc: "Показывать блок «Даты» в карточке вообще",
+        children: [
+          { label: "Желаемый замер",   icon: "Ruler",  color: "#38bdf8", view: "dates_view_desired_measure", edit: "dates_edit_desired_measure_date", desc: "Ставит 1 линия со слов клиента" },
+          { label: "Желаемый монтаж",  icon: "Wrench", color: "#a78bfa", view: "dates_view_desired_install", edit: "dates_edit_desired_install_date", desc: "Ставит 1 линия со слов клиента" },
+          { label: "Факт. замер",      icon: "Ruler",  color: "#f59e0b", view: "dates_view_measure",  edit: "dates_edit_measure_date",  desc: "Ставит 2 линия после согласования" },
+          { label: "Факт. монтаж",     icon: "Wrench", color: "#f97316", view: "dates_view_install",  edit: "dates_edit_install_date",  desc: "Ставит 2 линия после согласования" },
+        ] },
       { label: "Финансы",      icon: "Wallet",    color: "#10b981", view: "field_finance",  desc: "Суммы и прибыль в карточке" },
       { label: "Примечания",   icon: "FileText",  color: "#94a3b8", view: "field_notes",    desc: "Комментарии и заметки" },
       { label: "Файлы",        icon: "Paperclip", color: "#6366f1", view: "field_files",    desc: "Блок файлов в карточке" },
@@ -103,9 +110,13 @@ export const PERM_TREE: PermSection[] = [
   },
 ];
 
+// Разворачивает строку и все её вложенные подпункты в плоский список (рекурсивно)
+const flattenRows = (rows: PermRow[]): PermRow[] =>
+  rows.flatMap(r => [r, ...(r.children ? flattenRows(r.children) : [])]);
+
 // Все ключи для "выдать/снять все"
 export const ALL_PERM_KEYS: BoolPermKey[] = PERM_TREE.flatMap(s =>
-  s.rows.flatMap(r => [r.view, r.edit].filter(Boolean) as BoolPermKey[])
+  flattenRows(s.rows).flatMap(r => [r.view, r.edit].filter(Boolean) as BoolPermKey[])
 );
 
 // ── Этапы воронки заказов (жёсткий список — совпадает с LEAD_STATUSES/ORDER_STATUSES) ──
@@ -162,6 +173,14 @@ const SCOPE_TAB_INDEX = TAB_LABELS.length - 1;
 
 export default function PermissionsEditor({ isDark, permissions, onChange }: Props) {
   const [activeTab, setActiveTab] = useState(0);
+  const { substatuses } = useSubstatuses(); // кастомные подэтапы компании (для группировки во вкладке "Этапы")
+  const [openStatusGroups, setOpenStatusGroups] = useState<Set<string>>(new Set());
+  const toggleStatusGroup = (id: string) =>
+    setOpenStatusGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
 
   const muted   = isDark ? "rgba(255,255,255,0.35)" : "#9ca3af";
   const border  = isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6";
@@ -180,27 +199,52 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   };
 
   const sectionAllChecked = (section: PermSection) =>
-    section.rows.every(r =>
+    flattenRows(section.rows).every(r =>
       (!r.view || permissions[r.view]) && (!r.edit || permissions[r.edit])
     );
 
   const toggleSection = (section: PermSection) => {
     const val = !sectionAllChecked(section);
     const patch: Permissions = { ...permissions };
-    section.rows.forEach(r => {
+    flattenRows(section.rows).forEach(r => {
       if (r.view) patch[r.view] = val;
       if (r.edit) patch[r.edit] = val;
     });
     onChange(patch);
   };
 
-  // Подсчёт активных прав в секции для бейджа
+  // Подсчёт активных прав в секции для бейджа (считает и вложенные подпункты)
   const sectionActiveCount = (section: PermSection) =>
-    section.rows.reduce((n, r) => {
+    flattenRows(section.rows).reduce((n, r) => {
       if (r.view && permissions[r.view]) n++;
       if (r.edit && permissions[r.edit]) n++;
       return n;
     }, 0);
+
+  // Раскрытые родительские строки (по label) — сворачиваемые группы подпунктов
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (label: string) =>
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+
+  // Включение/выключение родителя тянет за собой всех детей (выключение — гасит,
+  // включение — включает всех). Ключ самого родителя (view/edit) переключается отдельно.
+  const toggleParentCascade = (row: PermRow, key: "view" | "edit") => {
+    const permKey = row[key];
+    if (!permKey) return;
+    const nextVal = !permissions[permKey];
+    const patch: Permissions = { ...permissions, [permKey]: nextVal };
+    if (row.children && !nextVal) {
+      flattenRows(row.children).forEach(child => {
+        if (child.view) patch[child.view] = false;
+        if (child.edit) patch[child.edit] = false;
+      });
+    }
+    onChange(patch);
+  };
 
   // ── Логика вкладки "Этапы" ────────────────────────────────────────────────
   // Пустой массив / отсутствие ключа = ограничений нет (доступны все этапы)
@@ -443,21 +487,62 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
           <div className="flex flex-col gap-1">
             {PIPELINE_STATUSES.map(st => {
               const checked = isStatusChecked(st.id);
+              const subs = substatuses.filter(s => s.parent_status === st.id);
+              const hasSubs = subs.length > 0;
+              const isOpen = openStatusGroups.has(st.id);
               return (
-                <div key={st.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{
-                    background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                    border: `1px solid ${checked ? `${st.color}30` : border}`,
-                  }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${st.color}18` }}>
-                    <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                <div key={st.id} className="flex flex-col gap-1">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                    style={{
+                      background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                      border: `1px solid ${checked ? `${st.color}30` : border}`,
+                    }}>
+                    {hasSubs ? (
+                      <button onClick={() => toggleStatusGroup(st.id)}
+                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
+                        style={{ color: muted }}
+                        title={isOpen ? "Свернуть" : "Развернуть"}>
+                        <Icon name={isOpen ? "ChevronDown" : "ChevronRight"} size={13} />
+                      </button>
+                    ) : null}
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${st.color}18` }}>
+                      <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
+                      {hasSubs && (
+                        <div className="text-[10px] truncate" style={{ color: textSub }}>
+                          {subs.length} свой{subs.length === 1 ? "й этап" : subs.length < 5 ? "х этапа" : "х этапов"} внутри
+                        </div>
+                      )}
+                    </div>
+                    <Toggle checked={checked} color={st.color} isDark={isDark} onChange={() => toggleStatus(st.id)} title="Доступен сотруднику" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
-                  </div>
-                  <Toggle checked={checked} color={st.color} isDark={isDark} onChange={() => toggleStatus(st.id)} title="Доступен сотруднику" />
+                  {hasSubs && isOpen && (
+                    <div className="flex flex-col gap-1">
+                      {subs.map(sub => (
+                        <div key={sub.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                          style={{
+                            marginLeft: 18,
+                            background: checked ? `${sub.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                            border: `1px solid ${checked ? `${sub.color}30` : border}`,
+                          }}>
+                          <div className="w-5 flex-shrink-0" />
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: `${sub.color}18` }}>
+                            <Icon name="GitBranch" size={13} style={{ color: sub.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
+                            <div className="text-[10px] truncate" style={{ color: textSub }}>Наследует доступ этапа «{st.label}»</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -486,41 +571,70 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
         </div>
       )}
 
-      {/* Строки активной секции */}
+      {/* Строки активной секции (рекурсивно, с вложенными подпунктами) */}
       <div className="flex flex-col gap-1">
-        {section!.rows.map(row => {
-          const vChecked = row.view ? !!permissions[row.view] : undefined;
-          const eChecked = row.edit ? !!permissions[row.edit] : undefined;
-          const active   = vChecked || eChecked;
-          return (
-            <div key={row.label}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{
-                background: active ? `${row.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                border: `1px solid ${active ? `${row.color}30` : border}`,
-              }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: `${row.color}18` }}>
-                <Icon name={row.icon} size={13} style={{ color: row.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold truncate" style={{ color: text }}>{row.label}</div>
-                {row.desc && (
-                  <div className="text-[10px] truncate" style={{ color: textSub }}>{row.desc}</div>
-                )}
-              </div>
-              {row.view
-                ? <Toggle checked={vChecked!} color={row.color} isDark={isDark} onChange={() => toggle(row.view!)} title="Видимость" />
-                : <div className="w-8" />}
-              {row.edit
-                ? <Toggle checked={eChecked!} color={row.color} isDark={isDark} onChange={() => toggle(row.edit!)} title="Редактирование" />
-                : section!.rows.some(r => r.edit) ? <div className="w-8" /> : null}
-            </div>
-          );
-        })}
+        {section!.rows.map(row => renderRow(row, section!, 0))}
       </div>
       </>
       )}
     </div>
   );
+
+  // ── Рендер одной строки прав + её вложенных подпунктов (рекурсивно) ──────
+  function renderRow(row: PermRow, section: PermSection, depth: number) {
+    const vChecked = row.view ? !!permissions[row.view] : undefined;
+    const eChecked = row.edit ? !!permissions[row.edit] : undefined;
+    const active   = vChecked || eChecked;
+    const hasChildren = !!row.children?.length;
+    const isOpen = openGroups.has(row.label);
+    const showEditCol = section.rows.some(r => r.edit);
+
+    return (
+      <div key={row.label} className="flex flex-col gap-1">
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{
+            marginLeft: depth * 18,
+            background: active ? `${row.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+            border: `1px solid ${active ? `${row.color}30` : border}`,
+          }}>
+          {hasChildren ? (
+            <button onClick={() => toggleGroup(row.label)}
+              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
+              style={{ color: muted }}
+              title={isOpen ? "Свернуть" : "Развернуть"}>
+              <Icon name={isOpen ? "ChevronDown" : "ChevronRight"} size={13} />
+            </button>
+          ) : depth > 0 ? (
+            <div className="w-5 flex-shrink-0" />
+          ) : null}
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: `${row.color}18` }}>
+            <Icon name={row.icon} size={13} style={{ color: row.color }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold truncate" style={{ color: text }}>{row.label}</div>
+            {row.desc && (
+              <div className="text-[10px] truncate" style={{ color: textSub }}>{row.desc}</div>
+            )}
+          </div>
+          {row.view
+            ? <Toggle checked={vChecked!} color={row.color} isDark={isDark}
+                onChange={() => hasChildren ? toggleParentCascade(row, "view") : toggle(row.view!)}
+                title="Видимость" />
+            : <div className="w-8" />}
+          {row.edit
+            ? <Toggle checked={eChecked!} color={row.color} isDark={isDark}
+                onChange={() => hasChildren ? toggleParentCascade(row, "edit") : toggle(row.edit!)}
+                title="Редактирование" />
+            : showEditCol ? <div className="w-8" /> : null}
+        </div>
+        {hasChildren && isOpen && (
+          <div className="flex flex-col gap-1">
+            {row.children!.map(child => renderRow(child, section, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
 }

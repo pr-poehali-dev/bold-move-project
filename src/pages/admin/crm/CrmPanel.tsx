@@ -25,7 +25,7 @@ type CrmTab = "analytics" | "clients" | "messages" | "orders" | "calendar" | "ka
 const ALL_TABS: { id: CrmTab; label: string; icon: string; perm?: keyof Permissions }[] = [
   { id: "orders",    label: "Заказы",    icon: "Layers",       perm: "orders_view"   },
   { id: "clients",   label: "Клиенты",   icon: "Users",       perm: "clients_view"  },
-  { id: "messages",  label: "Сообщения", icon: "MessagesSquare", perm: "clients_view" },
+  { id: "messages",  label: "Сообщения", icon: "MessagesSquare", perm: "messages_view" },
   { id: "calendar",  label: "Календарь", icon: "CalendarDays", perm: "calendar_view" },
   { id: "analytics", label: "Аналитика", icon: "BarChart2",    perm: "analytics_view"},
 ];
@@ -36,6 +36,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // Права пользователя — новая система
   const canClientsView  = hasPermission(user, "clients_view");
   const canClientsEdit  = hasPermission(user, "clients_edit");
+  const canMessagesView = hasPermission(user, "messages_view");
   const canOrdersView   = hasPermission(user, "orders_view");
   const canOrdersEdit   = hasPermission(user, "orders_edit");
   // Этапы воронки, разрешённые сотруднику (null = ограничений нет). Раньше право
@@ -69,7 +70,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
   // Счётчик непрочитанных для красного кружка на вкладке «Сообщения».
   // Пока сама вкладка «Сообщения» открыта — не опрашиваем отдельно: там
   // уже есть актуальный список диалогов с той же информацией (см. CrmMessages).
-  const inboxUnread = useInboxUnread(canClientsView && tab !== "messages");
+  const inboxUnread = useInboxUnread(canMessagesView && tab !== "messages");
   const [clients, setClients]       = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -266,7 +267,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
         {/* Контент */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-6">
           {tab === "analytics" && canAnalytics && <CrmAnalytics />}
-          {tab === "messages"  && canClientsView && <CrmMessages />}
+          {tab === "messages"  && canMessagesView && <CrmMessages />}
           {tab === "clients"   && canClientsView && (
             <CrmClients
               canEdit={canClientsEdit}

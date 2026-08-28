@@ -240,6 +240,7 @@ export interface Permissions {
   // ── Уровень 2: Блоки внутри CRM ─────────────────────────────────────────
   clients_view?:   boolean;
   clients_edit?:   boolean;
+  messages_view?:  boolean;
   orders_view?:    boolean;
   orders_edit?:    boolean;
   kanban_view?:    boolean;
@@ -331,6 +332,10 @@ const COMPAT: Partial<Record<keyof Permissions, keyof Permissions>> = {
   kanban:    "kanban_view",
   files:     "files_view",
   settings:  "prices_edit",
+  // Раньше вкладка "Сообщения" открывалась правом clients_view — теперь у неё
+  // своё право messages_view, но у уже настроенных сотрудников это поле ещё
+  // не сохранено, поэтому падаем назад на clients_view.
+  messages_view: "clients_view",
 };
 
 /**
