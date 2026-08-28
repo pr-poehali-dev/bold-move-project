@@ -5912,6 +5912,75 @@ def handler(event: dict, context) -> dict:
         # записи + распознавание речи могут занять больше времени, чем короткий
         # таймаут "быстрой" crm-manager. См. backend/crm-ai/index.py.
 
+        # ── CHANNELS-SELFTEST: живая проверка каналов «в один клик» ────────────────
+        # Отправляет реальное тестовое сообщение в Telegram и MAX на указанный номер
+        # и возвращает id этих сообщений. Дальше фронт опрашивает channels-selftest-status
+        # и показывает реальный результат доставки (а не просто «линия авторизована»).
+        if resource == "channels-selftest" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            if not owner_id:
+                return err("company not resolved", 400)
+
+            phone_q = normalize_phone(body.get("phone") or "")
+            if not phone_q:
+                return err("Укажите номер телефона для проверки")
+
+            # Находим или заводим тестового клиента по этому номеру
+            cur.execute(f"SELECT id FROM {SCHEMA}.touch_clients WHERE phone=%s AND company_id=%s",
+                        (phone_q, owner_id))
+            crow = cur.fetchone()
+            if crow:
+                test_client_id = crow[0]
+            else:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.touch_clients (company_id, phone, name)
+                    VALUES (%s, %s, %s) RETURNING id
+                """, (owner_id, phone_q, "Проверка каналов"))
+                test_client_id = cur.fetchone()[0]
+                conn.commit()
+
+            stamp = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
+            results = {}
+            for ch in ("telegram", "max"):
+                # Ищем активную авторизованную линию канала
+                cur.execute(f"""
+                    SELECT id FROM {SCHEMA}.messenger_accounts
+                    WHERE company_id=%s AND channel=%s AND is_active=TRUE AND auth_status='authorized'
+                    ORDER BY id LIMIT 1
+                """, (owner_id, ch))
+                line_row = cur.fetchone()
+                if not line_row:
+                    results[ch] = {"ok": False, "error": "Нет подключённой линии — авторизуйте её ниже"}
+                    continue
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.touch_events
+                        (client_id, channel, direction, text, status, account_id)
+                    VALUES (%s, %s, 'out', %s, 'pending', %s)
+                    RETURNING id
+                """, (test_client_id, ch, f"Проверка связи CRM · {stamp}", line_row[0]))
+                results[ch] = {"ok": True, "touch_id": cur.fetchone()[0]}
+            conn.commit()
+            notify_worker_push("channels-selftest")
+            return ok({"client_id": test_client_id, "results": results})
+
+        # ── CHANNELS-SELFTEST-STATUS: чем закончилась проверка каналов ─────────────
+        if resource == "channels-selftest-status" and method == "GET":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            owner_id = company_id or master_uid
+            ids_raw = (qs.get("ids") or "").strip()
+            wanted = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+            if not wanted:
+                return err("ids обязателен")
+            cur.execute(f"""
+                SELECT te.id, te.channel, te.status FROM {SCHEMA}.touch_events te
+                JOIN {SCHEMA}.touch_clients tc ON tc.id = te.client_id
+                WHERE tc.company_id=%s AND te.id = ANY(%s)
+            """, (owner_id, wanted))
+            return ok({"items": [{"touch_id": r[0], "channel": r[1], "status": r[2]} for r in cur.fetchall()]})
+
         # ── SEND-MESSAGE: сотрудник отправляет ответ клиенту из вкладки «Касания» ───
         # Кладёт сообщение в ленту со статусом 'pending' — воркер на VPS заберёт его
         # через worker-pending (опрос) и подтвердит через worker-mark-sent.
