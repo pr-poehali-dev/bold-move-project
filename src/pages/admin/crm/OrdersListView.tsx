@@ -105,11 +105,16 @@ export function OrdersListView({
   const [activePeriod, setActivePeriod] = useState<PeriodFilterValue>("all");
   useEffect(() => { setActivePeriod("all"); }, [activeTab]);
 
-  const showAssigneePeriodFilters = activeTab === "working" || activeTab === "measures" || activeTab === "installs";
+  // Блок «Ответственный + Период» показываем на ВСЕХ вкладках — единообразно.
   // По какому полю даты фильтровать период — своё для каждой вкладки: на «Замерах»
-  // ориентируемся на дату замера, на «Монтажах» — на дату монтажа, на «В работе»
-  // отдельной даты ещё нет — берём дату создания заявки (когда она попала в работу).
-  const periodDateField = activeTab === "measures" ? "measure_date" : activeTab === "installs" ? "install_date" : "created_at";
+  // ориентируемся на дату замера, на «Монтажах» — на дату монтажа, на «Финальном» —
+  // на дату закрытия сделки, везде остальном (Заявки/В работе/Сервис) — на дату
+  // создания заявки.
+  const showAssigneePeriodFilters = true;
+  const periodDateField = activeTab === "measures" ? "measure_date"
+    : activeTab === "installs" ? "install_date"
+    : activeTab === "done" ? "closed_at"
+    : "created_at";
 
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
@@ -260,9 +265,9 @@ export function OrdersListView({
               <button key={x.key} onClick={x.onClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                 style={{
-                  background: x.isSel ? x.color : x.color + "18",
-                  borderColor: x.color,
-                  color: x.isSel ? "#fff" : x.color,
+                  background: x.isSel ? x.color : t.surface,
+                  borderColor: x.isSel ? x.color : t.border,
+                  color: x.isSel ? "#fff" : t.textSub,
                 }}>
                 {x.label} <span className="font-bold">{x.cnt}</span>
               </button>
@@ -276,9 +281,9 @@ export function OrdersListView({
               <button key={x.key} onClick={x.onClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                 style={{
-                  background: x.isSel ? x.color : x.color + "18",
-                  borderColor: x.color,
-                  color: x.isSel ? "#fff" : x.color,
+                  background: x.isSel ? x.color : t.surface,
+                  borderColor: x.isSel ? x.color : t.border,
+                  color: x.isSel ? "#fff" : t.textSub,
                 }}>
                 {x.label} <span className="font-bold">{x.cnt}</span>
               </button>
@@ -369,6 +374,8 @@ export function OrdersListView({
         <div>
           {/* Переключатель Выполнено/Отказ + источники — в одном ряду, как на других вкладках */}
           <div className="flex items-start gap-3 flex-wrap mb-4">
+            <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
+            <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
             <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
               <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
               {DONE_GROUPS.map(group => {
@@ -395,9 +402,9 @@ export function OrdersListView({
                   <button key={x.key} onClick={x.onClick}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                     style={{
-                      background: x.isSel ? x.color : x.color + "18",
-                      borderColor: x.color,
-                      color: x.isSel ? "#fff" : x.color,
+                      background: x.isSel ? x.color : t.surface,
+                      borderColor: x.isSel ? x.color : t.border,
+                      color: x.isSel ? "#fff" : t.textSub,
                     }}>
                     {x.label} <span className="font-bold">{x.cnt}</span>
                   </button>
@@ -421,9 +428,9 @@ export function OrdersListView({
                     <button key={x.key} onClick={x.onClick}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                       style={{
-                        background: x.isSel ? x.color : x.color + "18",
-                        borderColor: x.color,
-                        color: x.isSel ? "#fff" : x.color,
+                        background: x.isSel ? x.color : t.surface,
+                        borderColor: x.isSel ? x.color : t.border,
+                        color: x.isSel ? "#fff" : t.textSub,
                       }}>
                       {x.label} <span className="font-bold">{x.cnt}</span>
                     </button>
@@ -448,9 +455,9 @@ export function OrdersListView({
                     <button key={x.key} onClick={x.onClick}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
                       style={{
-                        background: x.isSel ? x.color : x.color + "18",
-                        borderColor: x.color,
-                        color: x.isSel ? "#fff" : x.color,
+                        background: x.isSel ? x.color : t.surface,
+                        borderColor: x.isSel ? x.color : t.border,
+                        color: x.isSel ? "#fff" : t.textSub,
                       }}>
                       {x.label} <span className="font-bold">{x.cnt}</span>
                     </button>

@@ -91,12 +91,12 @@ export default function OrdersAssigneeFilter({ pool, value, onChange }: Props) {
 
   return (
     <div className="relative" ref={boxRef}>
-      <button className="flex items-center gap-1.5 px-3 rounded-lg text-xs border font-medium transition py-2.5" onClick={() => setOpen(o => !o)}
+      <button onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
         style={{
-          background: active ? roleDef.color : roleDef.color + "18",
-          borderColor: roleDef.color,
-          color: active ? "#fff" : roleDef.color,
+          background: active ? roleDef.color : t.surface,
+          borderColor: active ? roleDef.color : t.border,
+          color: active ? "#fff" : t.textSub,
         }}>
         <Icon name={roleDef.icon} size={13} />
         <span className="max-w-[190px] truncate">{selectedLabel}</span>

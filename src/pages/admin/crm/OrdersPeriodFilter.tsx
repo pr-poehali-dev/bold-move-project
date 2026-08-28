@@ -82,12 +82,12 @@ export default function OrdersPeriodFilter({ pool, dateField, value, onChange }:
 
   return (
     <div className="relative" ref={boxRef}>
-      <button className="flex items-center gap-1.5 px-3 rounded-lg text-xs border font-medium transition py-2.5" onClick={() => setOpen(o => !o)}
+      <button onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border font-medium transition"
         style={{
-          background: active ? COLOR : COLOR + "18",
-          borderColor: COLOR,
-          color: active ? "#fff" : COLOR,
+          background: active ? COLOR : t.surface,
+          borderColor: active ? COLOR : t.border,
+          color: active ? "#fff" : t.textSub,
         }}>
         <Icon name={current.icon} size={13} />
         <span className="max-w-[190px] truncate">{current.label}</span>
