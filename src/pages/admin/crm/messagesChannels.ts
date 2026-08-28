@@ -42,4 +42,8 @@ export interface Dialog {
   chat_type?: "private" | "group" | "channel";
   /** Название группы/канала (заполнено только для группового чата) */
   group_title?: string | null;
+  /** Статус последнего сообщения: pending/sending — в пути, error — не доставлено */
+  last_status?: string | null;
+  /** У последнего сообщения есть вложение (фото/файл/аудио) */
+  last_has_attachments?: boolean;
 }

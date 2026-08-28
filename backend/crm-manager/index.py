@@ -5974,10 +5974,12 @@ def handler(event: dict, context) -> dict:
                         WHERE te2.client_id = tc.id AND te2.direction = 'in') AS in_count,
                        tc.pinned, tc.favorite,
                        lc.source, lc.avito_chat_url, tc.last_read_at,
-                       tc.chat_type, tc.group_title
+                       tc.chat_type, tc.group_title,
+                       le.status, le.has_attachments
                 FROM {SCHEMA}.touch_clients tc
                 JOIN LATERAL (
-                    SELECT channel, direction, text, created_at
+                    SELECT channel, direction, text, created_at, status,
+                           (attachments IS NOT NULL OR audio_url IS NOT NULL) AS has_attachments
                     FROM {SCHEMA}.touch_events te
                     WHERE te.client_id = tc.id
                     ORDER BY te.created_at DESC, te.id DESC
@@ -6014,6 +6016,12 @@ def handler(event: dict, context) -> dict:
                     "avito_chat_url": r[14],
                     "chat_type": r[16],
                     "group_title": r[17],
+                    # Статус последнего сообщения — чтобы в списке диалогов сразу
+                    # было видно «Ошибка»/«Отправляется», не открывая переписку.
+                    "last_status": r[18],
+                    # Пустое входящее без вложений = воркер не смог распознать
+                    # содержимое (стикер/реакция/неизвестный тип). Показываем честно.
+                    "last_has_attachments": bool(r[19]),
                 })
             return ok({"dialogs": dialogs})
 
