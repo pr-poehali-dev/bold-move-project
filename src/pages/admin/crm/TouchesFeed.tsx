@@ -210,16 +210,22 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                         ))}
                       </div>
                     )}
-                    {/* Реакции на сообщение */}
+                    {/* Реакции на сообщение — наша (by:"out") зелёная, как исходящие
+                        сообщения, реакция клиента (by:"in") — обычный нейтральный цвет */}
                     {reactions.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
-                        {reactions.map((r, i) => (
-                          <span key={i} title={r.author || undefined}
-                            className="text-[11px] leading-none px-1.5 py-1 rounded-full"
-                            style={{ background: t.bg + "88", border: `1px solid ${t.border}` }}>
-                            {r.emoji}
-                          </span>
-                        ))}
+                        {reactions.map((r, i) => {
+                          const mine = r.by === "out";
+                          return (
+                            <span key={i} title={r.author || undefined}
+                              className="text-[11px] leading-none px-1.5 py-1 rounded-full"
+                              style={mine
+                                ? { background: t.accent + "22", border: `1px solid ${t.accent}40` }
+                                : { background: t.bg + "88", border: `1px solid ${t.border}` }}>
+                              {r.emoji}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                     <div className="flex items-center justify-end gap-1.5 mt-1">

@@ -112,7 +112,13 @@ export default function DrawerTouchesTab({ phone, name, contactId, clientId, foc
       const d = await crmFetch("touches", undefined, extra) as { client?: TouchClient; touches?: Touch[]; error?: string };
       if (d && !d.error) {
         setClient(d.client ?? null);
-        setTouches(d.touches ?? []);
+        const loadedTouches = d.touches ?? [];
+        setTouches(loadedTouches);
+        // Канал отправки по умолчанию — последний, которым реально переписывались
+        // с клиентом (а не жёсткое "Avito без телефона / Telegram с телефоном"),
+        // иначе менеджер стартует не с того канала, где клиент уже привык отвечать.
+        const lastTextTouch = [...loadedTouches].reverse().find(tt => TEXT_CHANNELS.has(tt.channel));
+        if (lastTextTouch) setSendChannel(lastTextTouch.channel);
       }
     } catch { /* тихо */ }
     if (!silent) setLoading(false);
