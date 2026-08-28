@@ -94,53 +94,63 @@ export default function TouchesComposer({
         </div>
       )}
 
-      {/* Поле ввода */}
-      <div className="flex-shrink-0 px-3 sm:px-6 py-3 flex items-end gap-2" style={{ borderTop: `1px solid ${t.border}` }}>
-        <select value={sendChannel} onChange={e => setSendChannel(e.target.value)}
-          className="text-xs rounded-lg px-2 py-2 focus:outline-none flex-shrink-0"
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}>
-          <option value="telegram">Telegram</option>
-          <option value="max">MAX</option>
-          <option value="avito">Avito</option>
-        </select>
+      {/* Поле ввода. На мобильном — две строки: сверху кнопки (канал/файл/голос),
+          снизу поле на всю ширину + отправка. Раньше все 5 элементов теснились в
+          один ряд, и на текст оставалась узкая полоска — писать было неудобно.
+          На десктопе (sm:) всё остаётся в одну строку, как было. */}
+      <div className="flex-shrink-0 px-3 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-end gap-2"
+        style={{ borderTop: `1px solid ${t.border}` }}>
+        {/* Ряд кнопок: на мобильном отдельной строкой, на десктопе — в общем ряду */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <select value={sendChannel} onChange={e => setSendChannel(e.target.value)}
+            className="text-xs rounded-lg px-2 py-2 focus:outline-none flex-shrink-0"
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text }}>
+            <option value="telegram">Telegram</option>
+            <option value="max">MAX</option>
+            <option value="avito">Avito</option>
+          </select>
 
-        <input ref={fileInputRef} type="file" className="hidden" onChange={onPickFile} />
-        <button onClick={() => fileInputRef.current?.click()}
-          disabled={sendChannel === "avito" || uploadingFile || isRecording}
-          title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Прикрепить файл"}
-          className="flex-shrink-0 rounded-lg p-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: t.surface2, color: t.textSub }}>
-          <Icon name={uploadingFile ? "Loader2" : "Paperclip"} size={16} className={uploadingFile ? "animate-spin" : ""} />
-        </button>
-
-        {isRecording ? (
-          <button onClick={onStopVoiceRecording}
-            className="flex-shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
-            style={{ background: "#ef444422", color: "#ef4444" }}>
-            <Icon name="Square" size={13} /> {Math.floor(recSeconds / 60)}:{String(recSeconds % 60).padStart(2, "0")}
-          </button>
-        ) : (
-          <button onClick={onStartVoiceRecording}
-            disabled={sendChannel === "avito" || uploadingFile || !!pendingAttachment}
-            title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Голосовое сообщение"}
+          <input ref={fileInputRef} type="file" className="hidden" onChange={onPickFile} />
+          <button onClick={() => fileInputRef.current?.click()}
+            disabled={sendChannel === "avito" || uploadingFile || isRecording}
+            title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Прикрепить файл"}
             className="flex-shrink-0 rounded-lg p-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: t.surface2, color: t.textSub }}>
-            <Icon name="Mic" size={16} />
+            <Icon name={uploadingFile ? "Loader2" : "Paperclip"} size={16} className={uploadingFile ? "animate-spin" : ""} />
           </button>
-        )}
 
-        <textarea ref={textareaRef} value={draft} onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
-          }}
-          rows={1} placeholder="Написать сообщение…"
-          className={`flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none ${flashInput ? "animate-ring-flash-red" : ""}`}
-          style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, maxHeight: 120 }} />
-        <button onClick={onSend} disabled={(!draft.trim() && !pendingAttachment) || sending}
-          className="flex-shrink-0 rounded-lg px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: t.accent, color: "#fff" }}>
-          <Icon name={sending ? "Loader" : "Send"} size={16} className={sending ? "animate-spin" : ""} />
-        </button>
+          {isRecording ? (
+            <button onClick={onStopVoiceRecording}
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{ background: "#ef444422", color: "#ef4444" }}>
+              <Icon name="Square" size={13} /> {Math.floor(recSeconds / 60)}:{String(recSeconds % 60).padStart(2, "0")}
+            </button>
+          ) : (
+            <button onClick={onStartVoiceRecording}
+              disabled={sendChannel === "avito" || uploadingFile || !!pendingAttachment}
+              title={sendChannel === "avito" ? "Avito не поддерживает вложения" : "Голосовое сообщение"}
+              className="flex-shrink-0 rounded-lg p-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: t.surface2, color: t.textSub }}>
+              <Icon name="Mic" size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Поле ввода + отправка: на мобильном занимают всю ширину второй строкой */}
+        <div className="flex items-end gap-2 flex-1 min-w-0">
+          <textarea ref={textareaRef} value={draft} onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
+            }}
+            rows={1} placeholder="Написать сообщение…"
+            className={`flex-1 min-w-0 text-sm rounded-lg px-3 py-2 focus:outline-none resize-none ${flashInput ? "animate-ring-flash-red" : ""}`}
+            style={{ background: t.surface2, border: `1px solid ${t.border}`, color: t.text, maxHeight: 120 }} />
+          <button onClick={onSend} disabled={(!draft.trim() && !pendingAttachment) || sending}
+            className="flex-shrink-0 rounded-lg px-3 py-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: t.accent, color: "#fff" }}>
+            <Icon name={sending ? "Loader" : "Send"} size={16} className={sending ? "animate-spin" : ""} />
+          </button>
+        </div>
       </div>
       {sendError && (
         <div className="px-3 sm:px-6 pb-2 text-[11px] flex items-center gap-1" style={{ color: "#ef4444" }}>

@@ -104,7 +104,9 @@ export default function CrmMessages() {
   const selMeta = selected ? channelMeta(selected.last_channel) : null;
 
   return (
-    <div className="flex h-[calc(100dvh-160px)] min-h-[400px] rounded-2xl overflow-hidden"
+    // На мобильном шапка ниже, чем на десктопе — поэтому отступ снизу меньше
+    // (иначе окно переписки не дотягивается до низа экрана и висит пустая полоса).
+    <div className="flex h-[calc(100dvh-96px)] sm:h-[calc(100dvh-160px)] min-h-[400px] rounded-2xl overflow-hidden"
       style={{ border: `1px solid ${t.border}`, background: t.surface }}>
 
       {/* ── ЛЕВАЯ ПАНЕЛЬ: список диалогов ── */}
