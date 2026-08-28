@@ -307,10 +307,23 @@ export interface Client {
   comment_measure?: string | null;
   comment_install?: string | null;
   comment_client?: string | null;
-  /** Заполняется автоматически ИИ-анализом переписки (analyze-client) */
+  /** Устаревшие поля — задел под ручное summary, никогда не заполнялись автоматически.
+   *  Реальная ИИ-сводка приходит в ai_state_summary/ai_next_action ниже. Оставлены для
+   *  обратной совместимости (ручной комментарий, если кто-то его заполнил вручную). */
   summary_comm?: string | null;
-  /** Пока заполняется вручную/на будущее — отдельного ИИ-анализа состояния заказа ещё нет */
   summary_status?: string | null;
+  /** ИИ-сводка «что нужно клиенту, на чём остановились» — считается в crm-ai
+   *  (analyze-client) по истории звонков/переписки, хранится в touch_clients. */
+  ai_state_summary?: string | null;
+  /** ИИ-рекомендация к следующему касанию: что сказать/написать и по какому каналу. */
+  ai_next_action?: string | null;
+  /** Короткое название стадии сделки от ИИ (напр. "первичный контакт"). */
+  ai_stage?: string | null;
+  /** Когда ИИ-анализ был пересчитан в последний раз. */
+  ai_analysis_updated_at?: string | null;
+  /** Короткая ИИ-фраза о последнем действии по заявке (для блока «Нет действий N+ дней») */
+  last_action_summary?: string | null;
+  last_action_summary_at?: string | null;
   address: string | null;
   area: number | null;
   budget: number | null;

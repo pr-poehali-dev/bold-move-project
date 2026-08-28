@@ -1336,7 +1336,10 @@ def handler(event: dict, context) -> dict:
                            lc.assigned_technologist,
                            COALESCE(NULLIF(ate.name, ''), ate.email) AS assigned_technologist_name,
                            lc.assigned_installer,
-                           COALESCE(NULLIF(ain.name, ''), ain.email) AS assigned_installer_name
+                           COALESCE(NULLIF(ain.name, ''), ain.email) AS assigned_installer_name,
+                           tc.state_summary AS ai_state_summary, tc.next_action AS ai_next_action,
+                           tc.stage AS ai_stage, tc.analysis_updated_at AS ai_analysis_updated_at,
+                           lc.last_action_summary, lc.last_action_summary_at
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     LEFT JOIN {SCHEMA}.users au ON au.id = lc.assigned_to
@@ -1344,6 +1347,17 @@ def handler(event: dict, context) -> dict:
                     LEFT JOIN {SCHEMA}.users ams ON ams.id = lc.assigned_measurer
                     LEFT JOIN {SCHEMA}.users ate ON ate.id = lc.assigned_technologist
                     LEFT JOIN {SCHEMA}.users ain ON ain.id = lc.assigned_installer
+                    -- ИИ-сводка по клиенту (state_summary/next_action/stage) считается в
+                    -- touch_clients (см. crm-ai analyze-client). Один crm_contact_id может
+                    -- встречаться в НЕСКОЛЬКИХ строках touch_clients (разные каналы одного
+                    -- клиента) — обычный LEFT JOIN размножил бы строки списка заявок, поэтому
+                    -- берём LATERAL с одной самой свежепроанализированной записью.
+                    LEFT JOIN LATERAL (
+                        SELECT state_summary, next_action, stage, analysis_updated_at
+                        FROM {SCHEMA}.touch_clients
+                        WHERE crm_contact_id = lc.id
+                        ORDER BY analysis_updated_at DESC NULLS LAST LIMIT 1
+                    ) tc ON true
                     LEFT JOIN (
                         -- Кастомные статьи затрат заказа (Технолог, Логистика, Менеджер и т.п.),
                         -- заведённые через "+ Добавить строку" в блоке "Затраты". Тип статьи

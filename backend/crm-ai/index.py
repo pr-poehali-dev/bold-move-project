@@ -546,6 +546,14 @@ def handler(event: dict, context) -> dict:
             name_phone_by_id = {}
             for r in rows:
                 cid, name, phone, cached_summary, analyzed_for, last_activity = r
+                # live_chats.updated_at хранится "с таймзоной" (timestamptz), а поля
+                # кэша (last_action_analyzed_for) — "без таймзоны". GREATEST() в SQL
+                # из-за этого отдаёт tz-aware значение, и Python падает при сравнении
+                # с naive-датой ("can't subtract offset-naive and offset-aware
+                # datetimes"). Приводим к naive сразу после чтения — единообразно
+                # с остальными датами в этой функции (created_at и т.п., все naive).
+                if last_activity is not None and last_activity.tzinfo is not None:
+                    last_activity = last_activity.replace(tzinfo=None)
                 last_activity_by_id[cid] = last_activity
                 name_phone_by_id[cid] = (name, phone)
                 is_fresh = analyzed_for is not None and last_activity is not None and analyzed_for >= last_activity

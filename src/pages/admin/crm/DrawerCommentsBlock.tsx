@@ -67,14 +67,16 @@ export function DrawerCommentsBlock({ data, saveWithLog, hiddenBlocks, toggleHid
       <CommentTextarea label="Комментарий к клиенту" value={data.comment_client || ""}
         onSave={v => saveWithLog({ comment_client: v }, "Комментарий к клиенту обновлён", "User", "#ec4899")} />
 
-      {/* Summary — подраздел с автосводками от ИИ */}
+      {/* Summary — подраздел с автосводками от ИИ. Показываем реальный ИИ-анализ
+          (считается в crm-ai по истории звонков/переписки) — с фолбэком на старые
+          ручные поля summary_comm/summary_status, если их когда-то заполнили руками. */}
       <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-1.5 mb-2">
           <Icon name="Sparkles" size={12} style={{ color: "#ec4899" }} />
           <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#ec4899" }}>Summary</span>
         </div>
-        <SummaryRow label="Summary по коммуникациям" value={data.summary_comm} updatedAt={data.updated_at} />
-        <SummaryRow label="Summary по состоянию заказа" value={data.summary_status} />
+        <SummaryRow label="Состояние по коммуникациям" value={data.ai_state_summary || data.summary_comm} updatedAt={data.ai_analysis_updated_at} />
+        <SummaryRow label="Следующее действие" value={data.ai_next_action || data.summary_status} />
       </div>
     </Section>
   );
