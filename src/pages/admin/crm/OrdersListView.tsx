@@ -238,6 +238,7 @@ export function OrdersListView({
       <div className="flex items-start gap-3 flex-wrap mb-4">
         {showAssigneePeriodFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+            <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Фильтр</span>
             <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
             <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
           </div>
@@ -375,6 +376,7 @@ export function OrdersListView({
           {/* Переключатель Выполнено/Отказ + источники — в одном ряду, как на других вкладках */}
           <div className="flex items-start gap-3 flex-wrap mb-4">
             <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+              <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Фильтр</span>
               <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
               <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
             </div>
