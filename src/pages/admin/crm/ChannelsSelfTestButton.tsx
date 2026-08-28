@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { crmFetch } from "./crmApi";
@@ -16,11 +16,21 @@ type ChState = "idle" | "sending" | "ok" | "error";
 // CRM → очередь → воркер на VPS → сам мессенджер — не просто «линия подключена».
 export function ChannelsSelfTestButton() {
   const t = useTheme();
+  const btnRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [popupPos, setPopupPos] = useState<{ top: number; right: number } | null>(null);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<Record<string, { state: ChState; error?: string }> | null>(null);
 
   const run = async () => {
+    // position: fixed, координаты — от кнопки. Кнопка живёт внутри строки с
+    // overflow-x-auto (полоса вкладок воронки) — обычный position: absolute
+    // обрезался бы этой прокруткой, и попап был бы невидим/срезан.
+    const btn = btnRef.current;
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setPopupPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
     setOpen(true);
     setTesting(true);
     setResult(null);
@@ -73,8 +83,8 @@ export function ChannelsSelfTestButton() {
   const allOk = result && Object.values(result).every(r => r.state === "ok");
 
   return (
-    <div className="relative flex-shrink-0">
-      <button onClick={run} disabled={testing}
+    <div className="flex-shrink-0">
+      <button ref={btnRef} onClick={run} disabled={testing}
         title="Отправить тестовое сообщение в Telegram и MAX и проверить, что каналы реально работают"
         className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition flex-shrink-0 disabled:opacity-60"
         style={{
@@ -87,11 +97,11 @@ export function ChannelsSelfTestButton() {
         Проверить каналы
       </button>
 
-      {open && (
+      {open && popupPos && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute z-50 top-full right-0 mt-1.5 w-[240px] rounded-xl overflow-hidden shadow-2xl p-2.5"
-            style={{ background: t.surface, border: `1px solid ${t.border}` }}>
+          <div className="fixed z-50 w-[240px] rounded-xl overflow-hidden shadow-2xl p-2.5"
+            style={{ top: popupPos.top, right: popupPos.right, background: t.surface, border: `1px solid ${t.border}` }}>
             <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: t.textMute }}>
               Проверка каналов
             </div>

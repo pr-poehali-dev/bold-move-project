@@ -5941,6 +5941,16 @@ def handler(event: dict, context) -> dict:
                 test_client_id = cur.fetchone()[0]
                 conn.commit()
 
+            # Сбрасываем ранее сохранённую привязку chat_id тестового контакта — если
+            # она осталась от старой/чужой переписки (например по этому номеру когда-то
+            # писал другой человек и chat_id сохранился неверно), send-message использует
+            # ЕЁ вместо нового поиска по номеру, и тест покажет "sent", хотя реально
+            # уходит не туда. Проверка каналов должна каждый раз искать заново по номеру.
+            cur.execute(f"""
+                UPDATE {SCHEMA}.touch_clients SET channel_ids = '{{}}'::jsonb WHERE id=%s
+            """, (test_client_id,))
+            conn.commit()
+
             stamp = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
             results = {}
             for ch in ("telegram", "max"):
