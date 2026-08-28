@@ -4234,6 +4234,11 @@ def handler(event: dict, context) -> dict:
             text_v = body.get("text")
             reply_to_ext_v = body.get("reply_to_external_msg_id")
             external_id_v = body.get("external_id")  # какая линия приняла сообщение
+            # Воркер сам определяет направление: 'out' — это МЫ написали (в т.ч. вручную
+            # с телефона тем же аккаунтом-линией), 'in' — написал клиент. Раньше это поле
+            # не читалось вообще, и ЛЮБОЕ сообщение (даже наше) записывалось как 'in' —
+            # из-за этого переписка выглядела так, будто клиент пишет сам себе.
+            direction_v = "out" if body.get("direction") == "out" else "in"
 
             # Тип чата: группа или личная переписка.
             # Воркер может прислать признак явно (chat_type/is_group). Если не прислал —
@@ -4347,12 +4352,16 @@ def handler(event: dict, context) -> dict:
                 reply_to_id_v = rrow[0] if rrow else None
 
             try:
+                # Статус для нашего же исходящего (написали вручную с телефона) — сразу
+                # 'sent', а не 'received' (тот означает «клиент прочитал», что для только
+                # что отправленного сообщения неверно).
+                status_v = "sent" if direction_v == "out" else "received"
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.touch_events
                         (client_id, channel, direction, external_id, text, status, reply_to_id,
                          account_id, sender_name, attachments, audio_url, duration_sec)
-                    VALUES (%s, %s, 'in', %s, %s, 'received', %s, %s, %s, %s::jsonb, %s, %s)
-                """, (client_id_v, channel_v, external_msg_id_v, text_v, reply_to_id_v, account_id_v,
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                """, (client_id_v, channel_v, direction_v, external_msg_id_v, text_v, status_v, reply_to_id_v, account_id_v,
                       sender_name_v,
                       json.dumps(incoming_atts, ensure_ascii=False) if incoming_atts else None,
                       incoming_audio, incoming_dur))
