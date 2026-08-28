@@ -237,10 +237,10 @@ export function OrdersListView({
     (hasStageFilters || hasSourceFilters || hasTagFilters || showAssigneePeriodFilters) && (
       <div className="flex items-start gap-3 flex-wrap mb-4">
         {showAssigneePeriodFilters && (
-          <>
+          <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
             <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
-          </>
+          </div>
         )}
         {hasStageFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
@@ -374,8 +374,10 @@ export function OrdersListView({
         <div>
           {/* Переключатель Выполнено/Отказ + источники — в одном ряду, как на других вкладках */}
           <div className="flex items-start gap-3 flex-wrap mb-4">
-            <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
-            <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
+            <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+              <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
+              <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
+            </div>
             <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
               <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
               {DONE_GROUPS.map(group => {
