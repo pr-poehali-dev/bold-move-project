@@ -210,8 +210,10 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                         ))}
                       </div>
                     )}
-                    {/* Реакции на сообщение — наша (by:"out") зелёная, как исходящие
-                        сообщения, реакция клиента (by:"in") — обычный нейтральный цвет */}
+                    {/* Реакции на сообщение — наша (by:"out") зелёная (та же, что и цвет
+                        своих сообщений в списке диалогов слева), реакция клиента (by:"in")
+                        — обычный нейтральный цвет. ВАЖНО: t.accent в этой теме фиолетовый,
+                        не зелёный — поэтому здесь фиксированный зелёный, а не t.accent. */}
                     {reactions.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {reactions.map((r, i) => {
@@ -220,7 +222,7 @@ export default function TouchesFeed({ loading, touches, expanded, setExpanded, o
                             <span key={i} title={r.author || undefined}
                               className="text-[11px] leading-none px-1.5 py-1 rounded-full"
                               style={mine
-                                ? { background: t.accent + "22", border: `1px solid ${t.accent}40` }
+                                ? { background: "#10b98122", border: "1px solid #10b98155", color: "#10b981" }
                                 : { background: t.bg + "88", border: `1px solid ${t.border}` }}>
                               {r.emoji}
                             </span>
