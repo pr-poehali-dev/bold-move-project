@@ -1689,7 +1689,11 @@ def handler(event: dict, context) -> dict:
 
                 # Если менеджер вручную указывает дату замера (и явно не выбрал другой
                 # подэтап), а у заявки сейчас висит подэтап «Дата замера не назначена» —
-                # он потерял смысл (дата уже есть), поэтому снимаем его автоматически.
+                # он потерял смысл (дата уже есть), поэтому снимаем его. sub_status=NULL
+                # достаточно: сам статус заявки (status='measure') уже подписан «Замер
+                # назначен» (см. STATUS_LABELS на фронте) — SubstatusPicker без активного
+                # подэтапа показывает именно это как fallback, ничего дополнительно
+                # ставить не нужно.
                 if body.get("measure_date") and "sub_status" not in body:
                     cur.execute(f"""SELECT os.label FROM {SCHEMA}.live_chats lc
                         LEFT JOIN {SCHEMA}.order_substatuses os ON os.id::text = lc.sub_status
