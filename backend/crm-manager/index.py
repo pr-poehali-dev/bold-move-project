@@ -4586,6 +4586,22 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"""
                 UPDATE {SCHEMA}.touch_events SET reactions=%s::jsonb WHERE id=%s
             """, (json.dumps(cur_reactions, ensure_ascii=False) if cur_reactions else None, touch_id_v))
+            # Реакция на сообщение клиента — это по сути реакция/ответ менеджера,
+            # диалог считается просмотренным: сдвигаем «прочитано до» на момент ЭТОГО
+            # сообщения (не на "сейчас" — если после него пришло что-то ещё, оно
+            # должно остаться непрочитанным), иначе список диалогов слева продолжает
+            # показывать его как неотвеченный, хотя менеджер уже отреагировал.
+            if emoji_v:
+                # touch_events.created_at хранится БЕЗ часового пояса, а last_read_at — С
+                # поясом (та же особенность отмечена в calc_unread) — приводим явно к
+                # timestamptz, иначе GREATEST падает с ошибкой несовместимых типов.
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.touch_clients SET last_read_at = GREATEST(
+                        COALESCE(last_read_at, 'epoch'::timestamptz),
+                        (SELECT created_at::timestamptz FROM {SCHEMA}.touch_events WHERE id=%s)
+                    )
+                    WHERE id = (SELECT client_id FROM {SCHEMA}.touch_events WHERE id=%s)
+                """, (touch_id_v, touch_id_v))
             conn.commit()
             return ok({"ok": True, "reactions": cur_reactions})
 
