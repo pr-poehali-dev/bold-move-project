@@ -63,7 +63,7 @@ export const PERM_TREE: PermSection[] = [
           { label: "Интеграции",       icon: "Plug",   color: "#34d399", view: "integrations_view", desc: "Вкладка «Интеграции» внутри настроек" },
         ] },
       { label: "Поддержка",         icon: "MessageCircle",   color: "#29b6f6", view: "support_view",     desc: "Раздел поддержки" },
-      { label: "Заявки (журнал)",   icon: "Inbox",           color: "#38bdf8", view: "leads_log_view",   desc: "Журнал входящих заявок в верхней панели" },
+      { label: "Журнал обращений",  icon: "Inbox",           color: "#38bdf8", view: "leads_log_view",   desc: "Лента входящих обращений в верхней панели (не путать с этапом «Заявки» в Заказах)" },
       { label: "Баг-репорт",        icon: "Bug",             color: "#fb7185", view: "bug_report_view",  desc: "Кнопка отправки баг-репорта в верхней панели" },
     ],
   },
@@ -72,12 +72,12 @@ export const PERM_TREE: PermSection[] = [
     rows: [
       { label: "Клиенты",          icon: "Users",        color: "#a78bfa", view: "clients_view",  edit: "clients_edit",  desc: "Список клиентов" },
       { label: "Сообщения",        icon: "MessagesSquare", color: "#38bdf8", view: "messages_view", desc: "Вкладка «Сообщения» — переписка с клиентами" },
-      { label: "Заказы",           icon: "GitBranch",    color: "#34d399", view: "orders_view",   edit: "orders_edit",   desc: "Список заказов и статус заявок" },
-      { label: "Канбан",           icon: "LayoutGrid",   color: "#818cf8", view: "kanban_view",   edit: "kanban_edit",   desc: "Доска канбан" },
+      { label: "Заказы",           icon: "GitBranch",    color: "#34d399", view: "orders_view",   edit: "orders_edit",   desc: "Раздел «Заказы» со всеми вкладками воронки (Заявки, Замеры, Монтажи…)" },
+      { label: "Канбан",           icon: "LayoutGrid",   color: "#818cf8", view: "kanban_view",   edit: "kanban_edit",   desc: "Отдельная доска-канбан, которую включают кнопкой в шапке CRM" },
       { label: "Календарь",        icon: "Calendar",     color: "#f59e0b", view: "calendar_view", edit: "calendar_edit", desc: "График замеров и монтажей" },
       { label: "Аналитика",        icon: "TrendingUp",   color: "#fbbf24", view: "analytics_view",                       desc: "Отчёты и статистика" },
       { label: "Финансы",          icon: "Wallet",       color: "#10b981", view: "finance_view",                         desc: "Суммы договоров, прибыль" },
-      { label: "Файлы клиентов",   icon: "Paperclip",    color: "#94a3b8", view: "files_view",    edit: "files_edit",    desc: "Загрузка и просмотр файлов" },
+      { label: "Файлы клиентов",   icon: "Paperclip",    color: "#94a3b8", view: "files_view",    edit: "files_edit",    desc: "Просмотр файлов и загрузка новых" },
     ],
   },
   {
@@ -482,6 +482,9 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
             style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
             Сотрудник увидит и сможет вести заказы только на отмеченных этапах. Как только заказ переходит на
             недоступный этап — он пропадает из списка сотрудника.
+            <br /><br />
+            Именно отсюда управляются вкладки внутри раздела «Заказы»: «Заявки» — это этап «Новая заявка»,
+            «Замеры» — «Замер назначен» и «Замер выполнен», «Монтажи» — от «Договор подписан» до «Доплата получена».
           </div>
 
           <div className="flex flex-col gap-1">
