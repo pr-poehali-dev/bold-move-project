@@ -9,6 +9,8 @@ import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs, Substatus } from "./OrdersTabs";
 import { SyncedCol } from "./syncedCols";
 import { useOrderSourcesCtx } from "./orderSourcesContext";
+import OrdersAssigneeFilter, { AssigneeFilterValue, EMPTY_ASSIGNEE, applyAssigneeFilter } from "./OrdersAssigneeFilter";
+import OrdersPeriodFilter, { PeriodFilterValue, applyPeriodFilter } from "./OrdersPeriodFilter";
 
 interface TabDef {
   id: string;
@@ -94,6 +96,21 @@ export function OrdersListView({
   const [activeConfirmedFilter, setActiveConfirmedFilter] = useState<"confirmed" | "unconfirmed" | null>(null);
   useEffect(() => { setActiveConfirmedFilter(null); }, [activeTab]);
 
+  // Фильтр по ответственному (роль + сотрудник) и по периоду — показываются на
+  // вкладках «В работе», «Замеры», «Монтажи» (там, где важно быстро увидеть свои
+  // заявки / что запланировано сегодня-на неделе-в месяце). Оба сбрасываются при
+  // смене вкладки, как и остальные фильтры выше.
+  const [activeAssignee, setActiveAssignee] = useState<AssigneeFilterValue>(EMPTY_ASSIGNEE);
+  useEffect(() => { setActiveAssignee(EMPTY_ASSIGNEE); }, [activeTab]);
+  const [activePeriod, setActivePeriod] = useState<PeriodFilterValue>("all");
+  useEffect(() => { setActivePeriod("all"); }, [activeTab]);
+
+  const showAssigneePeriodFilters = activeTab === "working" || activeTab === "measures" || activeTab === "installs";
+  // По какому полю даты фильтровать период — своё для каждой вкладки: на «Замерах»
+  // ориентируемся на дату замера, на «Монтажах» — на дату монтажа, на «В работе»
+  // отдельной даты ещё нет — берём дату создания заявки (когда она попала в работу).
+  const periodDateField = activeTab === "measures" ? "measure_date" : activeTab === "installs" ? "install_date" : "created_at";
+
   const allTabDefs: TabDef[] = [
     ...ORDERS_TABS.filter(tab => !hiddenTabs.has(tab.id)).map(tab => ({
       id: tab.id, label: tabLabels[tab.id] || tab.label, icon: tab.icon,
@@ -157,9 +174,23 @@ export function OrdersListView({
   const tagsPresent = Array.from(new Set(
     clientsBySourceFilter.flatMap(c => c.tags || []).filter((s): s is string => !!s)
   ));
-  const currentClients = activeTagFilter != null
+  const clientsByTagFilter = activeTagFilter != null
     ? clientsBySourceFilter.filter(c => (c.tags || []).includes(activeTagFilter))
     : clientsBySourceFilter;
+
+  // Ответственный и период — применяются последними, только на вкладках, где
+  // показана соответствующая кнопка. Пул для счётчика на кнопке ответственного —
+  // ДО применения самого фильтра по ответственному (иначе счётчики выбора схлопнутся
+  // в один), а пул для периода — уже ПОСЛЕ фильтра по ответственному, чтобы цифры
+  // на кнопке периода совпадали с тем, что реально покажется в списке.
+  const assigneePool = clientsByTagFilter;
+  const clientsByAssignee = showAssigneePeriodFilters
+    ? applyAssigneeFilter(clientsByTagFilter, activeAssignee)
+    : clientsByTagFilter;
+  const periodPool = clientsByAssignee;
+  const currentClients = showAssigneePeriodFilters
+    ? applyPeriodFilter(clientsByAssignee, activePeriod, periodDateField)
+    : clientsByAssignee;
 
   // Два визуально разделённых блока фильтров: «Этапы» (нейтральная палитра, акцент
   // фиолетовый у выбранного) и «Источники» (у каждого источника свой цвет).
@@ -198,8 +229,14 @@ export function OrdersListView({
   const hasSourceFilters = sourceChips.length > 0;
   const hasTagFilters    = tagChips.length > 0;
   const renderFilterRow = () =>
-    (hasStageFilters || hasSourceFilters || hasTagFilters) && (
+    (hasStageFilters || hasSourceFilters || hasTagFilters || showAssigneePeriodFilters) && (
       <div className="flex items-start gap-3 flex-wrap mb-4">
+        {showAssigneePeriodFilters && (
+          <>
+            <OrdersAssigneeFilter pool={assigneePool} value={activeAssignee} onChange={setActiveAssignee} />
+            <OrdersPeriodFilter pool={periodPool} dateField={periodDateField} value={activePeriod} onChange={setActivePeriod} />
+          </>
+        )}
         {hasStageFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
