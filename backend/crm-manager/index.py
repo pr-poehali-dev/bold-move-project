@@ -6095,11 +6095,15 @@ def handler(event: dict, context) -> dict:
                        tc.pinned, tc.favorite,
                        lc.source, lc.avito_chat_url, tc.last_read_at,
                        tc.chat_type, tc.group_title,
-                       le.status, le.has_attachments
+                       le.status, le.has_attachments, le.has_my_reaction
                 FROM {SCHEMA}.touch_clients tc
                 JOIN LATERAL (
                     SELECT channel, direction, text, created_at, status,
-                           (attachments IS NOT NULL OR audio_url IS NOT NULL) AS has_attachments
+                           (attachments IS NOT NULL OR audio_url IS NOT NULL) AS has_attachments,
+                           EXISTS (
+                               SELECT 1 FROM jsonb_array_elements(COALESCE(reactions, '[]'::jsonb)) rx
+                               WHERE rx->>'by' = 'out'
+                           ) AS has_my_reaction
                     FROM {SCHEMA}.touch_events te
                     WHERE te.client_id = tc.id
                     ORDER BY te.created_at DESC, te.id DESC
@@ -6142,6 +6146,9 @@ def handler(event: dict, context) -> dict:
                     # Пустое входящее без вложений = воркер не смог распознать
                     # содержимое (стикер/реакция/неизвестный тип). Показываем честно.
                     "last_has_attachments": bool(r[19]),
+                    # На последнее (входящее) сообщение уже стоит наша реакция —
+                    # менеджер по сути ответил, хотя формально последним писал клиент.
+                    "last_has_my_reaction": bool(r[20]),
                 })
             return ok({"dialogs": dialogs})
 

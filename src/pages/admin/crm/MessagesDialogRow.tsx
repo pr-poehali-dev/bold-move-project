@@ -108,9 +108,14 @@ export function MessagesDialogRow({ d, isActive, unread, onOpen, onTogglePin, on
             </span>
           )}
           {/* Направление последнего сообщения видно цветом: зелёное — написали мы,
-              красное — написал клиент. Так менеджер с одного взгляда видит, за кем ход. */}
+              красное — написал клиент. Если на входящее уже стоит наша реакция —
+              менеджер по сути ответил, красным больше не подсвечиваем. */}
           <span className="text-xs truncate flex-1"
-            style={{ color: d.last_status === "error" ? "#ef4444" : d.last_direction === "out" ? "#10b981" : "#f43f5e", fontWeight: unread ? 600 : 400 }}>
+            style={{
+              color: d.last_status === "error" ? "#ef4444"
+                : (d.last_direction === "out" || d.last_has_my_reaction) ? "#10b981" : "#f43f5e",
+              fontWeight: unread ? 600 : 400,
+            }}>
             {d.last_direction === "out" && <span style={{ opacity: 0.75 }}>Вы: </span>}
             {d.last_text || (d.last_has_attachments ? "📎 Вложение" : "Вложение не распозналось")}
           </span>

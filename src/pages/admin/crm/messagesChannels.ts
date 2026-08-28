@@ -46,4 +46,6 @@ export interface Dialog {
   last_status?: string | null;
   /** У последнего сообщения есть вложение (фото/файл/аудио) */
   last_has_attachments?: boolean;
+  /** На последнее (входящее) сообщение уже стоит наша реакция — по сути ответ менеджера */
+  last_has_my_reaction?: boolean;
 }
