@@ -15,7 +15,7 @@ type BoolPermKey = Exclude<keyof Permissions,
 // Чтобы добавить новый тип, достаточно дописать строку сюда.
 export const CALENDAR_EVENT_TYPES = [
   { id: "next_call", label: "Следующий звонок", icon: "PhoneCall",  color: "#38bdf8" },
-  { id: "last_call", label: "Контрольный звонок", icon: "PhoneOutgoing", color: "#818cf8" },
+  { id: "last_call", label: "Последний звонок", icon: "PhoneOutgoing", color: "#818cf8" },
   { id: "measure",   label: "Замер",             icon: "Ruler",      color: "#f59e0b" },
   { id: "install",   label: "Монтаж",            icon: "Hammer",     color: "#34d399" },
 ];
