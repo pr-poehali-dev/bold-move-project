@@ -13,8 +13,9 @@ import { useInboxUnread } from "./useInboxUnread";
 import { ThemeContext, DARK, LIGHT, type Theme } from "./themeContext";
 import { SubstatusContext } from "./substatusContext";
 import { crmFetch, Client } from "./crmApi";
-import { useAuth, hasPermission, allowedStatusesOf, type Permissions } from "@/context/AuthContext";
+import { useAuth, hasPermission, allowedStatusesOf, allowedSubstatusesOf, type Permissions } from "@/context/AuthContext";
 import { useSubstatuses } from "./OrdersTabs";
+import { ORDERS_TABS } from "./ordersTypes";
 import func2url from "@/../backend/func2url.json";
 
 const AUTH_URL = (func2url as Record<string, string>)["auth"];
@@ -161,6 +162,21 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
 
   const { substatuses, setSubstatuses } = useSubstatuses();
 
+  // Кастомный подэтап, разрешённый сотруднику отдельно (allowed_substatuses), должен
+  // реально открывать доступ к заявкам своей вкладки воронки — иначе владелец включает
+  // подэтап («Дата замера не назначена»), а вкладка «Замеры» всё равно скрыта и сами
+  // заявки не видны нигде, потому что статус-владелец ("measure") не в allowedStatuses.
+  // Дополняем список статусов теми, чьи вкладки содержат хотя бы один разрешённый подэтап.
+  const allowedSubstatuses = allowedSubstatusesOf(user);
+  const effectiveAllowedStatuses = useMemo(() => {
+    if (!allowedStatuses) return null;
+    if (!allowedSubstatuses || allowedSubstatuses.length === 0) return allowedStatuses;
+    const extra = ORDERS_TABS
+      .filter(tab => substatuses.some(s => s.parent_status === tab.id && allowedSubstatuses.includes(String(s.id))))
+      .flatMap(tab => tab.statuses);
+    return extra.length === 0 ? allowedStatuses : Array.from(new Set([...allowedStatuses, ...extra]));
+  }, [allowedStatuses, allowedSubstatuses, substatuses]);
+
   const ctx = useMemo(() => ({
     ...(theme === "dark" ? DARK : LIGHT),
     toggle: () => {},
@@ -301,7 +317,7 @@ export default function CrmPanel({ theme, initialOrderId, initialTab }: { theme:
                 onDrawerClose={calendarOpenId ? handleBackToCalendar : undefined}
                 canEdit={canClientsEdit}
                 canOrdersEdit={canOrdersEdit}
-                allowedStatuses={allowedStatuses}
+                allowedStatuses={effectiveAllowedStatuses}
                 canFinance={canFinance}
                 canFiles={canFilesEdit}
                 canFieldContacts={canFieldContacts}

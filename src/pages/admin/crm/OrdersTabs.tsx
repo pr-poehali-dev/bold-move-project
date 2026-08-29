@@ -25,6 +25,9 @@ export function OrdersTabs({
   // Этапы, недоступные сотруднику, СКРЫВАЕМ полностью — вкладка не отображается
   // вообще, а не просто показывает пустой список. Вкладка видна, если хотя бы один
   // её статус разрешён. null = ограничений нет (владелец видит всё, как раньше).
+  // allowed уже включает статусы, открытые через разрешённые кастомные подэтапы
+  // (см. effectiveAllowedStatuses в CrmPanel.tsx) — отдельно проверять substatuses
+  // здесь не нужно.
   const allowed = allowedStatusesOf(user);
   const isTabAllowed = (statuses: readonly string[]) =>
     !allowed || statuses.length === 0 || statuses.some(s => allowed.includes(s));
