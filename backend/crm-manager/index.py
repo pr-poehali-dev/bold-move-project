@@ -1371,7 +1371,9 @@ def handler(event: dict, context) -> dict:
                            COALESCE(NULLIF(ain.name, ''), ain.email) AS assigned_installer_name,
                            tc.state_summary AS ai_state_summary, tc.next_action AS ai_next_action,
                            tc.stage AS ai_stage, tc.analysis_updated_at AS ai_analysis_updated_at,
-                           lc.last_action_summary, lc.last_action_summary_at
+                           lc.last_action_summary, lc.last_action_summary_at,
+                           COALESCE(dup.dup_count, 1) AS duplicate_count,
+                           dup.dup_ids AS duplicate_ids
                     FROM {SCHEMA}.live_chats lc
                     LEFT JOIN {SCHEMA}.users u ON lc.company_id = u.id
                     LEFT JOIN {SCHEMA}.users au ON au.id = lc.assigned_to
@@ -1441,6 +1443,20 @@ def handler(event: dict, context) -> dict:
                           )
                         GROUP BY tc3.crm_contact_id
                     ) missed ON missed.contact_id = lc.id
+                    LEFT JOIN LATERAL (
+                        -- Дубли: заявки того же клиента с ТЕМ ЖЕ телефоном внутри компании.
+                        -- Телефон нормализуем (только цифры, последние 10) — в базе он записан
+                        -- по-разному: +7..., 8..., со скобками и пробелами. Удалённые заявки
+                        -- не считаем — иначе карточка помечалась бы дублем из-за корзины.
+                        SELECT COUNT(*) AS dup_count,
+                               ARRAY_AGG(d.id ORDER BY d.id) AS dup_ids
+                        FROM {SCHEMA}.live_chats d
+                        WHERE d.company_id = lc.company_id
+                          AND d.status <> 'deleted'
+                          AND LENGTH(REGEXP_REPLACE(COALESCE(d.phone, ''), '[^0-9]', '', 'g')) >= 10
+                          AND RIGHT(REGEXP_REPLACE(COALESCE(d.phone, ''), '[^0-9]', '', 'g'), 10)
+                              = RIGHT(REGEXP_REPLACE(COALESCE(lc.phone, ''), '[^0-9]', '', 'g'), 10)
+                    ) dup ON LENGTH(REGEXP_REPLACE(COALESCE(lc.phone, ''), '[^0-9]', '', 'g')) >= 10
                     WHERE (lc.status != 'deleted' OR lc.status = %s)
                 """
                 # Мастер видит всех — но скрываем демо-аккаунты чтобы не засорять список.

@@ -1,8 +1,33 @@
 import { Client } from "./crmApi";
 import { useSubstatuses } from "./substatusContext";
+import Icon from "@/components/ui/icon";
 
 export const SNAP_WIDTH = 88;
 export const THRESHOLD  = 44;
+
+// Заявка считается дублем, если у компании есть ещё заявки с тем же телефоном.
+// Признак приходит с сервера (duplicate_count), см. crm-manager: телефон там
+// нормализуется до последних 10 цифр, поэтому «+7…» и «8…» считаются одним номером.
+export function isDuplicate(c: Client): boolean {
+  return (c.duplicate_count ?? 1) > 1;
+}
+
+// Яркая плашка «ДУБЛЬ» — намеренно контрастная (заливка, а не полупрозрачный фон),
+// чтобы менеджер сразу видел повтор и не вёл одного клиента дважды.
+export function DuplicateBadge({ client }: { client: Client }) {
+  if (!isDuplicate(client)) return null;
+  const others = (client.duplicate_ids ?? []).filter(id => id !== client.id);
+  return (
+    <span
+      className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-black tracking-wide flex-shrink-0"
+      title={others.length > 0
+        ? `Дубль: тот же телефон в заявках №${others.join(", №")}`
+        : "Дубль: этот телефон встречается в нескольких заявках"}
+      style={{ background: "#ef4444", color: "#fff", boxShadow: "0 0 0 1px #ef444488" }}>
+      <Icon name="Copy" size={9} /> ДУБЛЬ {client.duplicate_count}
+    </span>
+  );
+}
 
 export function vibe(ms: number | number[]) {
   if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(ms);

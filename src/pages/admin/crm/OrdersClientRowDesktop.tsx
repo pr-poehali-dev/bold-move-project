@@ -2,7 +2,7 @@ import { Client, STATUS_LABELS, STATUS_COLORS, stageDuration } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { Substatus } from "./OrdersTabs";
-import { InstallProgress } from "./ordersClientRowShared";
+import { InstallProgress, DuplicateBadge } from "./ordersClientRowShared";
 import { SubstatusPicker } from "./SubstatusPicker";
 
 export interface OrdersClientRowDesktopProps {
@@ -46,6 +46,7 @@ export function OrdersClientRowDesktop({
       <div className="w-44 min-w-0 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="text-sm font-semibold truncate" style={{ color: t.text }}>{title}</div>
+          <DuplicateBadge client={c} />
           {ordersCount > 1 && (
             <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
               style={{ background: "#7c3aed22", color: "#a78bfa" }}

@@ -6,7 +6,7 @@ import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, SERVICE_NEXT_STATUS, SERVICE_NEXT
 import { useSubstatuses } from "./substatusContext";
 import { useAuth, allowedSubstatusesOf } from "@/context/AuthContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
-import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
+import { SNAP_WIDTH, InstallProgress, DuplicateBadge } from "./ordersClientRowShared";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useOrderMetrics } from "./useOrderMetrics";
 import { SubstatusPicker } from "./SubstatusPicker";
@@ -193,6 +193,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
                 );
               })()}
               <div className="flex items-center gap-1 flex-wrap mt-1">
+                {/* Дубль — самый важный сигнал в строке бейджей, поэтому первым */}
+                <DuplicateBadge client={c} />
                 {ordersCount > 1 && (
                   <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold"
                     style={{ background: "#7c3aed22", color: "#a78bfa" }}

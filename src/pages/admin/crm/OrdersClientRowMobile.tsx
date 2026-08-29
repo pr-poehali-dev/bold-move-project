@@ -2,7 +2,7 @@ import { Client, STATUS_LABELS, STATUS_COLORS } from "./crmApi";
 import Icon from "@/components/ui/icon";
 import { ThemeCtx } from "./themeContext";
 import { Substatus } from "./OrdersTabs";
-import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
+import { SNAP_WIDTH, InstallProgress, DuplicateBadge } from "./ordersClientRowShared";
 import { SubstatusPicker } from "./SubstatusPicker";
 
 export interface OrdersClientRowMobileProps {
@@ -95,6 +95,7 @@ export function OrdersClientRowMobile({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-sm font-bold truncate" style={{ color: t.text }}>{title}</span>
+              <DuplicateBadge client={c} />
               {ordersCount > 1 && (
                 <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold flex-shrink-0"
                   style={{ background: "#7c3aed22", color: "#a78bfa" }}

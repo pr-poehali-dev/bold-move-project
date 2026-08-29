@@ -397,6 +397,10 @@ export interface Client {
   assigned_technologist_name?: string | null;
   assigned_installer?: number | null;
   assigned_installer_name?: string | null;
+  /** Сколько заявок компании с этим же телефоном (1 = дублей нет). Считает сервер. */
+  duplicate_count?: number | null;
+  /** id всех заявок с этим телефоном, включая текущую — для подсказки на плашке «ДУБЛЬ» */
+  duplicate_ids?: number[] | null;
 }
 
 export function fmt(n: number): string {
