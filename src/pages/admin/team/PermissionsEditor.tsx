@@ -6,10 +6,10 @@ import { useSubstatuses } from "@/pages/admin/crm/useSubstatuses";
 // ── Типы ──────────────────────────────────────────────────────────────────
 
 // Ключи прав с булевым значением. Исключаем поля-списки и поле-выбор
-// (allowed_statuses, calendar_event_types — массивы; orders_scope — выбор из вариантов):
-// они настраиваются отдельными вкладками, а не галочкой.
+// (allowed_statuses, allowed_substatuses, calendar_event_types — массивы;
+// orders_scope — выбор из вариантов): они настраиваются отдельными вкладками, а не галочкой.
 type BoolPermKey = Exclude<keyof Permissions,
-  "allowed_statuses" | "calendar_event_types" | "orders_scope">;
+  "allowed_statuses" | "allowed_substatuses" | "calendar_event_types" | "orders_scope">;
 
 // Типы событий календаря — совпадают с event_type в базе.
 // Чтобы добавить новый тип, достаточно дописать строку сюда.
@@ -263,26 +263,60 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   };
 
   // ── Логика вкладки "Этапы" ────────────────────────────────────────────────
-  // Пустой массив / отсутствие ключа = ограничений нет (доступны все этапы).
-  // Доступ выдаётся целой группой (вкладкой воронки) — группа считается включённой,
-  // если включены ВСЕ её статусы разом (частичное включение недостижимо через UI,
-  // но на всякий случай — если данные пришли в таком виде — трактуем как выключено).
+  // Пустой массив / отсутствие ключа = ограничений нет (доступны все статусы/подэтапы).
+  // Каждый статус и каждый кастомный подэтап включается ОТДЕЛЬНО — так владелец
+  // может, например, разрешить сотруднику видеть «Замер назначен», но скрыть
+  // «Замер выполнен», или открыть только конкретный кастомный подэтап.
   const allowedStatuses = permissions.allowed_statuses ?? [];
   const noStatusRestriction = allowedStatuses.length === 0;
-  const isGroupChecked = (statuses: string[]) =>
-    noStatusRestriction || statuses.every(s => allowedStatuses.includes(s));
-
-  const toggleGroupStatuses = (statuses: string[]) => {
-    // Если сейчас "ограничений нет" — стартуем с полного списка и убираем группу целиком
+  const isStatusChecked = (id: string) => noStatusRestriction || allowedStatuses.includes(id);
+  const toggleStatus = (id: string) => {
     const base = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
-    const checked = statuses.every(s => base.includes(s));
-    const next = checked ? base.filter(s => !statuses.includes(s)) : [...new Set([...base, ...statuses])];
+    const next = base.includes(id) ? base.filter(s => s !== id) : [...base, id];
     onChange({ ...permissions, allowed_statuses: next });
   };
 
-  const allStatusesChecked = noStatusRestriction || allowedStatuses.length === PIPELINE_STATUSES.length;
+  // Полный список ID всех кастомных подэтапов компании (для перехода из
+  // состояния "ограничений нет" в явный список — как и с allowed_statuses выше).
+  const allSubstatusIds = substatuses.map(s => String(s.id));
+  const allowedSubstatuses = permissions.allowed_substatuses ?? [];
+  const noSubRestriction = allowedSubstatuses.length === 0;
+  const isSubChecked = (id: number) => noSubRestriction || allowedSubstatuses.includes(String(id));
+  const toggleSub = (id: number) => {
+    const base = noSubRestriction ? allSubstatusIds : allowedSubstatuses;
+    const key = String(id);
+    const next = base.includes(key) ? base.filter(s => s !== key) : [...base, key];
+    onChange({ ...permissions, allowed_substatuses: next });
+  };
+
+  // Группа считается включённой целиком, если включены ВСЕ её статусы и подэтапы —
+  // используется только для отображения общего переключателя-заголовка группы и
+  // для кнопки "Выдать все/Снять все" по группе разом (быстрое действие).
+  const isGroupChecked = (statuses: string[], subIds: number[]) =>
+    statuses.every(isStatusChecked) && subIds.every(isSubChecked);
+
+  const toggleGroupAll = (statuses: string[], subIds: number[]) => {
+    const willCheck = !isGroupChecked(statuses, subIds);
+    const baseSt = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
+    const nextSt = willCheck
+      ? [...new Set([...baseSt, ...statuses])]
+      : baseSt.filter(s => !statuses.includes(s));
+    const baseSub = noSubRestriction ? allSubstatusIds : allowedSubstatuses;
+    const subKeys = subIds.map(String);
+    const nextSub = willCheck
+      ? [...new Set([...baseSub, ...subKeys])]
+      : baseSub.filter(s => !subKeys.includes(s));
+    onChange({ ...permissions, allowed_statuses: nextSt, allowed_substatuses: nextSub });
+  };
+
+  const allStatusesChecked = (noStatusRestriction || allowedStatuses.length === PIPELINE_STATUSES.length)
+    && (noSubRestriction || allowedSubstatuses.length === substatuses.length);
   const toggleAllStatuses = () => {
-    onChange({ ...permissions, allowed_statuses: allStatusesChecked ? [] : PIPELINE_STATUSES.map(s => s.id) });
+    onChange({
+      ...permissions,
+      allowed_statuses: allStatusesChecked ? [] : PIPELINE_STATUSES.map(s => s.id),
+      allowed_substatuses: allStatusesChecked ? [] : allSubstatusIds,
+    });
   };
 
   // ── Логика вкладки "Мои" (видимость по ответственному + календарь) ────────
@@ -501,25 +535,29 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
 
           <div className="rounded-xl px-3 py-2.5 text-[11px]"
             style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
-            Сотрудник увидит и сможет вести заказы только на отмеченных этапах. Как только заказ переходит на
-            недоступный этап — он пропадает из списка сотрудника.
+            Сотрудник увидит и сможет вести заказы только на отмеченных этапах и подэтапах. Как только
+            заказ переходит на недоступный этап/подэтап — он пропадает из списка сотрудника.
             <br /><br />
             Именно отсюда управляются вкладки внутри раздела «Заказы»: «Заявки» — это этап «Новая заявка»,
             «Замеры» — все подэтапы замера («Дата замера не назначена», «Замер назначен», «Замер выполнен»
-            и свои добавленные), «Монтажи» — от «Договор подписан» до «Доплата получена». Доступ выдаётся
-            сразу на весь этап целиком — подэтапы внутри него всегда идут вместе.
+            и свои добавленные), «Монтажи» — от «Договор подписан» до «Доплата получена». Каждый статус и
+            каждый свой подэтап включается отдельно — переключатель группы просто выдаёт/снимает всё сразу.
           </div>
 
           <div className="flex flex-col gap-1">
             {PIPELINE_GROUPS.map(grp => {
-              const checked = isGroupChecked(grp.statuses);
-              // Раскрывающийся список: сами статусы группы, если их больше одного
-              // ("Замер назначен"/"Замер выполнен" и т.п.), плюс кастомные подэтапы
-              // компании, привязанные к этой же вкладке воронки.
+              // Статусы группы — если их больше одного (например "Замер назначен" /
+              // "Замер выполнен"), каждый переключается отдельно. Если статус один
+              // ("Новая заявка", "В работе") — отдельной строки под ним не показываем,
+              // переключатель заголовка управляет им напрямую.
               const innerStatuses = grp.statuses.length > 1
                 ? grp.statuses.map(id => PIPELINE_STATUSES.find(s => s.id === id)).filter((s): s is typeof PIPELINE_STATUSES[number] => !!s)
                 : [];
               const subs = substatuses.filter(s => s.parent_status === grp.tabId);
+              const subIds = subs.map(s => s.id);
+              const checked = grp.statuses.length === 1
+                ? isStatusChecked(grp.statuses[0]) && subIds.every(isSubChecked)
+                : isGroupChecked(grp.statuses, subIds);
               const hasInner = innerStatuses.length > 0 || subs.length > 0;
               const isOpen = openStatusGroups.has(grp.tabId);
               return (
@@ -550,48 +588,60 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                         </div>
                       )}
                     </div>
-                    <Toggle checked={checked} color={grp.color} isDark={isDark} onChange={() => toggleGroupStatuses(grp.statuses)} title="Доступен сотруднику" />
+                    <Toggle checked={checked} color={grp.color} isDark={isDark}
+                      onChange={() => grp.statuses.length === 1
+                        ? toggleStatus(grp.statuses[0])
+                        : toggleGroupAll(grp.statuses, subIds)}
+                      title="Доступен сотруднику (весь этап)" />
                   </div>
                   {hasInner && isOpen && (
                     <div className="flex flex-col gap-1">
-                      {innerStatuses.map(st => (
-                        <div key={st.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                          style={{
-                            marginLeft: 18,
-                            background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                            border: `1px solid ${checked ? `${st.color}30` : border}`,
-                          }}>
-                          <div className="w-5 flex-shrink-0" />
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: `${st.color}18` }}>
-                            <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                      {innerStatuses.map(st => {
+                        const stChecked = isStatusChecked(st.id);
+                        return (
+                          <div key={st.id}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                            style={{
+                              marginLeft: 18,
+                              background: stChecked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                              border: `1px solid ${stChecked ? `${st.color}30` : border}`,
+                            }}>
+                            <div className="w-5 flex-shrink-0" />
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: `${st.color}18` }}>
+                              <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
+                              <div className="text-[10px] truncate" style={{ color: textSub }}>Статус этапа «{grp.label}»</div>
+                            </div>
+                            <Toggle checked={stChecked} color={st.color} isDark={isDark} onChange={() => toggleStatus(st.id)} title="Доступен сотруднику" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
-                            <div className="text-[10px] truncate" style={{ color: textSub }}>Наследует доступ этапа «{grp.label}»</div>
+                        );
+                      })}
+                      {subs.map(sub => {
+                        const subChecked = isSubChecked(sub.id);
+                        return (
+                          <div key={sub.id}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                            style={{
+                              marginLeft: 18,
+                              background: subChecked ? `${sub.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                              border: `1px solid ${subChecked ? `${sub.color}30` : border}`,
+                            }}>
+                            <div className="w-5 flex-shrink-0" />
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: `${sub.color}18` }}>
+                              <Icon name="GitBranch" size={13} style={{ color: sub.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
+                              <div className="text-[10px] truncate" style={{ color: textSub }}>Свой подэтап этапа «{grp.label}»</div>
+                            </div>
+                            <Toggle checked={subChecked} color={sub.color} isDark={isDark} onChange={() => toggleSub(sub.id)} title="Доступен сотруднику" />
                           </div>
-                        </div>
-                      ))}
-                      {subs.map(sub => (
-                        <div key={sub.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                          style={{
-                            marginLeft: 18,
-                            background: checked ? `${sub.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                            border: `1px solid ${checked ? `${sub.color}30` : border}`,
-                          }}>
-                          <div className="w-5 flex-shrink-0" />
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: `${sub.color}18` }}>
-                            <Icon name="GitBranch" size={13} style={{ color: sub.color }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
-                            <div className="text-[10px] truncate" style={{ color: textSub }}>Свой подэтап · наследует доступ этапа «{grp.label}»</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

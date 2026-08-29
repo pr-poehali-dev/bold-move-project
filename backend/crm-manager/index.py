@@ -975,6 +975,11 @@ def handler(event: dict, context) -> dict:
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
     # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
     allowed_statuses = None
+    # Список ID кастомных подэтапов (order_substatuses), разрешённых сотруднику.
+    # Работает ТОЛЬКО как доп.ограничение поверх allowed_statuses: если у заявки
+    # стоит sub_status, которого нет в этом списке — заявка недоступна, даже если
+    # её основной status разрешён. None = ограничений по подэтапам нет.
+    allowed_substatuses = None
     # Тонкая настройка доступа сотрудника (значения по умолчанию = прежнее поведение,
     # чтобы обновление ничего не изменило для уже заведённых сотрудников):
     orders_scope = "all"          # all | own | own_free — какие заявки видит
@@ -1030,6 +1035,9 @@ def handler(event: dict, context) -> dict:
                         st = upermissions.get("allowed_statuses")
                         if isinstance(st, list) and len(st) > 0:
                             allowed_statuses = st
+                        sub_st = upermissions.get("allowed_substatuses")
+                        if isinstance(sub_st, list) and len(sub_st) > 0:
+                            allowed_substatuses = [str(x) for x in sub_st]
                         # Видимость заявок по ответственному
                         sc = upermissions.get("orders_scope")
                         if sc in ("all", "own", "own_free"):
@@ -1433,6 +1441,13 @@ def handler(event: dict, context) -> dict:
                 if allowed_statuses is not None:
                     sql += " AND status = ANY(%s)"
                     params.append(allowed_statuses)
+                # Ограничение сотрудника по разрешённым кастомным подэтапам: заявка без
+                # подэтапа (sub_status IS NULL) не относится ни к какому подэтапу — не
+                # скрываем её из-за этого ограничения, оно затрагивает только заявки,
+                # у которых подэтап явно проставлен и не входит в разрешённый список.
+                if allowed_substatuses is not None:
+                    sql += " AND (lc.sub_status IS NULL OR lc.sub_status = ANY(%s))"
+                    params.append(allowed_substatuses)
                 # Видимость по ответственному: own — только свои заявки,
                 # own_free — свои + СВОБОДНЫЕ (именно НОВЫЕ обращения без ответственного,
                 # status='new'). Заявка без ответственного на более позднем этапе
@@ -1577,6 +1592,21 @@ def handler(event: dict, context) -> dict:
                     new_status = body.get("status")
                     if new_status and new_status not in allowed_statuses:
                         return err("Нет доступа для перевода на этот этап", 403)
+
+                # Ограничение сотрудника по разрешённым кастомным подэтапам (аналогично
+                # allowed_statuses выше, но для order_substatuses): нельзя трогать заказ,
+                # у которого сейчас стоит недоступный подэтап, и нельзя переводить заказ
+                # на недоступный сотруднику подэтап. sub_status = NULL (подэтап не выбран)
+                # ограничением не считается — блокируем только явно недоступный подэтап.
+                if allowed_substatuses is not None:
+                    cur.execute(f"SELECT sub_status FROM {SCHEMA}.live_chats WHERE id=%s AND company_id=%s", (int(cid), company_id))
+                    cur_sub_row = cur.fetchone()
+                    cur_sub = cur_sub_row[0] if cur_sub_row else None
+                    if cur_sub is not None and cur_sub not in allowed_substatuses:
+                        return err("Нет доступа к этому подэтапу", 403)
+                    new_sub = body.get("sub_status")
+                    if new_sub is not None and str(new_sub) not in allowed_substatuses:
+                        return err("Нет доступа для перевода на этот подэтап", 403)
 
                 # Ответственный за заявку: кто первым взял её в работу, тот и закрепляется.
                 # Если заявка ещё ничья (assigned_to IS NULL) — записываем текущего сотрудника.
