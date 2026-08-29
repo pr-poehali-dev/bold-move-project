@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
+import { Client, STATUS_LABELS, DEFAULT_TAGS, crmFetch } from "./crmApi";
 import { filterOrdersBySearch } from "./ordersSearch";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
@@ -12,6 +12,7 @@ import { useOrderSourcesCtx } from "./orderSourcesContext";
 import OrdersAssigneeFilter, { AssigneeFilterValue, EMPTY_ASSIGNEE, applyAssigneeFilter } from "./OrdersAssigneeFilter";
 import OrdersPeriodFilter, { PeriodFilterValue, applyPeriodFilter } from "./OrdersPeriodFilter";
 import MergeDuplicatesModal from "./MergeDuplicatesModal";
+import { groupKeyOf } from "./mergeFields";
 
 interface TabDef {
   id: string;
@@ -92,6 +93,32 @@ export function OrdersListView({
   // Группа дублей, открытая в модалке объединения (null — модалка закрыта)
   const [mergeGroup, setMergeGroup] = useState<Client[] | null>(null);
 
+  // Группы, помеченные как «не дубль» (клиент реально заказал несколько раз).
+  // Их заявки остаются в обычных вкладках воронки и не попадают в «Дубли».
+  const [notDupKeys, setNotDupKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    crmFetch("not-duplicates")
+      .then(d => setNotDupKeys(new Set(((d as { groups?: string[] })?.groups) || [])))
+      .catch(() => {});
+  }, []);
+
+  const markNotDuplicate = async (ids: number[]) => {
+    const res = await crmFetch("not-duplicates", {
+      method: "POST", body: JSON.stringify({ ids }),
+    }) as { error?: string; group_key?: string };
+    if (res?.error) throw new Error(res.error);
+    if (res?.group_key) setNotDupKeys(p => new Set([...p, res.group_key!]));
+  };
+
+  const unmarkNotDuplicate = async (key: string) => {
+    const ids = key.split(",").map(Number);
+    const res = await crmFetch("not-duplicates", {
+      method: "DELETE", body: JSON.stringify({ ids }),
+    }) as { error?: string };
+    if (res?.error) return;
+    setNotDupKeys(p => { const n = new Set(p); n.delete(key); return n; });
+  };
+
   // Активный статус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене
   // вкладки, а на «Других сделках» — и при переключении Сервис/Дубли: у этих
   // подгрупп разные наборы этапов, старый выбор дал бы пустой список.
@@ -162,7 +189,10 @@ export function OrdersListView({
   // иначе из этапов пропали бы обе заявки вместе с их суммами.
   const isStatusAllowed = (status: string | null | undefined) =>
     !allowedStatuses || allowedStatuses.includes(status ?? "");
-  const isRepeat = (c: Client) => isDuplicateRepeat(c);
+  // Помеченная группа «не дубль» перестаёт считаться повтором — её заявки
+  // возвращаются в обычные вкладки воронки и уходят из счётчика дублей.
+  const isRepeat = (c: Client) =>
+    isDuplicateRepeat(c) && !notDupKeys.has(groupKeyOf(c.duplicate_ids ?? []));
   const clientsByStatus = activeTab === SERVICE_TAB_ID
     ? (otherSubFilter === "dupes"
         ? allClients.filter(c => isRepeat(c) && isStatusAllowed(c.status))
@@ -415,16 +445,19 @@ export function OrdersListView({
     return groups;
   })();
 
-  const renderMergePanel = () => dupeGroups.length > 0 && (
+  const renderMergePanel = () => activeTab === SERVICE_TAB_ID && otherSubFilter === "dupes"
+    && (dupeGroups.length > 0 || notDupKeys.size > 0) && (
     <div className="mb-4 rounded-xl px-3 py-2.5" style={{ background: "#ef444410", border: "1px solid #ef444430" }}>
       <div className="flex items-center gap-2 mb-2">
         <Icon name="Copy" size={13} style={{ color: "#ef4444" }} />
         <span className="text-xs font-bold" style={{ color: "#ef4444" }}>
           Групп дублей: {dupeGroups.length}
         </span>
-        <span className="text-[11px]" style={{ color: t.textMute }}>
-          — один клиент завёлся несколько раз, их можно объединить в одну заявку
-        </span>
+        {dupeGroups.length > 0 && (
+          <span className="text-[11px]" style={{ color: t.textMute }}>
+            — нажмите на группу, чтобы сравнить поля и объединить
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
         {dupeGroups.map(group => (
@@ -440,6 +473,29 @@ export function OrdersListView({
           </button>
         ))}
       </div>
+
+      {/* Группы, отмеченные как «не дубль» — видно, что было исключено, и можно вернуть */}
+      {notDupKeys.size > 0 && (
+        <div className="mt-2.5 pt-2.5" style={{ borderTop: `1px solid ${t.border}` }}>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Icon name="CircleSlash" size={11} style={{ color: "#38bdf8" }} />
+            <span className="text-[11px] font-bold" style={{ color: "#38bdf8" }}>
+              Отмечено «не дубль»: {notDupKeys.size}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[...notDupKeys].map(key => (
+              <button key={key} onClick={() => unmarkNotDuplicate(key)}
+                title="Вернуть группу в список дублей"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition"
+                style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.textMute }}>
+                №{key.split(",").join(", №")}
+                <Icon name="RotateCcw" size={10} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -450,6 +506,7 @@ export function OrdersListView({
           group={mergeGroup}
           onClose={() => setMergeGroup(null)}
           onMerged={() => { setMergeGroup(null); onMerged?.(); }}
+          onNotDuplicate={markNotDuplicate}
         />
       )}
       <OrdersTabs

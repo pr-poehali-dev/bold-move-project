@@ -1980,6 +1980,48 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── NOT-DUPLICATE GROUPS ──────────────────────────────────────────────
+        # Пометка «это не дубль»: клиент реально заказал несколько раз (разные
+        # объекты/периоды). Помеченная группа перестаёт считаться дублем и её
+        # заявки возвращаются в обычные вкладки воронки. Пометку можно снять.
+        if resource == "not-duplicates":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            scope_cmp = company_id if company_id is not None else master_uid
+
+            if method == "GET":
+                cur.execute(
+                    f"SELECT group_key FROM {SCHEMA}.not_duplicate_groups WHERE company_id=%s",
+                    (scope_cmp,)
+                )
+                return ok({"groups": [r[0] for r in cur.fetchall()]})
+
+            if method == "POST":
+                ids = body.get("ids") or []
+                if not isinstance(ids, list) or len(ids) < 2:
+                    return err("Нужно минимум 2 заявки")
+                group_key = ",".join(str(x) for x in sorted(int(i) for i in ids))
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.not_duplicate_groups (company_id, group_key, created_by)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (company_id, group_key) DO NOTHING""",
+                    (scope_cmp, group_key, master_uid)
+                )
+                conn.commit()
+                return ok({"marked": True, "group_key": group_key})
+
+            if method == "DELETE":
+                ids = body.get("ids") or []
+                if not isinstance(ids, list) or len(ids) < 2:
+                    return err("Нужно минимум 2 заявки")
+                group_key = ",".join(str(x) for x in sorted(int(i) for i in ids))
+                cur.execute(
+                    f"DELETE FROM {SCHEMA}.not_duplicate_groups WHERE company_id=%s AND group_key=%s",
+                    (scope_cmp, group_key)
+                )
+                conn.commit()
+                return ok({"unmarked": True, "group_key": group_key})
+
         # ── MERGE DUPLICATES ──────────────────────────────────────────────────
         # Объединение дублей: одна заявка назначается главной, остальные уходят в
         # корзину (мягкое удаление, как обычный DELETE — восстановимо). Пустые поля
@@ -2031,15 +2073,31 @@ def handler(event: dict, context) -> dict:
             by_id = {r[0]: dict(zip(cols, r)) for r in cur.fetchall()}
             primary = by_id[int(primary_id)]
 
+            # field_sources: {"address": 522, ...} — из какой заявки взять каждое поле.
+            # Приходит из модалки сравнения, где менеджер выбрал нужные значения вручную.
+            # Если не передано — прежнее поведение: пустые поля главной дозаполняются
+            # первым непустым значением из объединяемых.
+            field_sources = body.get("field_sources") or {}
             filled = {}
-            for f in MERGE_FIELDS:
-                if primary.get(f) not in (None, "", 0):
-                    continue
-                for mid in [int(x) for x in merge_ids]:
-                    val = by_id.get(mid, {}).get(f)
-                    if val not in (None, "", 0):
-                        filled[f] = val
-                        break
+            if isinstance(field_sources, dict) and field_sources:
+                for f, src_id in field_sources.items():
+                    if f not in MERGE_FIELDS:
+                        continue
+                    src = by_id.get(int(src_id))
+                    if src is None:
+                        continue
+                    # Записываем даже если совпадает с текущим — так проще и безопаснее,
+                    # чем угадывать «изменилось/нет» по разнотипным значениям.
+                    filled[f] = src.get(f)
+            else:
+                for f in MERGE_FIELDS:
+                    if primary.get(f) not in (None, "", 0):
+                        continue
+                    for mid in [int(x) for x in merge_ids]:
+                        val = by_id.get(mid, {}).get(f)
+                        if val not in (None, "", 0):
+                            filled[f] = val
+                            break
             if filled:
                 sets = ", ".join(f"{f} = %s" for f in filled)
                 cur.execute(
