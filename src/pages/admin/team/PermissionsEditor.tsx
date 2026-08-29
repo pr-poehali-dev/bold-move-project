@@ -9,7 +9,8 @@ import { useSubstatuses } from "@/pages/admin/crm/useSubstatuses";
 // (allowed_tabs, allowed_statuses, allowed_substatuses, calendar_event_types — массивы;
 // orders_scope — выбор из вариантов): они настраиваются отдельными вкладками, а не галочкой.
 type BoolPermKey = Exclude<keyof Permissions,
-  "allowed_tabs" | "allowed_statuses" | "allowed_substatuses" | "calendar_event_types" | "orders_scope">;
+  "allowed_tabs" | "allowed_statuses" | "allowed_substatuses" | "calendar_event_types"
+  | "calendar_default_event_types" | "orders_scope">;
 
 // Типы событий календаря — совпадают с event_type в базе.
 // Чтобы добавить новый тип, достаточно дописать строку сюда.
@@ -334,7 +335,27 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
     // "Ограничений нет" — стартуем с полного списка и убираем нажатый
     const base = noCalRestriction ? CALENDAR_EVENT_TYPES.map(t => t.id) : calTypes;
     const next = base.includes(id) ? base.filter(t => t !== id) : [...base, id];
-    onChange({ ...permissions, calendar_event_types: next });
+    // Тип, закрытый сотруднику, не может остаться включённым «по умолчанию» —
+    // иначе календарь при первом входе просил бы показать недоступные события.
+    const nextDefaults = (permissions.calendar_default_event_types ?? []).filter(t => next.includes(t));
+    onChange({ ...permissions, calendar_event_types: next, calendar_default_event_types: nextDefaults });
+  };
+
+  // Второй чекбокс строки: включён ли тип в календаре СРАЗУ при первом входе.
+  // Пустой список = по умолчанию показываем все доступные типы (как было раньше).
+  const calDefaults = permissions.calendar_default_event_types ?? [];
+  const noCalDefaultRestriction = calDefaults.length === 0;
+  const isCalDefaultChecked = (id: string) =>
+    isCalTypeChecked(id) && (noCalDefaultRestriction || calDefaults.includes(id));
+
+  const toggleCalDefault = (id: string) => {
+    // Доступные сотруднику типы — только из них можно собрать набор «по умолчанию»
+    const available = noCalRestriction ? CALENDAR_EVENT_TYPES.map(t => t.id) : calTypes;
+    const base = noCalDefaultRestriction ? available : calDefaults;
+    const next = base.includes(id) ? base.filter(t => t !== id) : [...base, id];
+    // Выбраны все доступные — значит ограничения нет, храним пустой список
+    const isAll = available.length > 0 && available.every(t => next.includes(t));
+    onChange({ ...permissions, calendar_default_event_types: isAll ? [] : next });
   };
 
   // Счётчик для бейджа вкладки: считаем только реально включённые ограничения
@@ -343,6 +364,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
     (permissions.orders_edit_own_only ? 1 : 0) +
     (permissions.orders_reassign ? 1 : 0) +
     (noCalRestriction ? 0 : 1) +
+    (noCalDefaultRestriction ? 0 : 1) +
     (permissions.calendar_own_only ? 1 : 0);
 
   const section = (activeTab === PIPELINE_TAB_INDEX || activeTab === SCOPE_TAB_INDEX)
@@ -476,12 +498,18 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>
               Что видит в календаре
             </span>
-            {!noCalRestriction && (
-              <button onClick={() => onChange({ ...permissions, calendar_event_types: [] })}
+            {(!noCalRestriction || !noCalDefaultRestriction) && (
+              <button onClick={() => onChange({ ...permissions, calendar_event_types: [], calendar_default_event_types: [] })}
                 className="text-[10px] font-semibold transition" style={{ color: "#a78bfa" }}>
                 Показать все
               </button>
             )}
+          </div>
+          {/* Подписи к двум колонкам чекбоксов: «доступен» и «показан сразу» */}
+          <div className="flex items-center gap-2 px-3">
+            <div className="flex-1" />
+            <span className="w-8 text-[9px] font-bold text-center leading-tight" style={{ color: muted }}>Досту&shy;пен</span>
+            <span className="w-8 text-[9px] font-bold text-center leading-tight" style={{ color: muted }}>По умолч.</span>
           </div>
           <div className="flex flex-col gap-1">
             {CALENDAR_EVENT_TYPES.map(t => {
@@ -500,7 +528,15 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                     <div className="text-xs font-semibold truncate" style={{ color: text }}>{t.label}</div>
                   </div>
                   <Toggle checked={checked} color={t.color} isDark={isDark}
-                    onChange={() => toggleCalType(t.id)} title="Виден сотруднику" />
+                    onChange={() => toggleCalType(t.id)} title="Тип доступен сотруднику" />
+                  {/* Второй чекбокс имеет смысл только у доступного типа */}
+                  {checked ? (
+                    <Toggle checked={isCalDefaultChecked(t.id)} color={t.color} isDark={isDark}
+                      onChange={() => toggleCalDefault(t.id)}
+                      title="Включён в календаре сразу при входе" />
+                  ) : (
+                    <div className="w-8 h-8 flex-shrink-0" />
+                  )}
                 </div>
               );
             })}

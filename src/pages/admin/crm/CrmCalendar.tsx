@@ -11,13 +11,17 @@ import { CalendarMobileView } from "./CalendarMobileView";
 import CalendarColorSettings from "./CalendarColorSettings";
 import { buildMonthGrid, eventsForDay, mondayWeekStart } from "./calendarUtils";
 import { resolveEventColor } from "./syncedCols";
+import { useAuth } from "@/context/AuthContext";
 
 const LS_CALENDAR_TYPE_FILTER = "crm_calendar_type_filter";
-function loadTypeFilter(): string[] {
+// Свой выбор сотрудник делает один раз и он важнее настройки по умолчанию,
+// поэтому отличаем «ещё ни разу не выбирал» (ключа нет) от «выбрал показать всё»
+// (в ключе лежит пустой список).
+function loadTypeFilter(): string[] | null {
   try {
     const raw = localStorage.getItem(LS_CALENDAR_TYPE_FILTER);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 function saveTypeFilter(v: string[]) {
   localStorage.setItem(LS_CALENDAR_TYPE_FILTER, JSON.stringify(v));
@@ -25,6 +29,7 @@ function saveTypeFilter(v: string[]) {
 
 export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
   const t = useTheme();
+  const { user } = useAuth();
   const today = new Date();
 
   const [view, setView]           = useState<"month" | "week">("month");
@@ -38,7 +43,13 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
   const [colorSettingsOpen, setColorSettingsOpen] = useState(false);
   const [colorsVersion, setColorsVersion] = useState(0);
   // Пустой список = показываем все типы. Непустой = показываем только выбранные.
-  const [typeFilter, setTypeFilter] = useState<string[]>(loadTypeFilter);
+  // Если сотрудник ещё ни разу не менял фильтр — берём набор «по умолчанию»
+  // из его прав (calendar_default_event_types), который настраивает владелец.
+  const [typeFilter, setTypeFilter] = useState<string[]>(() => {
+    const own = loadTypeFilter();
+    if (own !== null) return own;
+    return user?.permissions?.calendar_default_event_types ?? [];
+  });
 
   const toggleTypeFilter = (type: string) => {
     setTypeFilter(prev => {
