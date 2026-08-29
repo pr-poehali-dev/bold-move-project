@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, allowedTabsOf, allowedStatusesOf } from "@/context/AuthContext";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID, isDuplicateRepeat } from "./ordersTypes";
+import type { Client } from "./crmApi";
 import { TabDef, Props } from "./ordersTabsShared";
 import { TabSettingsPopup } from "./OrdersTabSettingsPopup";
 import { ChannelsSelfTestButton } from "./ChannelsSelfTestButton";
@@ -64,18 +65,22 @@ export function OrdersTabs({
   // но счётчик/сумма на самой кнопке должны отражать только реально выполненные заказы.
   const statusesForStats = (tab: TabDef) => tab.id === "done" ? ["done"] : tab.statuses;
 
-  // Вкладка «Сервис» считается по флагу is_service (доделки/переделки), а не по статусу.
-  // Из остальных вкладок сервисные заявки исключаем — иначе они задвоятся в счётчиках
-  // и подмешают свои суммы к монтажам.
+  // Вкладка «Другие сделки» считается по признакам заявки (сервис + дубли), а не по
+  // статусу. Из остальных вкладок и сервисные, и повторные заявки исключаем — иначе
+  // они задвоятся в счётчиках и подмешают свои суммы к монтажам.
+  const isRepeat = (c: Client) => isDuplicateRepeat(c);
   const clientsForTab = (tab: TabDef) =>
     tab.id === SERVICE_TAB_ID
-      ? allClients.filter(c => c.is_service)
-      : allClients.filter(c => !c.is_service && statusesForStats(tab).includes(c.status));
+      ? allClients.filter(c => (c.is_service && !isRepeat(c)) || isRepeat(c))
+      : allClients.filter(c => !c.is_service && !isRepeat(c) && statusesForStats(tab).includes(c.status));
 
   const getRevenue = (tab: TabDef) =>
     clientsForTab(tab).reduce((s, c) => s + (Number(c.contract_sum) || 0), 0);
 
   const getCount = (tab: TabDef) => clientsForTab(tab).length;
+
+  // Сколько заявок-повторов ждёт разбора — красный кружок на вкладке «Другие сделки»
+  const getDupesCount = () => allClients.filter(isRepeat).length;
 
   const gearRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
@@ -123,6 +128,7 @@ export function OrdersTabs({
         {allTabs.map(tab => {
           const count    = getCount(tab);
           const revenue  = getRevenue(tab);
+          const dupesCount = getDupesCount();
           const isActive = activeTab === tab.id;
           const isOpen   = openPopup === tab.id;
 
@@ -144,6 +150,14 @@ export function OrdersTabs({
                     <span className="text-xs font-bold truncate" style={{ color: isActive ? tab.color : t.text }}>{tab.label}</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
                       style={{ background: tab.color + "20", color: tab.color }}>{count}</span>
+                    {/* Красный кружок с числом дублей — заявки, которые ждут разбора */}
+                    {tab.id === SERVICE_TAB_ID && dupesCount > 0 && (
+                      <span title={`Дублей: ${dupesCount}`}
+                        className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex-shrink-0"
+                        style={{ background: "#ef4444", color: "#fff" }}>
+                        {dupesCount}
+                      </span>
+                    )}
                   </div>
                   {revenue > 0 && (
                     <div className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: isActive ? tab.color : t.textSub }}>

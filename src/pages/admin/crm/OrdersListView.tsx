@@ -3,7 +3,7 @@ import { Client, STATUS_LABELS, DEFAULT_TAGS } from "./crmApi";
 import { filterOrdersBySearch } from "./ordersSearch";
 import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
-import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID, SERVICE_STATUSES } from "./ordersTypes";
+import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID, SERVICE_STATUSES, isDuplicateRepeat } from "./ordersTypes";
 import { OrdersClientCard } from "./OrdersClientCard";
 import { OrdersClientRow } from "./OrdersClientRow";
 import { OrdersTabs, Substatus } from "./OrdersTabs";
@@ -11,6 +11,7 @@ import { SyncedCol } from "./syncedCols";
 import { useOrderSourcesCtx } from "./orderSourcesContext";
 import OrdersAssigneeFilter, { AssigneeFilterValue, EMPTY_ASSIGNEE, applyAssigneeFilter } from "./OrdersAssigneeFilter";
 import OrdersPeriodFilter, { PeriodFilterValue, applyPeriodFilter } from "./OrdersPeriodFilter";
+import MergeDuplicatesModal from "./MergeDuplicatesModal";
 
 interface TabDef {
   id: string;
@@ -25,6 +26,13 @@ interface TabDef {
 const DONE_GROUPS = [
   { key: "done" as const,      label: "Выполнено", statuses: ["done"],      color: "#10b981", icon: "CheckCircle2" },
   { key: "cancelled" as const, label: "Отказ",      statuses: ["cancelled"],color: "#ef4444", icon: "XCircle" },
+];
+
+// Подгруппы внутри таба «Другие сделки» — те же переключатели, что и на «Финальном».
+// «Сервис» — по флагу is_service, «Дубли» — повторные заявки с тем же телефоном.
+const OTHER_GROUPS = [
+  { key: "service" as const, label: "Сервис", color: "#14b8a6", icon: "Hammer" },
+  { key: "dupes"   as const, label: "Дубли",  color: "#ef4444", icon: "Copy"   },
 ];
 
 interface Props {
@@ -63,6 +71,8 @@ interface Props {
   // разрешён, но внутри разрешённой вкладки (например «Финальный» = done+cancelled) заявки
   // с отдельно запрещённым статусом (например cancelled) всё равно оставались видны.
   allowedStatuses?: string[] | null;
+  /** Перезагрузить список после объединения дублей */
+  onMerged?: () => void;
 }
 
 export function OrdersListView({
@@ -72,15 +82,21 @@ export function OrdersListView({
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
   substatuses, onSubstatusesChange,
   statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
-  allowedStatuses = null,
+  allowedStatuses = null, onMerged,
 }: Props) {
   const t = useTheme();
   const orderSources = useOrderSourcesCtx();
   const [doneSubFilter, setDoneSubFilter] = useState<typeof DONE_GROUPS[number]["key"]>("done");
+  // Активная подгруппа вкладки «Другие сделки»: Сервис / Дубли
+  const [otherSubFilter, setOtherSubFilter] = useState<typeof OTHER_GROUPS[number]["key"]>("service");
+  // Группа дублей, открытая в модалке объединения (null — модалка закрыта)
+  const [mergeGroup, setMergeGroup] = useState<Client[] | null>(null);
 
-  // Активный статус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене вкладки.
+  // Активный статус-фильтр (кликабельная бирка под шапкой). Сбрасывается при смене
+  // вкладки, а на «Других сделках» — и при переключении Сервис/Дубли: у этих
+  // подгрупп разные наборы этапов, старый выбор дал бы пустой список.
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
-  useEffect(() => { setActiveStatusFilter(null); }, [activeTab]);
+  useEffect(() => { setActiveStatusFilter(null); }, [activeTab, otherSubFilter]);
 
   // Активный фильтр по своему этапу (substatus). Тоже сбрасывается при смене вкладки.
   const [activeSubFilter, setActiveSubFilter] = useState<string | null>(null);
@@ -138,24 +154,35 @@ export function OrdersListView({
 
   const allTabDef: TabDef = { id: ALL_TAB_ID, label: "Все", icon: "LayoutGrid", color: "#64748b", statuses: [], emptyText: "Заявок нет" };
   const currentTab = activeTab === ALL_TAB_ID ? allTabDef : allTabDefs.find(tab => tab.id === activeTab) ?? allTabDefs[0];
-  // Вкладка «Сервис» фильтрует по флагу is_service (мелкие доделки/переделки),
-  // а не по статусу. Из остальных вкладок сервисные заявки исключаем, чтобы они
-  // не мешались с полноценными объектами (особенно в «Монтажах»).
+  // Вкладка «Другие сделки» фильтрует по признакам заявки, а не по статусу:
+  // подгруппа «Сервис» — флаг is_service, подгруппа «Дубли» — повторная заявка с
+  // тем же телефоном. Из остальных вкладок и те и другие исключаем, чтобы они не
+  // мешались с полноценными объектами (особенно в «Монтажах»).
+  // Повтором считается НЕ самая ранняя заявка клиента: оригинал остаётся в воронке,
+  // иначе из этапов пропали бы обе заявки вместе с их суммами.
   const isStatusAllowed = (status: string | null | undefined) =>
     !allowedStatuses || allowedStatuses.includes(status ?? "");
+  const isRepeat = (c: Client) => isDuplicateRepeat(c);
   const clientsByStatus = activeTab === SERVICE_TAB_ID
-    ? allClients.filter(c => c.is_service)
+    ? (otherSubFilter === "dupes"
+        ? allClients.filter(c => isRepeat(c) && isStatusAllowed(c.status))
+        : allClients.filter(c => c.is_service && !isRepeat(c)))
     : activeTab === ALL_TAB_ID
       ? allClients.filter(c => isStatusAllowed(c.status))
-      : allClients.filter(c => !c.is_service && currentTab.statuses.includes(c.status ?? "") && isStatusAllowed(c.status));
+      : allClients.filter(c => !c.is_service && !isRepeat(c) && currentTab.statuses.includes(c.status ?? "") && isStatusAllowed(c.status));
 
   // Реальные этапы (статусы) текущей вкладки — бирки показываются только когда
   // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).
   // Вкладка "done" уже имеет свой переключатель Выполнено/Отказ — бирки там не дублируем.
   // «Сервис» — особый случай: у таба в конфиге statuses пустой (фильтруется по is_service),
   // свои 3 этапа воронки берём отдельно из SERVICE_STATUSES.
+  // На «Дублях» заявки могут быть на любом этапе воронки, поэтому бирки берём из
+  // всех статусов, реально встречающихся в подборке, — иначе фильтровать нечем.
+  const dupeStatusesPresent = Array.from(new Set(
+    allClients.filter(c => isRepeat(c)).map(c => c.status ?? "").filter(Boolean)
+  ));
   const tabStatuses = activeTab === SERVICE_TAB_ID
-    ? SERVICE_STATUSES
+    ? (otherSubFilter === "dupes" ? dupeStatusesPresent : SERVICE_STATUSES)
     : activeTab !== "done" && currentTab.statuses.length > 1 ? currentTab.statuses : [];
   // Свои этапы (кастомные substatus), привязанные к текущей вкладке
   const mySubstatuses = substatuses.filter(s => s.parent_status === activeTab);
@@ -245,6 +272,42 @@ export function OrdersListView({
   const renderFilterRow = () =>
     (hasStageFilters || hasSourceFilters || hasTagFilters || showAssigneePeriodFilters) && (
       <div className="flex items-start gap-3 flex-wrap mb-4">
+        {/* Подгруппы вкладки «Другие сделки»: Сервис / Дубли. Идут первыми — они
+            задают, что вообще показано в списке, остальные фильтры уточняют выборку. */}
+        {activeTab === SERVICE_TAB_ID && (
+          <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
+            <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Раздел</span>
+            {OTHER_GROUPS.map(group => {
+              const isSel = otherSubFilter === group.key;
+              const cnt = group.key === "dupes"
+                ? allClients.filter(c => isRepeat(c) && isStatusAllowed(c.status)).length
+                : allClients.filter(c => c.is_service && !isRepeat(c)).length;
+              return (
+                <button key={group.key} onClick={() => setOtherSubFilter(group.key)}
+                  className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
+                  style={{
+                    background: isSel ? group.color : t.surface,
+                    borderColor: isSel ? group.color : t.border,
+                    color: isSel ? "#fff" : t.textSub,
+                  }}>
+                  <Icon name={group.icon} size={12} />
+                  {group.label}
+                  {/* У дублей счётчик — красный кружок: это то, что требует разбора */}
+                  {group.key === "dupes" ? (
+                    cnt > 0 && (
+                      <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black"
+                        style={{ background: isSel ? "#fff" : "#ef4444", color: isSel ? "#ef4444" : "#fff" }}>
+                        {cnt}
+                      </span>
+                    )
+                  ) : (
+                    <span className="font-bold">{cnt}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {showAssigneePeriodFilters && (
           <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
             <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Фильтр</span>
@@ -334,8 +397,61 @@ export function OrdersListView({
       onSwipeBuilder={onSwipeBuilder} onSwipeAgent={onSwipeAgent} />
   );
 
+  // Группы дублей (одна группа = один телефон) для панели объединения на вкладке
+  // «Дубли». Считаем по показанным сейчас повторам, но в группу подтягиваем и
+  // оригинал: объединять нужно вместе с ним, иначе главная заявка окажется вне выбора.
+  const dupeGroups: Client[][] = (() => {
+    if (activeTab !== SERVICE_TAB_ID || otherSubFilter !== "dupes") return [];
+    const seen = new Set<string>();
+    const groups: Client[][] = [];
+    for (const c of sortByDate(filterSearch(currentClients))) {
+      const ids = c.duplicate_ids ?? [];
+      const key = ids.join(",");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const members = allClients.filter(x => ids.includes(x.id));
+      if (members.length > 1) groups.push(members);
+    }
+    return groups;
+  })();
+
+  const renderMergePanel = () => dupeGroups.length > 0 && (
+    <div className="mb-4 rounded-xl px-3 py-2.5" style={{ background: "#ef444410", border: "1px solid #ef444430" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon name="Copy" size={13} style={{ color: "#ef4444" }} />
+        <span className="text-xs font-bold" style={{ color: "#ef4444" }}>
+          Групп дублей: {dupeGroups.length}
+        </span>
+        <span className="text-[11px]" style={{ color: t.textMute }}>
+          — один клиент завёлся несколько раз, их можно объединить в одну заявку
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {dupeGroups.map(group => (
+          <button key={group.map(c => c.id).join("-")}
+            onClick={() => setMergeGroup(group)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition"
+            style={{ background: t.surface, border: `1px solid ${t.border}`, color: t.textSub }}>
+            <Icon name="Merge" size={11} style={{ color: "#10b981" }} />
+            №{group.map(c => c.id).join(", №")}
+            <span className="text-[10px] font-bold" style={{ color: t.textMute }}>
+              {group[0].client_name || group[0].phone || ""}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <>
+      {mergeGroup && (
+        <MergeDuplicatesModal
+          group={mergeGroup}
+          onClose={() => setMergeGroup(null)}
+          onMerged={() => { setMergeGroup(null); onMerged?.(); }}
+        />
+      )}
       <OrdersTabs
         allClients={allClients}
         activeTab={activeTab}
@@ -508,6 +624,7 @@ export function OrdersListView({
       ) : viewMode === "list" ? (
         <div>
           {renderFilterRow()}
+          {renderMergePanel()}
           <div className="space-y-2">
             {sortByDate(filterSearch(currentClients)).map(renderRow)}
             {currentClients.length === 0 && (
@@ -521,6 +638,7 @@ export function OrdersListView({
       ) : (
         <div>
           {renderFilterRow()}
+          {renderMergePanel()}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {sortByDate(filterSearch(currentClients)).map(renderCard)}
             {currentClients.length === 0 && (

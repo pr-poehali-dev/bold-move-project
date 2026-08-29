@@ -1980,6 +1980,94 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return ok({"deleted": True})
 
+        # ── MERGE DUPLICATES ──────────────────────────────────────────────────
+        # Объединение дублей: одна заявка назначается главной, остальные уходят в
+        # корзину (мягкое удаление, как обычный DELETE — восстановимо). Пустые поля
+        # главной заполняются данными из объединяемых: так при слиянии не теряется
+        # адрес/сумма/комментарий, введённые в копии, а заполненные поля главной
+        # остаются нетронутыми.
+        if resource == "merge-clients" and method == "POST":
+            if not authenticated:
+                return err("Требуется авторизация", 401)
+            primary_id = body.get("primary_id")
+            merge_ids = body.get("merge_ids") or []
+            if not primary_id or not isinstance(merge_ids, list) or len(merge_ids) == 0:
+                return err("primary_id и merge_ids обязательны")
+            if int(primary_id) in [int(x) for x in merge_ids]:
+                return err("Главная заявка не может быть в списке объединяемых")
+
+            all_ids = [int(primary_id)] + [int(x) for x in merge_ids]
+            # Все заявки должны принадлежать одной компании — защита от объединения
+            # чужих заявок по подобранному id.
+            cur.execute(
+                f"SELECT id, company_id FROM {SCHEMA}.live_chats WHERE id = ANY(%s)",
+                (all_ids,)
+            )
+            rows_own = cur.fetchall()
+            if len(rows_own) != len(all_ids):
+                return err("Заявка не найдена", 404)
+            owner_ids = {r[1] for r in rows_own}
+            if len(owner_ids) != 1:
+                return err("Заявки принадлежат разным компаниям", 403)
+            if company_id is not None and owner_ids.pop() != company_id:
+                return err("Заявка не найдена", 404)
+
+            # Поля, которые имеет смысл подтягивать из дублей в пустые поля главной.
+            MERGE_FIELDS = [
+                "client_name", "phone", "address", "area", "budget", "map_link",
+                "measure_date", "install_date", "desired_measure_date", "desired_install_date",
+                "next_call_date", "contract_sum", "prepayment", "extra_payment",
+                "responsible_phone", "notes", "comment_order", "comment_measure",
+                "comment_install", "comment_client", "source",
+                "assigned_to", "assigned_manager2", "assigned_measurer",
+                "assigned_technologist", "assigned_installer",
+            ]
+            field_list = ", ".join(MERGE_FIELDS)
+            cur.execute(
+                f"SELECT id, {field_list} FROM {SCHEMA}.live_chats WHERE id = ANY(%s) ORDER BY id",
+                (all_ids,)
+            )
+            cols = [d[0] for d in cur.description]
+            by_id = {r[0]: dict(zip(cols, r)) for r in cur.fetchall()}
+            primary = by_id[int(primary_id)]
+
+            filled = {}
+            for f in MERGE_FIELDS:
+                if primary.get(f) not in (None, "", 0):
+                    continue
+                for mid in [int(x) for x in merge_ids]:
+                    val = by_id.get(mid, {}).get(f)
+                    if val not in (None, "", 0):
+                        filled[f] = val
+                        break
+            if filled:
+                sets = ", ".join(f"{f} = %s" for f in filled)
+                cur.execute(
+                    f"UPDATE {SCHEMA}.live_chats SET {sets}, updated_at = NOW() WHERE id = %s",
+                    list(filled.values()) + [int(primary_id)]
+                )
+
+            # Переносим на главную привязанные сущности, чтобы история не потерялась
+            merge_int = [int(x) for x in merge_ids]
+            cur.execute(f"UPDATE {SCHEMA}.client_files SET client_id=%s WHERE client_id = ANY(%s)",
+                        (int(primary_id), merge_int))
+            cur.execute(f"UPDATE {SCHEMA}.activity_log SET client_id=%s WHERE client_id = ANY(%s)",
+                        (int(primary_id), merge_int))
+
+            # Дубли — в корзину (мягко, как обычное удаление: можно восстановить)
+            cur.execute(f"UPDATE {SCHEMA}.kanban_cards SET client_id=NULL WHERE client_id = ANY(%s)", (merge_int,))
+            cur.execute(f"UPDATE {SCHEMA}.calendar_events SET client_id=NULL WHERE client_id = ANY(%s)", (merge_int,))
+            cur.execute(
+                f"""UPDATE {SCHEMA}.live_chats
+                    SET status_before_removal = status, removed_at = NOW(), status='deleted',
+                        updated_at = NOW()
+                    WHERE id = ANY(%s)""",
+                (merge_int,)
+            )
+            conn.commit()
+            return ok({"merged": True, "primary_id": int(primary_id),
+                       "archived": merge_int, "filled_fields": list(filled.keys())})
+
         # ── CLIENT STATUSES ───────────────────────────────────────────────────
         if resource == "client_statuses":
             # Мастер раньше был жёстко привязан к company_id=2 (ошибка). Теперь у мастера

@@ -28,10 +28,22 @@ export const NEXT_LABEL: Record<string, string> = {
 // Не входит в ORDERS_TABS (не редактируется, не скрывается, всегда первый).
 export const ALL_TAB_ID = "all";
 
-// Особый таб «Сервис» — фильтрует не по статусу, а по флагу is_service:
-// мелкие доделки/переделки по уже сданному объекту. Такие заявки идут по обычным
-// статусам воронки, поэтому отдельного статуса у них нет — только признак.
+// Особый таб «Другие сделки» — фильтрует не по статусу, а по признаку заявки.
+// Внутри него две подвкладки (см. OTHER_GROUPS в OrdersListView):
+//  • «Сервис» — флаг is_service: мелкие доделки/переделки по сданному объекту;
+//  • «Дубли» — повторные заявки с тем же телефоном (признак считает сервер,
+//    duplicate_count/duplicate_ids, см. crm-manager).
+// Такие заявки идут по обычным статусам воронки, отдельного статуса у них нет.
 export const SERVICE_TAB_ID = "service";
+
+// Заявка-повтор: у клиента с этим телефоном есть заявка, созданная РАНЬШЕ.
+// Самая ранняя заявка остаётся в обычной воронке и повтором не считается —
+// иначе из этапов пропал бы и оригинал, а вместе с ним деньги из сумм по вкладкам.
+export function isDuplicateRepeat(c: { id: number; duplicate_ids?: number[] | null }): boolean {
+  const ids = c.duplicate_ids ?? [];
+  if (ids.length < 2) return false;
+  return Math.min(...ids) !== c.id;
+}
 
 // Сервисные заявки (доделки/переделки) идут по своей упрощённой мини-воронке из
 // 3 этапов — вместо полной цепочки монтажа (Договор → Предоплата → ... → Доплата).
@@ -55,9 +67,9 @@ export const ORDERS_TABS = [
   { id: "measures", label: "Замеры",    icon: "Ruler",        color: "#f59e0b", statuses: ["measure","measured"] as readonly string[],                          emptyText: "Нет замеров" },
   { id: "installs", label: "Монтажи",   icon: "Wrench",       color: "#f97316", statuses: ["contract","prepaid","install_scheduled","install_done","extra_paid"] as readonly string[], emptyText: "Нет активных монтажей" },
   { id: "done",     label: "Финальный", icon: "CheckCircle2", color: "#10b981", statuses: ["done","cancelled"] as readonly string[],                             emptyText: "Нет завершённых заказов" },
-  // Сервис — фильтр по флагу is_service, а не по статусу (statuses пустой).
-  // Обработка этого таба особая, см. SERVICE_TAB_ID в OrdersListView/OrdersTabs.
-  { id: SERVICE_TAB_ID, label: "Сервис", icon: "Hammer", color: "#14b8a6", statuses: [] as readonly string[], emptyText: "Нет сервисных заявок" },
+  // Другие сделки — фильтр по признакам заявки (сервис / дубль), а не по статусу
+  // (statuses пустой). Обработка особая, см. SERVICE_TAB_ID в OrdersListView/OrdersTabs.
+  { id: SERVICE_TAB_ID, label: "Другие сделки", icon: "Layers", color: "#14b8a6", statuses: [] as readonly string[], emptyText: "Нет других сделок" },
 ] as const;
 
 export type OrdersTabId = typeof ORDERS_TABS[number]["id"];
