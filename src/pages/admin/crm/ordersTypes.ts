@@ -49,15 +49,21 @@ export function isDuplicateRepeat(c: { id: number; duplicate_ids?: number[] | nu
 // 3 этапов — вместо полной цепочки монтажа (Договор → Предоплата → ... → Доплата).
 // Значения статуса переиспользуют обычные "new"/"install_scheduled"/"done" —
 // у них уже есть готовые понятные подписи в STATUS_LABELS.
-export const SERVICE_STATUSES = ["new", "install_scheduled", "done"] as const;
+// «call» (В работе) — обычный этап и для сервисных заявок: мастер сначала созванивается
+// с клиентом и только потом назначает выезд. Без него сервисные заявки в статусе call
+// выпадали из мини-воронки: у карточки не было кнопки следующего шага, а бирка этапа
+// не показывалась, хотя такие заявки в списке есть.
+export const SERVICE_STATUSES = ["new", "call", "install_scheduled", "done", "cancelled"] as const;
 
 export const SERVICE_NEXT_STATUS: Record<string, string> = {
-  new:               "install_scheduled",
+  new:               "call",
+  call:              "install_scheduled",
   install_scheduled: "done",
 };
 
 export const SERVICE_NEXT_LABEL: Record<string, string> = {
-  new:               "Назначить монтаж",
+  new:               "Взять в работу",
+  call:              "Назначить монтаж",
   install_scheduled: "Завершить",
 };
 
