@@ -41,6 +41,16 @@ export async function fetchTeam(token: string | null): Promise<TeamMember[]> {
   return d.members ?? [];
 }
 
+// Свежие данные одного сотрудника (включая permissions) — используется окном
+// настройки доступа при открытии вместо устаревшего снимка из ранее
+// загруженного списка team-list.
+export async function fetchMember(token: string | null, memberId: number): Promise<TeamMember> {
+  const res = await fetch(`${AUTH_URL}?action=team-get-member&member_id=${memberId}`, { headers: authHeaders(token) });
+  const d   = await res.json();
+  if (!res.ok || d.error) throw new Error(d.error || "Не удалось загрузить сотрудника");
+  return d.member;
+}
+
 export async function toggleMemberActive(
   token: string | null,
   memberId: number,

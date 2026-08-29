@@ -56,6 +56,45 @@ def handle(action, method, params, body, token, event, conn, cur):
             "team_role_id": r[10], "company_name": r[11], "active": r[12],
         } for r in rows]})
 
+    if action == "team-get-member" and method == "GET":
+        # Свежие данные ОДНОГО сотрудника (в т.ч. permissions) — используется окном
+        # настройки доступа при открытии, чтобы не редактировать устаревший снимок
+        # permissions из ранее загруженного списка team-list (который мог отстать
+        # от реальных прав в БД, если их поменяли в другом месте).
+        owner, e = get_owner_or_err()
+        if e: return e
+        owner_id, _, is_master = owner
+        member_id = params.get("member_id")
+        if not member_id:
+            return err("member_id обязателен")
+        if is_master:
+            cur.execute(f"""
+                SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
+                       u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
+                       u.team_role_id, c.name AS company_name, u.active
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
+                WHERE u.id=%s AND u.company_id IS NOT NULL AND u.removed_at IS NULL
+            """, (int(member_id),))
+        else:
+            cur.execute(f"""
+                SELECT u.id, u.email, u.name, u.phone, u.role, u.approved, u.created_at,
+                       u.permissions, (u.temp_password_plain IS NOT NULL) AS has_pending_password, u.company_id,
+                       u.team_role_id, c.name AS company_name, u.active
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.users c ON c.id = u.company_id
+                WHERE u.id=%s AND u.company_id=%s AND u.removed_at IS NULL
+            """, (int(member_id), owner_id))
+        r = cur.fetchone()
+        if not r:
+            return err("Сотрудник не найден", 404)
+        return ok({"member": {
+            "id": r[0], "email": r[1], "name": r[2], "phone": r[3],
+            "role": r[4], "approved": r[5], "created_at": str(r[6])[:19],
+            "permissions": r[7], "has_pending_password": r[8], "company_id": r[9],
+            "team_role_id": r[10], "company_name": r[11], "active": r[12],
+        }})
+
     if action == "team-toggle-active" and method == "POST":
         owner, e = get_owner_or_err()
         if e: return e

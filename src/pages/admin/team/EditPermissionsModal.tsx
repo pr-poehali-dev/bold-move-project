@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type Permissions } from "@/context/AuthContext";
-import { updatePermissions, fetchTeamRoles, type TeamMember, type TeamRole } from "./teamApi";
+import { updatePermissions, fetchTeamRoles, fetchMember, type TeamMember, type TeamRole } from "./teamApi";
 import PermissionsEditor from "./PermissionsEditor";
 import RoleSelectDropdown from "./RoleSelectDropdown";
 
@@ -12,19 +12,42 @@ interface Props {
   onSaved: (member: TeamMember) => void;
 }
 
-export default function EditPermissionsModal({ isDark, member, onClose, onSaved }: Props) {
+export default function EditPermissionsModal({ isDark, member: memberProp, onClose, onSaved }: Props) {
   const { token } = useAuth();
-  const [perms, setPerms] = useState<Permissions>(member.permissions || {});
+  // Сотрудник, переданный из списка «Команда», мог быть загружен давно — если его
+  // права поменяли где-то ещё (миграция, другой админ), окно ниже перезаписало бы
+  // их этим устаревшим снимком. Поэтому при открытии сразу перезапрашиваем свежие
+  // данные конкретного сотрудника; пока грузится — показываем спиннер и не даём
+  // редактировать/сохранять.
+  const [member, setMember] = useState<TeamMember>(memberProp);
+  const [loadingMember, setLoadingMember] = useState(true);
+  const [loadErr, setLoadErr] = useState("");
+  const [perms, setPerms] = useState<Permissions>(memberProp.permissions || {});
   const [busy,  setBusy]  = useState(false);
   const [err,   setErr]   = useState("");
   const [saved, setSaved] = useState(false);
 
   const [roles, setRoles] = useState<TeamRole[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(member.team_role_id ?? null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(memberProp.team_role_id ?? null);
 
   useEffect(() => {
     fetchTeamRoles(token).then(setRoles).catch(() => {});
   }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingMember(true); setLoadErr("");
+    fetchMember(token, memberProp.id)
+      .then(fresh => {
+        if (cancelled) return;
+        setMember(fresh);
+        setPerms(fresh.permissions || {});
+        setSelectedRoleId(fresh.team_role_id ?? null);
+      })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : "Не удалось загрузить актуальные права"); })
+      .finally(() => { if (!cancelled) setLoadingMember(false); });
+    return () => { cancelled = true; };
+  }, [token, memberProp.id]);
 
   const applyRole = (roleId: number | null) => {
     setSelectedRoleId(roleId);
@@ -76,39 +99,52 @@ export default function EditPermissionsModal({ isDark, member, onClose, onSaved 
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
-              Роль (шаблон доступа)
-            </label>
-            <RoleSelectDropdown isDark={isDark} roles={roles} selectedRoleId={selectedRoleId}
-              currentPermissions={perms}
-              onChange={applyRole}
-              onRoleCreated={r => setRoles(prev => [...prev, r])}
-              onRoleUpdated={r => {
-                setRoles(prev => prev.map(x => x.id === r.id ? r : x));
-                if (selectedRoleId === r.id) setPerms(r.permissions);
-              }} />
-            {selectedRoleId !== null && (
-              <div className="text-[10.5px] mt-1.5" style={{ color: muted }}>
-                Права привязаны к роли — при изменении роли в разделе «Роли» они обновятся автоматически здесь тоже.
+        {loadingMember ? (
+          <div className="flex-1 flex items-center justify-center py-16">
+            <div className="w-7 h-7 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : loadErr ? (
+          <div className="flex-1 px-6 py-5">
+            <div className="rounded-xl px-3.5 py-2.5 text-xs"
+              style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
+              {loadErr}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: muted }}>
+                Роль (шаблон доступа)
+              </label>
+              <RoleSelectDropdown isDark={isDark} roles={roles} selectedRoleId={selectedRoleId}
+                currentPermissions={perms}
+                onChange={applyRole}
+                onRoleCreated={r => setRoles(prev => [...prev, r])}
+                onRoleUpdated={r => {
+                  setRoles(prev => prev.map(x => x.id === r.id ? r : x));
+                  if (selectedRoleId === r.id) setPerms(r.permissions);
+                }} />
+              {selectedRoleId !== null && (
+                <div className="text-[10.5px] mt-1.5" style={{ color: muted }}>
+                  Права привязаны к роли — при изменении роли в разделе «Роли» они обновятся автоматически здесь тоже.
+                </div>
+              )}
+            </div>
+
+            <PermissionsEditor isDark={isDark} permissions={perms}
+              onChange={p => { setPerms(p); setSelectedRoleId(null); }} />
+
+            {err && (
+              <div className="rounded-xl px-3.5 py-2.5 text-xs"
+                style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
+                {err}
               </div>
             )}
           </div>
-
-          <PermissionsEditor isDark={isDark} permissions={perms}
-            onChange={p => { setPerms(p); setSelectedRoleId(null); }} />
-
-          {err && (
-            <div className="rounded-xl px-3.5 py-2.5 text-xs"
-              style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
-              {err}
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="flex gap-2 px-6 py-4 border-t" style={{ borderColor: border }}>
-          <button onClick={save} disabled={busy}
+          <button onClick={save} disabled={busy || loadingMember || !!loadErr}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ background: saved ? "#10b981" : "#7c3aed" }}>
             {busy
