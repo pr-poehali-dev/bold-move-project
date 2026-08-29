@@ -372,6 +372,19 @@ export function allowedStatusesOf(user: AuthUser | null): string[] | null {
   return Array.isArray(list) && list.length > 0 ? list : null;
 }
 
+/**
+ * Список ID кастомных подэтапов (order_substatuses), разрешённых пользователю.
+ * null — ограничений нет (видны все подэтапы, как и раньше). Работает ТОЛЬКО как
+ * доп.фильтр поверх allowedStatusesOf — сам родительский статус должен быть разрешён,
+ * чтобы подэтап вообще имел шанс показаться (см. проверку в PermissionsEditor).
+ */
+export function allowedSubstatusesOf(user: AuthUser | null): string[] | null {
+  if (!user || user.is_master) return null;
+  if (user.role === "company" || user.role === "installer") return null;
+  const list = user.permissions?.allowed_substatuses;
+  return Array.isArray(list) && list.length > 0 ? list : null;
+}
+
 export interface AuthUser {
   id: number;
   email: string;

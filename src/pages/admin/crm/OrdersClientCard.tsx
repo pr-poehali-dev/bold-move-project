@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, SERVICE_NEXT_STATUS, SERVICE_NEXT_LABEL } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+import { useAuth, allowedSubstatusesOf } from "@/context/AuthContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 import { SNAP_WIDTH, InstallProgress } from "./ordersClientRowShared";
 import { useSwipeGesture } from "./useSwipeGesture";
@@ -46,6 +47,8 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
   const isAvitoSrc = (c.source || "").trim().toLowerCase() === "авито" || (c.source || "").trim().toLowerCase() === "avito";
   const showSrcBadge = src && !(isAvitoSrc && c.avito_chat_url);
   const allSubs = useSubstatuses();
+  const { user } = useAuth();
+  const allowedSubs = allowedSubstatusesOf(user);
   const [stepping, setStepping]             = useState(false);
   const localSubStatus = c.sub_status ?? null;
 
@@ -58,8 +61,12 @@ export function OrdersClientCard({ c, allClients, onClick, onNextStep, onSaveSub
   const tab         = !c.is_service ? ORDERS_TABS.find(tb => tb.statuses.includes(c.status)) : undefined;
   // Активный подэтап (напр. «Новый в работе») — показываем его в углу вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
-  // Все варианты подстатуса для текущего этапа — для выпадающего списка смены
-  const subsForTab  = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
+  // Все варианты подстатуса для текущего этапа — для выпадающего списка смены.
+  // Сотруднику с ограничением по подэтапам (allowed_substatuses) показываем
+  // только разрешённые, чтобы недоступный подэтап нельзя было выбрать вручную.
+  const subsForTab  = tab
+    ? allSubs.filter(s => s.parent_status === tab.id && (!allowedSubs || allowedSubs.includes(String(s.id))))
+    : [];
   const isInstall   = tab?.id === "installs";
   const isCancelled = c.status === "cancelled";
   const isDone      = c.status === "done";

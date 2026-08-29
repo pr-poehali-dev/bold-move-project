@@ -206,6 +206,12 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   const toggle = (key: keyof Permissions) =>
     onChange({ ...permissions, [key]: !permissions[key] });
 
+  // Для dates_view_*/dates_edit_* переключаем ОТОБРАЖАЕМОЕ состояние (см. renderRow):
+  // отсутствие ключа трактуется как "включено", поэтому обычный !permissions[key]
+  // тут не сработает — нужно оттолкнуться от того же "эффективного" значения.
+  const toggleDateKey = (key: keyof Permissions) =>
+    onChange({ ...permissions, [key]: permissions[key] === false });
+
   const allChecked = ALL_PERM_KEYS.every(k => permissions[k] === true);
 
   const toggleAll = () => {
@@ -214,9 +220,16 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
     onChange({ ...permissions, ...patch });
   };
 
+  // Эффективное состояние права с учётом особой семантики dates_view_*/dates_edit_*
+  // (см. renderRow) — отсутствие ключа там означает "включено", а не "выключено".
+  const isEffectiveChecked = (key: keyof Permissions) =>
+    key.startsWith("dates_view_") || key.startsWith("dates_edit_")
+      ? permissions[key] !== false
+      : !!permissions[key];
+
   const sectionAllChecked = (section: PermSection) =>
     flattenRows(section.rows).every(r =>
-      (!r.view || permissions[r.view]) && (!r.edit || permissions[r.edit])
+      (!r.view || isEffectiveChecked(r.view)) && (!r.edit || isEffectiveChecked(r.edit))
     );
 
   const toggleSection = (section: PermSection) => {
@@ -232,8 +245,8 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   // Подсчёт активных прав в секции для бейджа (считает и вложенные подпункты)
   const sectionActiveCount = (section: PermSection) =>
     flattenRows(section.rows).reduce((n, r) => {
-      if (r.view && permissions[r.view]) n++;
-      if (r.edit && permissions[r.edit]) n++;
+      if (r.view && isEffectiveChecked(r.view)) n++;
+      if (r.edit && isEffectiveChecked(r.edit)) n++;
       return n;
     }, 0);
 
@@ -282,11 +295,21 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   const allowedSubstatuses = permissions.allowed_substatuses ?? [];
   const noSubRestriction = allowedSubstatuses.length === 0;
   const isSubChecked = (id: number) => noSubRestriction || allowedSubstatuses.includes(String(id));
-  const toggleSub = (id: number) => {
+  // groupStatuses — статусы родительской вкладки подэтапа (например ["measure","measured"]
+  // для «Замеры»). Подэтап показывается в карточке, только если вкладка вообще открыта
+  // сотруднику — поэтому при ВКЛЮЧЕНИИ подэтапа, если ни один статус группы ещё не
+  // разрешён, разрешаем их все разом, иначе включённый подэтап так и останется невидимым.
+  const toggleSub = (id: number, groupStatuses: string[]) => {
     const base = noSubRestriction ? allSubstatusIds : allowedSubstatuses;
     const key = String(id);
-    const next = base.includes(key) ? base.filter(s => s !== key) : [...base, key];
-    onChange({ ...permissions, allowed_substatuses: next });
+    const willEnable = !base.includes(key);
+    const nextSub = willEnable ? [...base, key] : base.filter(s => s !== key);
+    const patch: Permissions = { ...permissions, allowed_substatuses: nextSub };
+    if (willEnable && !groupStatuses.some(isStatusChecked)) {
+      const baseSt = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
+      patch.allowed_statuses = [...new Set([...baseSt, ...groupStatuses])];
+    }
+    onChange(patch);
   };
 
   // Группа считается включённой целиком, если включены ВСЕ её статусы и подэтапы —
@@ -638,7 +661,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                               <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
                               <div className="text-[10px] truncate" style={{ color: textSub }}>Свой подэтап этапа «{grp.label}»</div>
                             </div>
-                            <Toggle checked={subChecked} color={sub.color} isDark={isDark} onChange={() => toggleSub(sub.id)} title="Доступен сотруднику" />
+                            <Toggle checked={subChecked} color={sub.color} isDark={isDark} onChange={() => toggleSub(sub.id, grp.statuses)} title="Доступен сотруднику" />
                           </div>
                         );
                       })}
@@ -683,8 +706,15 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
 
   // ── Рендер одной строки прав + её вложенных подпунктов (рекурсивно) ──────
   function renderRow(row: PermRow, section: PermSection, depth: number) {
-    const vChecked = row.view ? !!permissions[row.view] : undefined;
-    const eChecked = row.edit ? !!permissions[row.edit] : undefined;
+    // 4 вложенных права дат (dates_view_*/dates_edit_*) имеют особую семантику
+    // на бэкенде и в карточке клиента: ОТСУТСТВИЕ ключа = разрешено (обратная
+    // совместимость для уже заведённых сотрудников), и только явное false — запрет.
+    // Обычные права по умолчанию запрещены (отсутствие ключа = false). Переключатель
+    // должен показывать РЕАЛЬНОЕ состояние доступа, иначе владелец видит "выключено",
+    // хотя поле по факту показывается в карточке.
+    const isDateSubRow = row.view?.startsWith("dates_view_") || row.view?.startsWith("dates_edit_");
+    const vChecked = row.view ? (isDateSubRow ? permissions[row.view] !== false : !!permissions[row.view]) : undefined;
+    const eChecked = row.edit ? (row.edit.startsWith("dates_edit_") ? permissions[row.edit] !== false : !!permissions[row.edit]) : undefined;
     const active   = vChecked || eChecked;
     const hasChildren = !!row.children?.length;
     const isOpen = openGroups.has(row.label);
@@ -721,12 +751,12 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
           </div>
           {row.view
             ? <Toggle checked={vChecked!} color={row.color} isDark={isDark}
-                onChange={() => hasChildren ? toggleParentCascade(row, "view") : toggle(row.view!)}
+                onChange={() => hasChildren ? toggleParentCascade(row, "view") : (isDateSubRow ? toggleDateKey(row.view!) : toggle(row.view!))}
                 title="Видимость" />
             : <div className="w-8" />}
           {row.edit
             ? <Toggle checked={eChecked!} color={row.color} isDark={isDark}
-                onChange={() => hasChildren ? toggleParentCascade(row, "edit") : toggle(row.edit!)}
+                onChange={() => hasChildren ? toggleParentCascade(row, "edit") : (row.edit!.startsWith("dates_edit_") ? toggleDateKey(row.edit!) : toggle(row.edit!))}
                 title="Редактирование" />
             : showEditCol ? <div className="w-8" /> : null}
         </div>

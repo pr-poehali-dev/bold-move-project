@@ -5,6 +5,7 @@ import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL } from "./kanbanTypes";
 import { ORDERS_TABS } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+import { useAuth, allowedSubstatusesOf } from "@/context/AuthContext";
 import { useOrderSourcesCtx, sourceDisplay } from "./orderSourcesContext";
 import { SubstatusPicker } from "./SubstatusPicker";
 
@@ -48,6 +49,8 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSav
   const sources = useOrderSourcesCtx();
   const src = sourceDisplay(client.source, sources);
   const allSubs = useSubstatuses();
+  const { user } = useAuth();
+  const allowedSubs = allowedSubstatusesOf(user);
   const [stepping, setStepping] = useState(false);
   const color = colColor || STATUS_COLORS[client.status] || "#8b5cf6";
   const next = NEXT_STATUS[client.status];
@@ -57,7 +60,11 @@ export default function KanbanCard({ client, colColor, onOpen, onNextStep, onSav
   const isInstall = tab?.id === "installs";
   const isDone    = client.status === "done";
   const activeSub  = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === client.sub_status) : undefined;
-  const subsForTab = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
+  // Сотруднику с ограничением по подэтапам (allowed_substatuses) показываем в
+  // выпадающем списке только разрешённые.
+  const subsForTab = tab
+    ? allSubs.filter(s => s.parent_status === tab.id && (!allowedSubs || allowedSubs.includes(String(s.id))))
+    : [];
 
   const contractSum = Number(client.contract_sum) || 0;
   const prepayment  = Number(client.prepayment) || 0;

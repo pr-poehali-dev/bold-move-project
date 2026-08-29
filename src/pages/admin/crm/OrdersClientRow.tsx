@@ -3,6 +3,7 @@ import { Client, STATUS_COLORS, getClientOrders } from "./crmApi";
 import { useTheme } from "./themeContext";
 import { NEXT_STATUS, NEXT_LABEL, ORDERS_TABS, SERVICE_NEXT_STATUS, SERVICE_NEXT_LABEL } from "./ordersTypes";
 import { useSubstatuses } from "./substatusContext";
+import { useAuth, allowedSubstatusesOf } from "@/context/AuthContext";
 import { OrdersClientRowMobile } from "./OrdersClientRowMobile";
 import { OrdersClientRowDesktop } from "./OrdersClientRowDesktop";
 import { useSwipeGesture } from "./useSwipeGesture";
@@ -24,6 +25,8 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubS
   void onSaveConfirmed;
   const t = useTheme();
   const allSubs = useSubstatuses();
+  const { user } = useAuth();
+  const allowedSubs = allowedSubstatusesOf(user);
   const [stepping, setStepping] = useState(false);
   const localSubStatus = c.sub_status ?? null;
 
@@ -37,7 +40,12 @@ export function OrdersClientRow({ c, allClients, onClick, onNextStep, onSaveSubS
   const tab         = !c.is_service ? ORDERS_TABS.find(tb => tb.statuses.includes(c.status)) : undefined;
   // Активный подэтап — показываем его вместо общего статуса
   const activeSub   = tab ? allSubs.find(s => s.parent_status === tab.id && String(s.id) === localSubStatus) : undefined;
-  const subsForTab  = tab ? allSubs.filter(s => s.parent_status === tab.id) : [];
+  // Варианты для выпадающего списка смены — сотруднику с ограничением по подэтапам
+  // (allowed_substatuses) показываем только разрешённые, чтобы он не мог выбрать
+  // недоступный ему подэтап через этот список.
+  const subsForTab  = tab
+    ? allSubs.filter(s => s.parent_status === tab.id && (!allowedSubs || allowedSubs.includes(String(s.id))))
+    : [];
   const isInstall   = tab?.id === "installs";
   const isDone      = c.status === "done";
   const isCancelled = c.status === "cancelled";
