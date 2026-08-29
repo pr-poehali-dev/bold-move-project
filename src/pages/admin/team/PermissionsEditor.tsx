@@ -120,8 +120,8 @@ export const ALL_PERM_KEYS: BoolPermKey[] = PERM_TREE.flatMap(s =>
 );
 
 // ── Этапы воронки заказов (жёсткий список — совпадает с LEAD_STATUSES/ORDER_STATUSES) ──
-// Кастомные подстатусы, которые владелец добавляет внутри этих этапов, наследуют то же
-// ограничение автоматически — они всегда привязаны к одному из перечисленных ниже статусов.
+// Плоский список нужен для "выдать/снять все" и для проверки/переключения
+// отдельных статусов внутри группы (см. PIPELINE_GROUPS ниже).
 export const PIPELINE_STATUSES: { id: string; label: string; color: string }[] = [
   { id: "new",               label: "Новая заявка",      color: "#3b82f6" },
   { id: "call",               label: "В работе",          color: "#a78bfa" },
@@ -134,6 +134,22 @@ export const PIPELINE_STATUSES: { id: string; label: string; color: string }[] =
   { id: "extra_paid",         label: "Доплата получена",  color: "#84cc16" },
   { id: "done",                label: "Завершён",          color: "#10b981" },
   { id: "cancelled",          label: "Отменён",           color: "#ef4444" },
+];
+
+// ── Группы вкладок воронки заказов — доступ выдаётся ЦЕЛОЙ вкладкой, а не
+// отдельным статусом внутри неё. tabId совпадает с id вкладки в ORDERS_TABS и
+// с order_substatuses.parent_status — это позволяет корректно подтянуть кастомные
+// подэтапы компании (например «Дата замера не назначена» внутри «Замеры»).
+// «Замер назначен» и «Замер выполнен» — не два отдельных этапа, а два статуса
+// ОДНОЙ вкладки «Замеры»: именно поэтому раньше их можно было включить порознь,
+// хотя по факту в интерфейсе (вкладка «Заказы» → «Замеры») сотрудник либо видит
+// весь этот раздел, либо не видит вовсе.
+export const PIPELINE_GROUPS: { tabId: string; label: string; icon: string; color: string; statuses: string[] }[] = [
+  { tabId: "leads",    label: "Заявки",    icon: "Inbox",        color: "#8b5cf6", statuses: ["new"] },
+  { tabId: "working",  label: "В работе",  icon: "Zap",          color: "#a78bfa", statuses: ["call"] },
+  { tabId: "measures", label: "Замеры",    icon: "Ruler",        color: "#f59e0b", statuses: ["measure", "measured"] },
+  { tabId: "installs", label: "Монтажи",   icon: "Wrench",       color: "#f97316", statuses: ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"] },
+  { tabId: "done",     label: "Финальный", icon: "CheckCircle2", color: "#10b981", statuses: ["done", "cancelled"] },
 ];
 
 // ── Компонент ──────────────────────────────────────────────────────────────
@@ -247,15 +263,20 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   };
 
   // ── Логика вкладки "Этапы" ────────────────────────────────────────────────
-  // Пустой массив / отсутствие ключа = ограничений нет (доступны все этапы)
+  // Пустой массив / отсутствие ключа = ограничений нет (доступны все этапы).
+  // Доступ выдаётся целой группой (вкладкой воронки) — группа считается включённой,
+  // если включены ВСЕ её статусы разом (частичное включение недостижимо через UI,
+  // но на всякий случай — если данные пришли в таком виде — трактуем как выключено).
   const allowedStatuses = permissions.allowed_statuses ?? [];
   const noStatusRestriction = allowedStatuses.length === 0;
-  const isStatusChecked = (id: string) => noStatusRestriction || allowedStatuses.includes(id);
+  const isGroupChecked = (statuses: string[]) =>
+    noStatusRestriction || statuses.every(s => allowedStatuses.includes(s));
 
-  const toggleStatus = (id: string) => {
-    // Если сейчас "ограничений нет" — стартуем с полного списка и убираем нажатый
+  const toggleGroupStatuses = (statuses: string[]) => {
+    // Если сейчас "ограничений нет" — стартуем с полного списка и убираем группу целиком
     const base = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
-    const next = base.includes(id) ? base.filter(s => s !== id) : [...base, id];
+    const checked = statuses.every(s => base.includes(s));
+    const next = checked ? base.filter(s => !statuses.includes(s)) : [...new Set([...base, ...statuses])];
     onChange({ ...permissions, allowed_statuses: next });
   };
 
@@ -484,25 +505,33 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
             недоступный этап — он пропадает из списка сотрудника.
             <br /><br />
             Именно отсюда управляются вкладки внутри раздела «Заказы»: «Заявки» — это этап «Новая заявка»,
-            «Замеры» — «Замер назначен» и «Замер выполнен», «Монтажи» — от «Договор подписан» до «Доплата получена».
+            «Замеры» — все подэтапы замера («Дата замера не назначена», «Замер назначен», «Замер выполнен»
+            и свои добавленные), «Монтажи» — от «Договор подписан» до «Доплата получена». Доступ выдаётся
+            сразу на весь этап целиком — подэтапы внутри него всегда идут вместе.
           </div>
 
           <div className="flex flex-col gap-1">
-            {PIPELINE_STATUSES.map(st => {
-              const checked = isStatusChecked(st.id);
-              const subs = substatuses.filter(s => s.parent_status === st.id);
-              const hasSubs = subs.length > 0;
-              const isOpen = openStatusGroups.has(st.id);
+            {PIPELINE_GROUPS.map(grp => {
+              const checked = isGroupChecked(grp.statuses);
+              // Раскрывающийся список: сами статусы группы, если их больше одного
+              // ("Замер назначен"/"Замер выполнен" и т.п.), плюс кастомные подэтапы
+              // компании, привязанные к этой же вкладке воронки.
+              const innerStatuses = grp.statuses.length > 1
+                ? grp.statuses.map(id => PIPELINE_STATUSES.find(s => s.id === id)).filter((s): s is typeof PIPELINE_STATUSES[number] => !!s)
+                : [];
+              const subs = substatuses.filter(s => s.parent_status === grp.tabId);
+              const hasInner = innerStatuses.length > 0 || subs.length > 0;
+              const isOpen = openStatusGroups.has(grp.tabId);
               return (
-                <div key={st.id} className="flex flex-col gap-1">
+                <div key={grp.tabId} className="flex flex-col gap-1">
                   <div
                     className="flex items-center gap-2 px-3 py-2 rounded-xl"
                     style={{
-                      background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                      border: `1px solid ${checked ? `${st.color}30` : border}`,
+                      background: checked ? `${grp.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                      border: `1px solid ${checked ? `${grp.color}30` : border}`,
                     }}>
-                    {hasSubs ? (
-                      <button onClick={() => toggleStatusGroup(st.id)}
+                    {hasInner ? (
+                      <button onClick={() => toggleStatusGroup(grp.tabId)}
                         className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
                         style={{ color: muted }}
                         title={isOpen ? "Свернуть" : "Развернуть"}>
@@ -510,21 +539,40 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                       </button>
                     ) : null}
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${st.color}18` }}>
-                      <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                      style={{ background: `${grp.color}18` }}>
+                      <Icon name={grp.icon} size={13} style={{ color: grp.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
-                      {hasSubs && (
+                      <div className="text-xs font-semibold truncate" style={{ color: text }}>{grp.label}</div>
+                      {hasInner && (
                         <div className="text-[10px] truncate" style={{ color: textSub }}>
-                          {subs.length} свой{subs.length === 1 ? "й этап" : subs.length < 5 ? "х этапа" : "х этапов"} внутри
+                          {innerStatuses.length + subs.length} подэтап{innerStatuses.length + subs.length === 1 ? "" : innerStatuses.length + subs.length < 5 ? "а" : "ов"} внутри
                         </div>
                       )}
                     </div>
-                    <Toggle checked={checked} color={st.color} isDark={isDark} onChange={() => toggleStatus(st.id)} title="Доступен сотруднику" />
+                    <Toggle checked={checked} color={grp.color} isDark={isDark} onChange={() => toggleGroupStatuses(grp.statuses)} title="Доступен сотруднику" />
                   </div>
-                  {hasSubs && isOpen && (
+                  {hasInner && isOpen && (
                     <div className="flex flex-col gap-1">
+                      {innerStatuses.map(st => (
+                        <div key={st.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                          style={{
+                            marginLeft: 18,
+                            background: checked ? `${st.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                            border: `1px solid ${checked ? `${st.color}30` : border}`,
+                          }}>
+                          <div className="w-5 flex-shrink-0" />
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: `${st.color}18` }}>
+                            <Icon name="GitBranch" size={13} style={{ color: st.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold truncate" style={{ color: text }}>{st.label}</div>
+                            <div className="text-[10px] truncate" style={{ color: textSub }}>Наследует доступ этапа «{grp.label}»</div>
+                          </div>
+                        </div>
+                      ))}
                       {subs.map(sub => (
                         <div key={sub.id}
                           className="flex items-center gap-2 px-3 py-2 rounded-xl"
@@ -540,7 +588,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
-                            <div className="text-[10px] truncate" style={{ color: textSub }}>Наследует доступ этапа «{st.label}»</div>
+                            <div className="text-[10px] truncate" style={{ color: textSub }}>Свой подэтап · наследует доступ этапа «{grp.label}»</div>
                           </div>
                         </div>
                       ))}
