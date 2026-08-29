@@ -41,9 +41,13 @@ const STAGE_DETAIL: Record<string, string[]> = {
   "Монтаж":   ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid"],
 };
 
-function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStatuses }: {
+function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, onSaveStatusAndSub, allowedStatuses }: {
   status: string; subStatus: string | null;
   onSave: (s: string) => void; onSaveSubStatus: (v: string | null) => void;
+  /** Сохранить системный статус и одновременно снять подэтап — одним запросом.
+      Нужно, чтобы на этапе была активна ровно одна кнопка: выбирая «Замер назначен»,
+      пользователь снимает «Дата замера не назначена», а не получает оба сразу. */
+  onSaveStatusAndSub: (s: string, sub: string | null) => void;
   /** null — ограничений нет (видны и доступны все этапы, как раньше) */
   allowedStatuses: string[] | null;
 }) {
@@ -146,8 +150,11 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStat
         if (detailStatuses.length === 0 && subs.length === 0) return null;
         return (
           <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-            {/* Кастомные подэтапы (те же, что на карточке): «Дата замера не назначена», «Новый в работе» и т.п.
-                Идут первыми — «Дата замера не назначена» должна быть самым первым вариантом на этапе «Замер». */}
+            {/* Кнопки этапа работают как ОДИН переключатель: подэтапы («Дата замера не
+                назначена») и системные статусы («Замер назначен»/«Замер выполнен») —
+                взаимоисключающие варианты, активен всегда ровно один. Пока подэтап
+                выбран, системный статус не подсвечиваем, хотя формально он стоит:
+                иначе на экране горели бы сразу две кнопки. */}
             {subs.map(s => {
               const active = subStatus === String(s.id);
               return (
@@ -161,11 +168,13 @@ function DesktopFunnel({ status, subStatus, onSave, onSaveSubStatus, allowedStat
                 </button>
               );
             })}
-            {/* Системные статусы этапа (Замер/Монтаж) */}
+            {/* Системные статусы этапа (Замер/Монтаж). Клик снимает выбранный подэтап
+                тем же запросом — иначе «Дата замера не назначена» осталась бы висеть
+                вместе с «Замер назначен». */}
             {detailStatuses.map(s => (
-              <button key={s} onClick={() => { onSave(s); setExpandedStage(null); }}
+              <button key={s} onClick={() => { onSaveStatusAndSub(s, null); setExpandedStage(null); }}
                 className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition border"
-                style={status === s
+                style={status === s && !subStatus
                   ? { background: STATUS_COLORS[s] + "25", color: STATUS_COLORS[s], borderColor: STATUS_COLORS[s] + "50" }
                   : { borderColor: t.border2, background: t.surface, color: "#fff" }}>
                 {STATUS_LABELS[s]}
@@ -270,9 +279,12 @@ function MobileDrum({ status, onSave, allowedStatuses }: {
 }
 
 // ── Экспортируемый компонент ──────────────────────────────────────────────
-export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStatus, readOnly = false, allowedStatuses = null }: {
+export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStatus, onSaveStatusAndSub, readOnly = false, allowedStatuses = null }: {
   status: string; subStatus?: string | null;
   onSave: (s: string) => void; onSaveSubStatus?: (v: string | null) => void;
+  /** Сменить системный статус и одновременно снять подэтап (одним запросом).
+      Если не передан — деградируем к двум отдельным вызовам. */
+  onSaveStatusAndSub?: (s: string, sub: string | null) => void;
   readOnly?: boolean;
   /** Этапы, разрешённые сотруднику (null = ограничений нет — как было раньше) */
   allowedStatuses?: string[] | null;
@@ -295,7 +307,9 @@ export function StatusSelector({ status, subStatus = null, onSave, onSaveSubStat
       {/* Десктоп: воронка с кнопками */}
       <div className="hidden sm:block">
         <DesktopFunnel status={status} subStatus={subStatus} onSave={onSave}
-          onSaveSubStatus={onSaveSubStatus ?? (() => {})} allowedStatuses={allowedStatuses} />
+          onSaveSubStatus={onSaveSubStatus ?? (() => {})}
+          onSaveStatusAndSub={onSaveStatusAndSub ?? ((s, sub) => { onSave(s); onSaveSubStatus?.(sub); })}
+          allowedStatuses={allowedStatuses} />
       </div>
       {/* Мобиле: барабан с подтверждением */}
       <div className="sm:hidden">

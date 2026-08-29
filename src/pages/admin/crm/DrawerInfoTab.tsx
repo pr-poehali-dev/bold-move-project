@@ -353,6 +353,12 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
               saveWithLog({ status: s }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
             }}
             onSaveSubStatus={v => save({ sub_status: v })}
+            onSaveStatusAndSub={(s, sub) => {
+              // Одним запросом: иначе сервер, получив только status='measure' без
+              // sub_status, снова подставил бы подэтап «Дата замера не назначена»,
+              // и на этапе опять горели бы сразу две кнопки.
+              saveWithLog({ status: s, sub_status: sub }, `Статус → ${STATUS_LABELS[s] || s}`, "GitBranch", "#8b5cf6");
+            }}
           />
         </Section>
       )}
