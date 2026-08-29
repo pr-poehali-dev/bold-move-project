@@ -6,10 +6,10 @@ import { useSubstatuses } from "@/pages/admin/crm/useSubstatuses";
 // ── Типы ──────────────────────────────────────────────────────────────────
 
 // Ключи прав с булевым значением. Исключаем поля-списки и поле-выбор
-// (allowed_statuses, allowed_substatuses, calendar_event_types — массивы;
+// (allowed_tabs, allowed_statuses, allowed_substatuses, calendar_event_types — массивы;
 // orders_scope — выбор из вариантов): они настраиваются отдельными вкладками, а не галочкой.
 type BoolPermKey = Exclude<keyof Permissions,
-  "allowed_statuses" | "allowed_substatuses" | "calendar_event_types" | "orders_scope">;
+  "allowed_tabs" | "allowed_statuses" | "allowed_substatuses" | "calendar_event_types" | "orders_scope">;
 
 // Типы событий календаря — совпадают с event_type в базе.
 // Чтобы добавить новый тип, достаточно дописать строку сюда.
@@ -276,10 +276,21 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   };
 
   // ── Логика вкладки "Этапы" ────────────────────────────────────────────────
-  // Пустой массив / отсутствие ключа = ограничений нет (доступны все статусы/подэтапы).
-  // Каждый статус и каждый кастомный подэтап включается ОТДЕЛЬНО — так владелец
-  // может, например, разрешить сотруднику видеть «Замер назначен», но скрыть
-  // «Замер выполнен», или открыть только конкретный кастомный подэтап.
+  // Три НЕЗАВИСИМЫХ уровня, каждый — свой массив в permissions:
+  //  1) allowed_tabs        — видна ли сама вкладка воронки (leads/working/measures/...)
+  //  2) allowed_statuses    — какие статусы внутри разрешены (даже если вкладка не видна)
+  //  3) allowed_substatuses — какие кастомные подэтапы разрешены
+  // Уровни НЕ тянут друг друга: можно открыть вкладку «Замеры», но не дать ни одного
+  // статуса/подэтапа внутри — сотрудник увидит вкладку пустой (0 заявок), и наоборот.
+  const allowedTabs = permissions.allowed_tabs ?? [];
+  const noTabRestriction = allowedTabs.length === 0;
+  const isTabChecked = (tabId: string) => noTabRestriction || allowedTabs.includes(tabId);
+  const toggleTab = (tabId: string) => {
+    const base = noTabRestriction ? PIPELINE_GROUPS.map(g => g.tabId) : allowedTabs;
+    const next = base.includes(tabId) ? base.filter(t => t !== tabId) : [...base, tabId];
+    onChange({ ...permissions, allowed_tabs: next });
+  };
+
   const allowedStatuses = permissions.allowed_statuses ?? [];
   const noStatusRestriction = allowedStatuses.length === 0;
   const isStatusChecked = (id: string) => noStatusRestriction || allowedStatuses.includes(id);
@@ -295,50 +306,21 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
   const allowedSubstatuses = permissions.allowed_substatuses ?? [];
   const noSubRestriction = allowedSubstatuses.length === 0;
   const isSubChecked = (id: number) => noSubRestriction || allowedSubstatuses.includes(String(id));
-  // groupStatuses — статусы родительской вкладки подэтапа (например ["measure","measured"]
-  // для «Замеры»). Подэтап показывается в карточке, только если вкладка вообще открыта
-  // сотруднику — поэтому при ВКЛЮЧЕНИИ подэтапа, если ни один статус группы ещё не
-  // разрешён, разрешаем их все разом, иначе включённый подэтап так и останется невидимым.
-  const toggleSub = (id: number, groupStatuses: string[]) => {
+  const toggleSub = (id: number) => {
     const base = noSubRestriction ? allSubstatusIds : allowedSubstatuses;
     const key = String(id);
-    const willEnable = !base.includes(key);
-    const nextSub = willEnable ? [...base, key] : base.filter(s => s !== key);
-    const patch: Permissions = { ...permissions, allowed_substatuses: nextSub };
-    if (willEnable && !groupStatuses.some(isStatusChecked)) {
-      const baseSt = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
-      patch.allowed_statuses = [...new Set([...baseSt, ...groupStatuses])];
-    }
-    onChange(patch);
+    const next = base.includes(key) ? base.filter(s => s !== key) : [...base, key];
+    onChange({ ...permissions, allowed_substatuses: next });
   };
 
-  // Группа считается включённой целиком, если включены ВСЕ её статусы и подэтапы —
-  // используется только для отображения общего переключателя-заголовка группы и
-  // для кнопки "Выдать все/Снять все" по группе разом (быстрое действие).
-  const isGroupChecked = (statuses: string[], subIds: number[]) =>
-    statuses.every(isStatusChecked) && subIds.every(isSubChecked);
-
-  const toggleGroupAll = (statuses: string[], subIds: number[]) => {
-    const willCheck = !isGroupChecked(statuses, subIds);
-    const baseSt = noStatusRestriction ? PIPELINE_STATUSES.map(s => s.id) : allowedStatuses;
-    const nextSt = willCheck
-      ? [...new Set([...baseSt, ...statuses])]
-      : baseSt.filter(s => !statuses.includes(s));
-    const baseSub = noSubRestriction ? allSubstatusIds : allowedSubstatuses;
-    const subKeys = subIds.map(String);
-    const nextSub = willCheck
-      ? [...new Set([...baseSub, ...subKeys])]
-      : baseSub.filter(s => !subKeys.includes(s));
-    onChange({ ...permissions, allowed_statuses: nextSt, allowed_substatuses: nextSub });
-  };
-
-  const allStatusesChecked = (noStatusRestriction || allowedStatuses.length === PIPELINE_STATUSES.length)
-    && (noSubRestriction || allowedSubstatuses.length === substatuses.length);
+  // "Выдать все / Снять все" по всем трём уровням разом (быстрое действие сверху вкладки).
+  const allStatusesChecked = noTabRestriction && noStatusRestriction && noSubRestriction;
   const toggleAllStatuses = () => {
     onChange({
       ...permissions,
-      allowed_statuses: allStatusesChecked ? [] : PIPELINE_STATUSES.map(s => s.id),
-      allowed_substatuses: allStatusesChecked ? [] : allSubstatusIds,
+      allowed_tabs: allStatusesChecked ? PIPELINE_GROUPS.map(g => g.tabId) : [],
+      allowed_statuses: allStatusesChecked ? PIPELINE_STATUSES.map(s => s.id) : [],
+      allowed_substatuses: allStatusesChecked ? allSubstatusIds : [],
     });
   };
 
@@ -558,29 +540,28 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
 
           <div className="rounded-xl px-3 py-2.5 text-[11px]"
             style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", color: isDark ? "#c4b5fd" : "#6d28d9" }}>
-            Сотрудник увидит и сможет вести заказы только на отмеченных этапах и подэтапах. Как только
-            заказ переходит на недоступный этап/подэтап — он пропадает из списка сотрудника.
+            Переключатель у названия вкладки («Замеры», «Монтажи» и т.д.) управляет ТОЛЬКО тем,
+            видна ли эта вкладка сотруднику вообще — не трогает то, что внутри.
             <br /><br />
-            Именно отсюда управляются вкладки внутри раздела «Заказы»: «Заявки» — это этап «Новая заявка»,
-            «Замеры» — все подэтапы замера («Дата замера не назначена», «Замер назначен», «Замер выполнен»
-            и свои добавленные), «Монтажи» — от «Договор подписан» до «Доплата получена». Каждый статус и
-            каждый свой подэтап включается отдельно — переключатель группы просто выдаёт/снимает всё сразу.
+            Статусы и свои подэтапы внутри вкладки включаются отдельно, каждый сам по себе. Можно
+            открыть вкладку, но не дать ни одного статуса внутри — сотрудник увидит вкладку пустой.
+            И наоборот — статус можно разрешить, даже если сама вкладка скрыта.
           </div>
 
           <div className="flex flex-col gap-1">
             {PIPELINE_GROUPS.map(grp => {
               // Статусы группы — если их больше одного (например "Замер назначен" /
-              // "Замер выполнен"), каждый переключается отдельно. Если статус один
-              // ("Новая заявка", "В работе") — отдельной строки под ним не показываем,
-              // переключатель заголовка управляет им напрямую.
-              const innerStatuses = grp.statuses.length > 1
-                ? grp.statuses.map(id => PIPELINE_STATUSES.find(s => s.id === id)).filter((s): s is typeof PIPELINE_STATUSES[number] => !!s)
-                : [];
+              // "Замер выполнен"), каждый переключается отдельно и всегда своей строкой —
+              // даже если статус один ("Новая заявка", "В работе"), чтобы не путать с
+              // переключателем заголовка: тот управляет ТОЛЬКО видимостью вкладки.
+              const innerStatuses = grp.statuses
+                .map(id => PIPELINE_STATUSES.find(s => s.id === id))
+                .filter((s): s is typeof PIPELINE_STATUSES[number] => !!s);
               const subs = substatuses.filter(s => s.parent_status === grp.tabId);
-              const subIds = subs.map(s => s.id);
-              const checked = grp.statuses.length === 1
-                ? isStatusChecked(grp.statuses[0]) && subIds.every(isSubChecked)
-                : isGroupChecked(grp.statuses, subIds);
+              // Заголовок группы = ВИДИМОСТЬ вкладки (allowed_tabs), независимо от того,
+              // что разрешено внутри. Можно включить вкладку и не дать ни одного статуса —
+              // сотрудник увидит вкладку пустой, а не пропавшей.
+              const tabChecked = isTabChecked(grp.tabId);
               const hasInner = innerStatuses.length > 0 || subs.length > 0;
               const isOpen = openStatusGroups.has(grp.tabId);
               return (
@@ -588,8 +569,8 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                   <div
                     className="flex items-center gap-2 px-3 py-2 rounded-xl"
                     style={{
-                      background: checked ? `${grp.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
-                      border: `1px solid ${checked ? `${grp.color}30` : border}`,
+                      background: tabChecked ? `${grp.color}0e` : (isDark ? "rgba(255,255,255,0.025)" : "#f9fafb"),
+                      border: `1px solid ${tabChecked ? `${grp.color}30` : border}`,
                     }}>
                     {hasInner ? (
                       <button onClick={() => toggleStatusGroup(grp.tabId)}
@@ -611,11 +592,9 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                         </div>
                       )}
                     </div>
-                    <Toggle checked={checked} color={grp.color} isDark={isDark}
-                      onChange={() => grp.statuses.length === 1
-                        ? toggleStatus(grp.statuses[0])
-                        : toggleGroupAll(grp.statuses, subIds)}
-                      title="Доступен сотруднику (весь этап)" />
+                    <Toggle checked={tabChecked} color={grp.color} isDark={isDark}
+                      onChange={() => toggleTab(grp.tabId)}
+                      title="Вкладка видна сотруднику (статусы внутри настраиваются отдельно)" />
                   </div>
                   {hasInner && isOpen && (
                     <div className="flex flex-col gap-1">
@@ -661,7 +640,7 @@ export default function PermissionsEditor({ isDark, permissions, onChange }: Pro
                               <div className="text-xs font-semibold truncate" style={{ color: text }}>{sub.label}</div>
                               <div className="text-[10px] truncate" style={{ color: textSub }}>Свой подэтап этапа «{grp.label}»</div>
                             </div>
-                            <Toggle checked={subChecked} color={sub.color} isDark={isDark} onChange={() => toggleSub(sub.id, grp.statuses)} title="Доступен сотруднику" />
+                            <Toggle checked={subChecked} color={sub.color} isDark={isDark} onChange={() => toggleSub(sub.id)} title="Доступен сотруднику" />
                           </div>
                         );
                       })}

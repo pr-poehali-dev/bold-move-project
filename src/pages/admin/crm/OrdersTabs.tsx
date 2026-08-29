@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
-import { useAuth, allowedStatusesOf } from "@/context/AuthContext";
+import { useAuth, allowedTabsOf, allowedStatusesOf } from "@/context/AuthContext";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID } from "./ordersTypes";
 import { TabDef, Props } from "./ordersTabsShared";
@@ -22,18 +22,22 @@ export function OrdersTabs({
   const { user } = useAuth();
   const [openPopup, setOpenPopup] = useState<string | null>(null);
 
-  // Этапы, недоступные сотруднику, СКРЫВАЕМ полностью — вкладка не отображается
-  // вообще, а не просто показывает пустой список. Вкладка видна, если хотя бы один
-  // её статус разрешён. null = ограничений нет (владелец видит всё, как раньше).
-  // allowed уже включает статусы, открытые через разрешённые кастомные подэтапы
-  // (см. effectiveAllowedStatuses в CrmPanel.tsx) — отдельно проверять substatuses
-  // здесь не нужно.
-  const allowed = allowedStatusesOf(user);
-  const isTabAllowed = (statuses: readonly string[]) =>
-    !allowed || statuses.length === 0 || statuses.some(s => allowed.includes(s));
+  // Видимость СТАНДАРТНОЙ вкладки — НЕЗАВИСИМЫЙ уровень прав (allowed_tabs), не связан
+  // с тем, какие статусы/подэтапы внутри разрешены (см. PermissionsEditor.tsx). Владелец
+  // может скрыть вкладку целиком, даже если статусы внутри разрешены, и наоборот —
+  // показать пустую вкладку без единого доступного статуса.
+  const allowedTabs = allowedTabsOf(user);
+  const isTabAllowed = (tabId: string) => !allowedTabs || allowedTabs.includes(tabId);
+
+  // Кастомные вкладки (созданные владельцем вручную) не настраиваются в PermissionsEditor
+  // (там только 5 стандартных), поэтому для них видимость по-прежнему определяется
+  // разрешёнными статусами внутри — иначе такую вкладку нельзя было бы открыть вообще.
+  const allowedStatusesForCustom = allowedStatusesOf(user);
+  const isCustomTabAllowed = (statuses: readonly string[]) =>
+    !allowedStatusesForCustom || statuses.length === 0 || statuses.some(s => allowedStatusesForCustom.includes(s));
 
   const defaultTabs: TabDef[] = ORDERS_TABS
-    .filter(tab => !hiddenTabs.has(tab.id) && isTabAllowed(tab.statuses))
+    .filter(tab => !hiddenTabs.has(tab.id) && isTabAllowed(tab.id))
     .map(tab => ({
       id: tab.id,
       label: tabLabels[tab.id] || tab.label,
@@ -44,7 +48,7 @@ export function OrdersTabs({
     }));
 
   const customTabsMapped: TabDef[] = customTabs
-    .filter(tab => isTabAllowed(Array.isArray(tab.statuses) ? tab.statuses : []))
+    .filter(tab => isCustomTabAllowed(Array.isArray(tab.statuses) ? tab.statuses : []))
     .map(tab => ({
       id: tab.id,
       label: tabLabels[tab.id] || tab.label,
@@ -183,9 +187,9 @@ export function OrdersTabs({
           );
         })}
 
-        {/* Кнопка добавить таб — скрыта у сотрудников с ограничением по этапам:
+        {/* Кнопка добавить таб — скрыта у сотрудников с ограничением по вкладкам:
             настройка воронки это дело владельца, а не ограниченного сотрудника */}
-        {!allowed && (
+        {!allowedTabs && (
           <button onClick={onAddTab}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition flex-shrink-0 hover:bg-violet-500/10"
             style={{ background: t.surface, border: `1px solid ${t.border}`, color: "#a78bfa" }}>

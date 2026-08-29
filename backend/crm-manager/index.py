@@ -437,10 +437,11 @@ CORS = {
 LEAD_STATUSES = ["new", "call", "measure", "measured"]
 # Статусы заказов (после договора)
 ORDER_STATUSES = ["contract", "prepaid", "install_scheduled", "install_done", "extra_paid", "done", "cancelled"]
-# Статусы каждой вкладки воронки (order_substatuses.parent_status совпадает с id вкладки) —
-# нужно, чтобы включённый сотруднику кастомный подэтап (allowed_substatuses) автоматически
-# открывал доступ и к статусу-владельцу этой вкладки (см. ниже allowed_statuses += ...),
-# иначе подэтап разрешён, но сама заявка со статусом "measure" всё равно недоступна.
+# Статусы каждой вкладки воронки (order_substatuses.parent_status совпадает с id вкладки).
+# Три уровня прав сотрудника — allowed_tabs / allowed_statuses / allowed_substatuses —
+# ПОЛНОСТЬЮ независимы (см. PermissionsEditor.tsx): владелец может показать вкладку без
+# единого разрешённого статуса внутри (сотрудник увидит вкладку пустой), поэтому эта карта
+# используется ТОЛЬКО для проверки allowed_tabs, статусы из неё в allowed_statuses не доливаются.
 TAB_STATUS_GROUPS = {
     "leads":    ["new"],
     "working":  ["call"],
@@ -984,12 +985,18 @@ def handler(event: dict, context) -> dict:
     is_master  = True
     is_owner   = False  # владелец компании (role='company') — полные права в своей компании
     master_uid = 0      # реальный uid текущего пользователя (для вставок)
+    # Список вкладок воронки (leads/working/measures/installs/done), видимых сотруднику.
+    # Чисто UI-уровень (какие вкладки показывать в интерфейсе) — на выдачу заявок в GET
+    # clients не влияет, это делают allowed_statuses/allowed_substatuses. Прокидывается
+    # в ответ на будущее (мобильное приложение и т.п. тоже могут опираться на права).
+    # None = ограничений нет, видно всё.
+    allowed_tabs = None
     # Список статусов воронки, разрешённых текущему сотруднику (None = ограничений нет, видно всё)
     allowed_statuses = None
     # Список ID кастомных подэтапов (order_substatuses), разрешённых сотруднику.
-    # Работает ТОЛЬКО как доп.ограничение поверх allowed_statuses: если у заявки
-    # стоит sub_status, которого нет в этом списке — заявка недоступна, даже если
-    # её основной status разрешён. None = ограничений по подэтапам нет.
+    # Независимый уровень (см. TAB_STATUS_GROUPS выше) — если у заявки стоит sub_status,
+    # которого нет в этом списке — заявка недоступна, даже если её основной status разрешён.
+    # None = ограничений по подэтапам нет.
     allowed_substatuses = None
     # Тонкая настройка доступа сотрудника (значения по умолчанию = прежнее поведение,
     # чтобы обновление ничего не изменило для уже заведённых сотрудников):
@@ -1049,21 +1056,12 @@ def handler(event: dict, context) -> dict:
                         sub_st = upermissions.get("allowed_substatuses")
                         if isinstance(sub_st, list) and len(sub_st) > 0:
                             allowed_substatuses = [str(x) for x in sub_st]
-                            # Кастомный подэтап, включённый владельцем отдельно, должен реально
-                            # открывать доступ к заявкам своей вкладки — иначе подэтап "включён",
-                            # но статус-владелец (например "measure") недоступен и заявки не видны
-                            # нигде (ни в списке, ни в карточке). Подтягиваем parent_status этих
-                            # подэтапов и доливаем их статусы в allowed_statuses.
-                            cur.execute(
-                                f"SELECT DISTINCT parent_status FROM {SCHEMA}.order_substatuses WHERE id = ANY(%s)",
-                                ([int(x) for x in sub_st if str(x).isdigit()],)
-                            )
-                            extra_statuses = []
-                            for (parent,) in cur.fetchall():
-                                extra_statuses.extend(TAB_STATUS_GROUPS.get(parent, []))
-                            if extra_statuses:
-                                base = allowed_statuses if allowed_statuses is not None else []
-                                allowed_statuses = list(dict.fromkeys(base + extra_statuses))
+                        # allowed_tabs — независимый уровень видимости самих вкладок воронки
+                        # (leads/working/measures/installs/done), см. TAB_STATUS_GROUPS.
+                        # НЕ связан с allowed_statuses/allowed_substatuses.
+                        tb = upermissions.get("allowed_tabs")
+                        if isinstance(tb, list) and len(tb) > 0:
+                            allowed_tabs = tb
                         # Видимость заявок по ответственному
                         sc = upermissions.get("orders_scope")
                         if sc in ("all", "own", "own_free"):
