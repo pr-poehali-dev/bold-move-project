@@ -124,10 +124,11 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
           onSelectDay={setSelectedDay}
           onPrevMonth={prevMonth}
           onNextMonth={nextMonth}
-          onAddEvent={openAdd}
           onEditEvent={setEditModal}
-          onToday={goToday}
           onSelectClient={onSelectClient}
+          typeFilter={typeFilter}
+          onToggleType={toggleTypeFilter}
+          onResetTypes={() => { setTypeFilter([]); saveTypeFilter([]); }}
         />
       </div>
 

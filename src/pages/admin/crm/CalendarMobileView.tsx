@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useTheme } from "./themeContext";
 import Icon from "@/components/ui/icon";
 import { CalEvent, MONTH_NAMES, DAY_NAMES } from "./calendarTypes";
-import { EVENT_TYPE_LABELS } from "./crmApi";
+import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS } from "./crmApi";
 import { loadSyncedColors } from "./syncedCols";
 import { KANBAN_COLS } from "./kanbanTypes";
 import { fmtMoscowTime, moscowDateParts } from "./timeMoscow";
@@ -31,16 +31,19 @@ interface Props {
   onSelectDay: (day: number) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-  onAddEvent: (iso: string) => void;
   onEditEvent: (e: CalEvent) => void;
-  onToday: () => void;
   onSelectClient?: (id: number) => void;
+  /** Выбранные типы событий (пустой список = показываем все) */
+  typeFilter: string[];
+  onToggleType: (type: string) => void;
+  onResetTypes: () => void;
 }
 
 export function CalendarMobileView({
   year, month, events, selectedDay,
   onSelectDay, onPrevMonth, onNextMonth,
-  onAddEvent, onEditEvent, onToday, onSelectClient,
+  onEditEvent, onSelectClient,
+  typeFilter, onToggleType, onResetTypes,
 }: Props) {
   const t = useTheme();
   const today = new Date();
@@ -111,8 +114,15 @@ export function CalendarMobileView({
     }
   }
 
+  // Модалка «какие события показывать» — заменила кнопку «Сегодня»
+  const [filterOpen, setFilterOpen] = useState(false);
+  const hiddenCount = typeFilter.length === 0 ? 0 : Object.keys(EVENT_TYPE_LABELS).length - typeFilter.length;
+
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 140px)", minHeight: 500 }}>
+    // Высоту не фиксируем: страница-родитель уже скроллится, а жёсткий
+    // calc(100dvh - 140px) на мобиле обрезал низ списка (адресная строка браузера
+    // меняет высоту вьюпорта, и последний блок уходил под край экрана).
+    <div className="flex flex-col">
 
       {/* ── Шапка ── */}
       <div className="flex items-center justify-between px-2 py-2 flex-shrink-0">
@@ -132,22 +142,27 @@ export function CalendarMobileView({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onToday}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold transition"
-            style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
-            Сегодня
+          <button onClick={() => setFilterOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition"
+            style={{
+              background: hiddenCount > 0 ? "#7c3aed20" : t.surface2,
+              color: hiddenCount > 0 ? "#a78bfa" : t.textSub,
+              border: `1px solid ${hiddenCount > 0 ? "#7c3aed50" : t.border}`,
+            }}>
+            <Icon name="SlidersHorizontal" size={13} />
+            События
+            {hiddenCount > 0 && (
+              <span className="px-1.5 rounded-md text-[10px] font-bold"
+                style={{ background: "#7c3aed", color: "#fff" }}>
+                {typeFilter.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setListMode(v => !v)}
             className="w-8 h-8 flex items-center justify-center rounded-xl transition"
             style={{ background: listMode ? "#7c3aed20" : t.surface2, color: listMode ? "#a78bfa" : t.textSub }}>
             <Icon name={listMode ? "CalendarDays" : "List"} size={15} />
-          </button>
-          <button
-            onClick={() => onAddEvent(`${year}-${String(month).padStart(2,"0")}-${String(displayDay).padStart(2,"0")}T10:00`)}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-white transition"
-            style={{ background: "#7c3aed" }}>
-            <Icon name="Plus" size={16} />
           </button>
         </div>
       </div>
@@ -212,7 +227,7 @@ export function CalendarMobileView({
           <div className="h-px flex-shrink-0 mx-2" style={{ background: t.border }} />
 
           {/* ── Список событий выбранного дня ── */}
-          <div className="flex-1 overflow-y-auto px-2 pt-3 pb-24">
+          <div className="px-2 pt-3 pb-8">
             <div className="text-xs font-semibold mb-3 px-1" style={{ color: t.textMute }}>
               {fmtDayHeader(displayDay)}
             </div>
@@ -221,12 +236,6 @@ export function CalendarMobileView({
               <div className="flex flex-col items-center justify-center py-10 gap-2" style={{ color: t.textMute }}>
                 <Icon name="CalendarDays" size={28} className="opacity-20" />
                 <span className="text-sm">Нет событий</span>
-                <button
-                  onClick={() => onAddEvent(`${year}-${String(month).padStart(2,"0")}-${String(displayDay).padStart(2,"0")}T10:00`)}
-                  className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition"
-                  style={{ background: "#7c3aed" }}>
-                  <Icon name="Plus" size={13} /> Добавить событие
-                </button>
               </div>
             ) : (
               <div className="space-y-2">
@@ -277,7 +286,7 @@ export function CalendarMobileView({
         </>
       ) : (
         /* ── Режим СПИСОК — все события месяца по дням ── */
-        <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24">
+        <div className="px-2 pt-2 pb-8">
           {groupedEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2" style={{ color: t.textMute }}>
               <Icon name="CalendarDays" size={32} className="opacity-20" />
@@ -343,13 +352,60 @@ export function CalendarMobileView({
         </div>
       )}
 
-      {/* ── FAB кнопка добавить ── */}
-      <button
-        onClick={() => onAddEvent(`${year}-${String(month).padStart(2,"0")}-${String(displayDay).padStart(2,"0")}T10:00`)}
-        className="fixed bottom-6 right-4 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-40 transition active:scale-95"
-        style={{ background: "#7c3aed", boxShadow: "0 4px 24px rgba(124,58,237,0.5)" }}>
-        <Icon name="Plus" size={22} style={{ color: "#fff" }} />
-      </button>
+      {/* ── Модалка «какие события показывать» (bottom sheet) ── */}
+      {filterOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end" style={{ background: "rgba(0,0,0,0.6)" }}
+          onClick={() => setFilterOpen(false)}>
+          <div className="w-full rounded-t-3xl overflow-hidden pb-6"
+            style={{ background: t.surface, borderTop: `1px solid ${t.border}` }}
+            onClick={e => e.stopPropagation()}>
+
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <span className="text-base font-bold" style={{ color: t.text }}>Показывать события</span>
+              <button onClick={() => setFilterOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl"
+                style={{ background: t.surface2, color: t.textMute }}>
+                <Icon name="X" size={15} />
+              </button>
+            </div>
+
+            <div className="px-3 pb-2">
+              {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => {
+                // Пустой фильтр = показываем всё, поэтому в UI все отмечены.
+                const on = typeFilter.length === 0 || typeFilter.includes(key);
+                const color = EVENT_TYPE_COLORS[key] || "#8b5cf6";
+                return (
+                  <button key={key} onClick={() => onToggleType(key)}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition active:opacity-70">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className="flex-1 text-left text-sm font-semibold"
+                      style={{ color: on ? t.text : t.textMute }}>
+                      {label}
+                    </span>
+                    <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: on ? color : "transparent",
+                        border: `1.5px solid ${on ? color : t.border2}`,
+                      }}>
+                      {on && <Icon name="Check" size={13} style={{ color: "#fff" }} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {typeFilter.length > 0 && (
+              <div className="px-5 pt-1">
+                <button onClick={onResetTypes}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition"
+                  style={{ background: t.surface2, color: t.textSub, border: `1px solid ${t.border}` }}>
+                  Показать все
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
