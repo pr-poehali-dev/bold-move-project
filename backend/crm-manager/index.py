@@ -1931,7 +1931,17 @@ def handler(event: dict, context) -> dict:
                             cur.execute(f"UPDATE {SCHEMA}.calendar_events SET start_time='2000-01-01'::timestamptz WHERE id=%s", (ex[0],))
 
                 conn.commit()
-                return ok({"updated": True})
+                # Возвращаем фактически применённые status/sub_status — тело запроса
+                # выше могло быть дополнено сервером (например, при переводе на «Замер»
+                # без даты автоматически подставляется подэтап «Дата замера не назначена»,
+                # см. блок выше). Без этого фронт после сохранения не знал, что именно
+                # реально записалось в БД, и держал на экране только то, что сам отправил.
+                resp_extra = {}
+                if "status" in body:
+                    resp_extra["status"] = body["status"]
+                if "sub_status" in body:
+                    resp_extra["sub_status"] = body["sub_status"]
+                return ok({"updated": True, **resp_extra})
 
             if method == "DELETE":
                 cid = qs.get("id")

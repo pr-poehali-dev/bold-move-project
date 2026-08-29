@@ -27,17 +27,28 @@ export function useClientDrawerState(
   // откатывается — иначе экран показывал бы то, что на деле не сохранилось
   // (именно так пропадал переход статуса: карточка "переключалась" визуально,
   // а на сервере запрос падал молча).
+  //
+  // Ответ сервера может содержать status/sub_status, дополненные им самим —
+  // например, при переводе на «Замер» без даты backend сам подставляет
+  // подэтап «Дата замера не назначена» (см. crm-manager). Патч, отправленный
+  // отсюда, этого поля не содержит, поэтому без учёта ответа сервера экран
+  // держал бы «голый» системный статус и не показывал реально сохранённый
+  // подэтап, пока карточку не перезагрузят.
   const save = async (patch: Partial<Client>): Promise<boolean> => {
     const prev = data;
     setData(p => ({ ...p, ...patch }));
     if (isLocalCard) return true;
     setSaving(true);
-    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) }) as { error?: string };
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(data.id) }) as { error?: string; status?: string; sub_status?: string | null };
     setSaving(false);
     if (res?.error) {
       setData(prev);
       return false;
     }
+    const serverExtra: Partial<Client> = {};
+    if (res.status !== undefined) serverExtra.status = res.status;
+    if (res.sub_status !== undefined) serverExtra.sub_status = res.sub_status;
+    if (Object.keys(serverExtra).length > 0) setData(p => ({ ...p, ...serverExtra }));
     onUpdated();
     return true;
   };
@@ -47,12 +58,16 @@ export function useClientDrawerState(
     setOrderData(p => ({ ...p, ...patch }));
     if (isLocalCard) return true;
     setSaving(true);
-    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) }) as { error?: string };
+    const res = await crmFetch("clients", { method: "PUT", body: JSON.stringify(patch) }, { id: String(orderData.id) }) as { error?: string; status?: string; sub_status?: string | null };
     setSaving(false);
     if (res?.error) {
       setOrderData(prev);
       return false;
     }
+    const serverExtra: Partial<Client> = {};
+    if (res.status !== undefined) serverExtra.status = res.status;
+    if (res.sub_status !== undefined) serverExtra.sub_status = res.sub_status;
+    if (Object.keys(serverExtra).length > 0) setOrderData(p => ({ ...p, ...serverExtra }));
     onUpdated();
     return true;
   };
