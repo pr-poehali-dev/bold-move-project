@@ -527,6 +527,7 @@ export function OrdersListView({
         statusColors={statusColors}
         onSaveStatusLabel={onSaveStatusLabel}
         onSaveStatusColor={onSaveStatusColor}
+        notDupKeys={notDupKeys}
       />
 
       {loading ? (

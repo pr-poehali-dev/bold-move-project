@@ -42,4 +42,7 @@ export interface Props {
   statusColors: Record<string, string>;
   onSaveStatusLabel: (status: string, val: string) => void;
   onSaveStatusColor: (status: string, color: string) => void;
+  /** Группы дублей, помеченные как «не дубль» — их заявки не считаются повторами
+   *  (ключ группы = отсортированные id через запятую, см. groupKeyOf в mergeFields.ts) */
+  notDupKeys?: Set<string>;
 }

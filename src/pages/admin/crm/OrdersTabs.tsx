@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth, allowedTabsOf, allowedStatusesOf } from "@/context/AuthContext";
 import { useTheme } from "./themeContext";
 import { ORDERS_TABS, ALL_TAB_ID, SERVICE_TAB_ID, isDuplicateRepeat } from "./ordersTypes";
+import { groupKeyOf } from "./mergeFields";
 import type { Client } from "./crmApi";
 import { TabDef, Props } from "./ordersTabsShared";
 import { TabSettingsPopup } from "./OrdersTabSettingsPopup";
@@ -18,6 +19,7 @@ export function OrdersTabs({
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
   statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
   substatuses, onSubstatusesChange,
+  notDupKeys,
 }: Props) {
   const t = useTheme();
   const { user } = useAuth();
@@ -68,7 +70,11 @@ export function OrdersTabs({
   // Вкладка «Другие сделки» считается по признакам заявки (сервис + дубли), а не по
   // статусу. Из остальных вкладок и сервисные, и повторные заявки исключаем — иначе
   // они задвоятся в счётчиках и подмешают свои суммы к монтажам.
-  const isRepeat = (c: Client) => isDuplicateRepeat(c);
+  // Группа, помеченная как «не дубль» (клиент реально заказал несколько раз),
+  // повтором не считается — иначе счётчик здесь расходился бы с реальным списком
+  // на вкладке «Дубли», где эта пометка уже учтена.
+  const isRepeat = (c: Client) =>
+    isDuplicateRepeat(c) && !(notDupKeys?.has(groupKeyOf(c.duplicate_ids ?? [])) ?? false);
   const clientsForTab = (tab: TabDef) =>
     tab.id === SERVICE_TAB_ID
       ? allClients.filter(c => (c.is_service && !isRepeat(c)) || isRepeat(c))
