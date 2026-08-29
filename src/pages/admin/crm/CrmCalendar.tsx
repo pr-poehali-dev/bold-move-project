@@ -14,6 +14,12 @@ import { resolveEventColor } from "./syncedCols";
 import { useAuth } from "@/context/AuthContext";
 
 const LS_CALENDAR_TYPE_FILTER = "crm_calendar_type_filter";
+// Отпечаток набора «по умолчанию», который уже применялся на этом устройстве.
+// Нужен, чтобы отличить «сотрудник сам так выбрал» от «просто осталось с прошлого
+// раза»: когда владелец меняет настройку по умолчанию, мы применяем её заново,
+// а до тех пор уважаем личный выбор сотрудника.
+const LS_CALENDAR_DEFAULTS_APPLIED = "crm_calendar_defaults_applied";
+
 // Свой выбор сотрудник делает один раз и он важнее настройки по умолчанию,
 // поэтому отличаем «ещё ни разу не выбирал» (ключа нет) от «выбрал показать всё»
 // (в ключе лежит пустой список).
@@ -25,6 +31,19 @@ function loadTypeFilter(): string[] | null {
 }
 function saveTypeFilter(v: string[]) {
   localStorage.setItem(LS_CALENDAR_TYPE_FILTER, JSON.stringify(v));
+}
+
+// Порядок типов в правах не важен — сравниваем как множества
+function defaultsKey(v: string[] | undefined | null): string {
+  return JSON.stringify([...(v ?? [])].sort());
+}
+
+// Какой набор «по умолчанию» уже применён на этом устройстве
+function loadAppliedDefaults(): string | null {
+  try { return localStorage.getItem(LS_CALENDAR_DEFAULTS_APPLIED); } catch { return null; }
+}
+function saveAppliedDefaults(key: string) {
+  localStorage.setItem(LS_CALENDAR_DEFAULTS_APPLIED, key);
 }
 
 export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: number) => void; canEdit?: boolean }) {
@@ -43,13 +62,22 @@ export default function CrmCalendar({ onSelectClient }: { onSelectClient?: (id: 
   const [colorSettingsOpen, setColorSettingsOpen] = useState(false);
   const [colorsVersion, setColorsVersion] = useState(0);
   // Пустой список = показываем все типы. Непустой = показываем только выбранные.
-  // Если сотрудник ещё ни разу не менял фильтр — берём набор «по умолчанию»
-  // из его прав (calendar_default_event_types), который настраивает владелец.
-  const [typeFilter, setTypeFilter] = useState<string[]>(() => {
-    const own = loadTypeFilter();
-    if (own !== null) return own;
-    return user?.permissions?.calendar_default_event_types ?? [];
-  });
+  const [typeFilter, setTypeFilter] = useState<string[]>(() => loadTypeFilter() ?? []);
+
+  // Набор «по умолчанию» задаёт владелец в правах сотрудника. Применяем его,
+  // когда права загрузились и этот набор ещё не применялся на этом устройстве
+  // (первый вход) либо владелец его с тех пор поменял. Личный выбор сотрудника
+  // при неизменившейся настройке остаётся нетронутым.
+  // Права приходят асинхронно, поэтому это эффект, а не инициализация состояния.
+  useEffect(() => {
+    if (!user) return;
+    const defaults = user.permissions?.calendar_default_event_types ?? [];
+    const key = defaultsKey(defaults);
+    if (loadAppliedDefaults() === key && loadTypeFilter() !== null) return;
+    saveAppliedDefaults(key);
+    saveTypeFilter(defaults);
+    setTypeFilter(defaults);
+  }, [user]);
 
   const toggleTypeFilter = (type: string) => {
     setTypeFilter(prev => {
