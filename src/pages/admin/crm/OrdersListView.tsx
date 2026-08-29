@@ -57,6 +57,12 @@ interface Props {
   statusColors: Record<string, string>;
   onSaveStatusLabel: (status: string, val: string) => void;
   onSaveStatusColor: (status: string, color: string) => void;
+  // Ограничение сотрудника по этапам воронки (allowed_statuses из настроек доступа).
+  // null = ограничений нет. Заявки с недоступным статусом убираются из списка ПОЛНОСТЬЮ —
+  // раньше вкладка целиком скрывалась (см. OrdersTabs), только если ни один её статус не
+  // разрешён, но внутри разрешённой вкладки (например «Финальный» = done+cancelled) заявки
+  // с отдельно запрещённым статусом (например cancelled) всё равно оставались видны.
+  allowedStatuses?: string[] | null;
 }
 
 export function OrdersListView({
@@ -66,6 +72,7 @@ export function OrdersListView({
   onSaveLabel, onSaveColor, onDeleteTab, onAddTab,
   substatuses, onSubstatusesChange,
   statusLabels, statusColors, onSaveStatusLabel, onSaveStatusColor,
+  allowedStatuses = null,
 }: Props) {
   const t = useTheme();
   const orderSources = useOrderSourcesCtx();
@@ -134,11 +141,13 @@ export function OrdersListView({
   // Вкладка «Сервис» фильтрует по флагу is_service (мелкие доделки/переделки),
   // а не по статусу. Из остальных вкладок сервисные заявки исключаем, чтобы они
   // не мешались с полноценными объектами (особенно в «Монтажах»).
+  const isStatusAllowed = (status: string | null | undefined) =>
+    !allowedStatuses || allowedStatuses.includes(status ?? "");
   const clientsByStatus = activeTab === SERVICE_TAB_ID
     ? allClients.filter(c => c.is_service)
     : activeTab === ALL_TAB_ID
-      ? allClients
-      : allClients.filter(c => !c.is_service && currentTab.statuses.includes(c.status ?? ""));
+      ? allClients.filter(c => isStatusAllowed(c.status))
+      : allClients.filter(c => !c.is_service && currentTab.statuses.includes(c.status ?? "") && isStatusAllowed(c.status));
 
   // Реальные этапы (статусы) текущей вкладки — бирки показываются только когда
   // на вкладке больше одного статуса (иначе делить нечего: leads/working — по одному).
@@ -382,7 +391,7 @@ export function OrdersListView({
             </div>
             <div className="flex items-center gap-1.5 flex-wrap px-2 py-1.5 rounded-xl" style={{ background: t.surface2 + "80" }}>
               <span className="text-[9px] uppercase tracking-wider font-bold mr-0.5" style={{ color: t.textMute }}>Этап</span>
-              {DONE_GROUPS.map(group => {
+              {DONE_GROUPS.filter(group => group.statuses.some(isStatusAllowed)).map(group => {
                 const isSel = doneSubFilter === group.key;
                 const cnt = currentClients.filter(c => group.statuses.includes(c.status ?? "")).length;
                 return (

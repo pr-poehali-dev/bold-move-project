@@ -197,6 +197,7 @@ export default function CrmOrders({ clients: allClients, loading, onStatusChange
           statusColors={tabsConfig.statusColors}
           onSaveStatusLabel={tabsConfig.handleSaveStatusLabel}
           onSaveStatusColor={tabsConfig.handleSaveStatusColor}
+          allowedStatuses={allowedStatuses}
         />
       )}
 
