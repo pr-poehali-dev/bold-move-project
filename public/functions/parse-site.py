@@ -1,0 +1,1038 @@
+# redeploy-marker: 1786609864
+import json
+import os
+import re
+import uuid
+import urllib.request
+import urllib.parse
+import urllib.error
+import psycopg2
+import boto3
+
+SCHEMA = os.environ.get("MAIN_DB_SCHEMA", "public")
+CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Authorization",
+}
+
+def ok(data):
+    return {"statusCode": 200, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps(data, ensure_ascii=False, default=str)}
+
+def err(msg, code=400):
+    return {"statusCode": code, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps({"error": msg}, ensure_ascii=False)}
+
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
+
+NEUTRAL_COLORS = {
+    "ffffff", "000000", "333333", "666666", "999999", "cccccc", "f5f5f5",
+    "eeeeee", "e5e5e5", "dddddd", "f0f0f0", "fafafa", "1a1a1a", "2d2d2d",
+    "111111", "222222", "444444", "555555", "777777", "888888", "aaaaaa",
+    "bbbbbb", "c0c0c0", "d4d4d4", "e0e0e0", "f8f8f8", "fcfcfc", "4a4a4a",
+}
+
+def _is_neutral(hex6: str) -> bool:
+    lc = hex6.lower()
+    if lc in NEUTRAL_COLORS:
+        return True
+    # Серые — r≈g≈b с небольшим допуском
+    try:
+        r, g, b = int(lc[0:2], 16), int(lc[2:4], 16), int(lc[4:6], 16)
+        spread = max(r, g, b) - min(r, g, b)
+        return spread < 18
+    except Exception:
+        return False
+
+def _best_color(css_text: str) -> str | None:
+    """Частотный анализ HEX-цветов в CSS, возвращает самый частый не-нейтральный."""
+    all_colors = re.findall(r'#([0-9a-fA-F]{6})', css_text)
+    freq: dict = {}
+    for c in all_colors:
+        lc = c.lower()
+        if not _is_neutral(lc):
+            freq[lc] = freq.get(lc, 0) + 1
+    if freq:
+        best = max(freq, key=lambda k: freq[k])
+        return f"#{best}"
+    return None
+
+def fetch_brand_color(url: str) -> str | None:
+    """Загружает HTML страницы и извлекает цвет бренда из нескольких источников."""
+    if not url.startswith("http"):
+        url = "https://" + url
+    base_url = "/".join(url.split("/")[:3])  # https://domain.ru
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+        })
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[parse-site] color fetch failed: {e}")
+        return None
+
+    # ── 1. meta theme-color ──────────────────────────────────────────────────
+    m = re.search(r'<meta[^>]+name=["\']theme-color["\'][^>]+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']theme-color["\']', html, re.IGNORECASE)
+    if m:
+        color = m.group(1).strip()
+        if re.match(r'^#[0-9a-fA-F]{6}$', color) and not _is_neutral(color[1:]):
+            print(f"[parse-site] brand color from meta theme-color: {color}")
+            return color
+
+    # ── 2. og:image не нужен, но проверим msapplication-TileColor ───────────
+    m = re.search(r'<meta[^>]+name=["\']msapplication-TileColor["\'][^>]+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if m:
+        color = m.group(1).strip()
+        if re.match(r'^#[0-9a-fA-F]{6}$', color) and not _is_neutral(color[1:]):
+            print(f"[parse-site] brand color from msapplication-TileColor: {color}")
+            return color
+
+    # ── 3. Tailwind / Bootstrap классы bg-[#xxx] ──────────────────────────────
+    for m in re.finditer(r'bg-\[#([0-9a-fA-F]{3,6})\]', html):
+        val = m.group(1).lower()
+        if len(val) == 3:
+            val = val[0]*2 + val[1]*2 + val[2]*2
+        if not _is_neutral(val):
+            print(f"[parse-site] brand color from Tailwind: #{val}")
+            return f"#{val}"
+
+    # ── 4. Собираем CSS: <style> блоки + inline + внешние файлы ──────────────
+    css_chunks = []
+    for m in re.finditer(r"<style[^>]*>(.*?)</style>", html, re.DOTALL | re.IGNORECASE):
+        css_chunks.append(m.group(1))
+    for m in re.finditer(r'style="([^"]*)"', html, re.IGNORECASE):
+        css_chunks.append(m.group(1))
+
+    # Загружаем до 3 внешних CSS файлов
+    css_hrefs = re.findall(r'<link[^>]+rel=["\']stylesheet["\'][^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    css_hrefs += re.findall(r'<link[^>]+href=["\']([^"\']+)["\'][^>]+rel=["\']stylesheet["\']', html, re.IGNORECASE)
+    for href in css_hrefs[:3]:
+        try:
+            if href.startswith("//"):
+                href = "https:" + href
+            elif href.startswith("/"):
+                href = base_url + href
+            elif not href.startswith("http"):
+                href = base_url + "/" + href
+            r2 = urllib.request.Request(href, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(r2, timeout=5) as resp2:
+                css_chunks.append(resp2.read().decode("utf-8", errors="replace"))
+        except Exception:
+            pass
+
+    css_text = "\n".join(css_chunks)
+
+    # ── 5. CSS переменные --primary, --brand, --accent, --color-main ─────────
+    var_pattern = re.compile(
+        r'--(primary|brand|accent|main|theme|color-primary|color-brand|color-accent|color-main|clr-primary|clr-accent)'
+        r'\s*:\s*(#[0-9a-fA-F]{3,8})',
+        re.IGNORECASE
+    )
+    for m in var_pattern.finditer(css_text):
+        color = m.group(2).strip()
+        hex_val = color.lstrip("#").lower()
+        if len(hex_val) == 3:
+            hex_val = hex_val[0]*2 + hex_val[1]*2 + hex_val[2]*2
+        if len(hex_val) == 6 and not _is_neutral(hex_val):
+            print(f"[parse-site] brand color from CSS var --{m.group(1)}: #{hex_val}")
+            return f"#{hex_val}"
+
+    # ── 6. Приоритетные классы: кнопки, primary, accent, brand ───────────────
+    priority_pattern = re.compile(
+        r'(?:\.btn|\.button|\.cta|primary|accent|brand|header|hero|nav)[^{]*\{[^}]*'
+        r'(?:background(?:-color)?)\s*:\s*(#[0-9a-fA-F]{3,8})',
+        re.IGNORECASE | re.DOTALL
+    )
+    for m in priority_pattern.finditer(css_text):
+        color = m.group(1).strip()
+        hex_val = color.lstrip("#").lower()
+        if len(hex_val) == 3:
+            hex_val = hex_val[0]*2 + hex_val[1]*2 + hex_val[2]*2
+        if len(hex_val) == 6 and not _is_neutral(hex_val):
+            print(f"[parse-site] brand color from priority class: #{hex_val}")
+            return f"#{hex_val}"
+
+    # ── 7. Fallback: частотный анализ всех HEX ───────────────────────────────
+    color = _best_color(css_text)
+    if color:
+        print(f"[parse-site] brand color from frequency: {color}")
+    return color
+
+
+def get_s3():
+    return boto3.client(
+        "s3",
+        endpoint_url="https://bucket.poehali.dev",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    )
+
+def upload_image_to_s3(image_bytes: bytes, ext: str, prefix: str) -> str:
+    """Загружает картинку в S3 и возвращает CDN URL."""
+    key = f"brand/{prefix}_{uuid.uuid4().hex[:8]}.{ext}"
+    content_type = "image/png" if ext == "png" else "image/jpeg" if ext in ("jpg", "jpeg") else "image/svg+xml" if ext == "svg" else "image/x-icon"
+    s3 = get_s3()
+    s3.put_object(Bucket="files", Key=key, Body=image_bytes, ContentType=content_type)
+    cdn = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+    print(f"[parse-site] uploaded to CDN: {cdn}")
+    return cdn
+
+def fetch_image_bytes(url: str) -> tuple[bytes, str] | None:
+    """Загружает изображение по URL, возвращает (bytes, ext) или None."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            ct = resp.headers.get("Content-Type", "")
+            if "svg" in ct:    ext = "svg"
+            elif "png" in ct:  ext = "png"
+            elif "ico" in ct:  ext = "ico"
+            else:              ext = "jpg"
+            return data, ext
+    except Exception as e:
+        print(f"[parse-site] image fetch failed {url}: {e}")
+        return None
+
+def find_logo_url(site_url: str) -> tuple[str | None, str | None]:
+    """
+    Парсит HTML страницы, ищет логотип и фавикон.
+    Возвращает (logo_url, favicon_url) — абсолютные URL на изображения.
+    """
+    if not site_url.startswith("http"):
+        site_url = "https://" + site_url
+    base = "/".join(site_url.rstrip("/").split("/")[:3])  # https://domain.ru
+
+    try:
+        req = urllib.request.Request(site_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[parse-site] find_logo html fetch failed: {e}")
+        return None, None
+
+    def abs_url(src: str) -> str:
+        if src.startswith("http"):   return src
+        if src.startswith("//"):     return "https:" + src
+        if src.startswith("/"):      return base + src
+        return base + "/" + src
+
+    logo_url = None
+    # Ищем логотип: <img> с alt/class/id содержащим logo
+    for m in re.finditer(r'<img[^>]+>', html, re.IGNORECASE):
+        tag = m.group()
+        if re.search(r'(?:logo|brand|header-img)', tag, re.IGNORECASE):
+            src = re.search(r'src=["\']([^"\']+)["\']', tag)
+            if src:
+                u = src.group(1)
+                # Пропускаем data: и svg-data
+                if not u.startswith("data:"):
+                    logo_url = abs_url(u)
+                    break
+
+    # Ищем фавикон
+    favicon_url = None
+    for m in re.finditer(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]*>', html, re.IGNORECASE):
+        tag = m.group()
+        href = re.search(r'href=["\']([^"\']+)["\']', tag)
+        if href:
+            favicon_url = abs_url(href.group(1))
+            break
+    if not favicon_url:
+        favicon_url = base + "/favicon.ico"
+
+    print(f"[parse-site] logo={logo_url} favicon={favicon_url}")
+    return logo_url, favicon_url
+
+
+def tavily_post(endpoint: str, payload: dict, api_key: str, timeout: int = 20) -> dict:
+    """Выполняет POST-запрос к Tavily API, читает тело даже при ошибке."""
+    import urllib.error
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        endpoint,
+        data=data,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[parse-site] Tavily {endpoint} HTTP {e.code}: {body[:200]}")
+        raise ValueError(f"Tavily вернул {e.code}: {body[:100]}")
+    except Exception as e:
+        print(f"[parse-site] Tavily {endpoint} error: {e}")
+        raise ValueError(str(e))
+
+
+def fetch_page_text(url: str) -> str:
+    """Получает текст о компании: Extract → Search fallback."""
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    domain = re.sub(r"https?://", "", url).split("/")[0]
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        raise ValueError("TAVILY_API_KEY не настроен")
+
+    # 1. Пробуем Extract
+    try:
+        data = tavily_post("https://api.tavily.com/extract", {"urls": [url]}, api_key, timeout=15)
+        results = data.get("results", [])
+        if results:
+            raw = results[0].get("raw_content", "") or results[0].get("content", "")
+            if raw and len(raw.strip()) > 200:
+                print(f"[parse-site] Extract OK: {len(raw)} chars")
+                return re.sub(r"\s{3,}", "\n", raw).strip()[:6000]
+    except Exception as ex:
+        print(f"[parse-site] Extract failed, trying Search: {ex}")
+
+    # 2. Fallback: Tavily Search — ищем страницу контактов
+    query = f'site:{domain} контакты телефон адрес email режим работы часы'
+    data = tavily_post("https://api.tavily.com/search", {
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": 5,
+        "include_raw_content": True,
+    }, api_key, timeout=20)
+
+    results = data.get("results", [])
+    print(f"[parse-site] Search results: {len(results)}")
+    if not results:
+        raise ValueError("Не удалось найти информацию о сайте. Попробуй указать домен без https://")
+
+    parts = [(r.get("raw_content") or r.get("content", "")) for r in results if r.get("content") or r.get("raw_content")]
+    combined = "\n\n".join(parts)
+    if not combined.strip():
+        raise ValueError("Поиск не вернул текст о компании.")
+
+    return re.sub(r"\s{3,}", "\n", combined).strip()[:6000]
+
+def ask_openai(prompt: str) -> str:
+    """Отправляет запрос к Polza.ai (openai/gpt-4o-mini)."""
+    import urllib.error
+    api_key = os.environ.get("POLZA_API_KEY", "")
+    if not api_key:
+        raise ValueError("POLZA_API_KEY не настроен")
+    payload = json.dumps({
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1,
+        "max_tokens": 800,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.polza.ai/api/v1/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[parse-site] Polza HTTP {e.code}: {body[:200]}")
+        raise ValueError(f"AI ошибка: {body[:100]}")
+    print(f"[parse-site] Polza OK")
+    return data["choices"][0]["message"]["content"].strip()
+
+def extract_brand_info(site_url: str, page_text: str) -> dict:
+    """Просит AI вытащить бренд-данные из текста страницы."""
+    domain = re.sub(r"https?://", "", site_url).split("/")[0]
+    prompt = f"""Ты извлекаешь контактные данные компании из текста её сайта.
+Сайт: {site_url}
+
+Текст со страницы:
+---
+{page_text}
+---
+
+Верни JSON со следующими полями. Правила для каждого поля:
+
+company_name — официальное торговое название. Убери ООО/ИП/АО если есть короткий бренд. Пример: "РумЭксперт", "Мягкие окна".
+
+bot_name — ПЕРВОЕ слово из company_name. Пример: "РумЭксперт" → "РумЭксперт", "Мягкие окна" → "Мягкие". НЕ придумывай имена людей.
+
+bot_greeting — точно такой текст: "Здравствуйте! Я помощник компании [company_name]. Помогу рассчитать стоимость и ответить на вопросы." Подставь реальное название.
+
+support_phone — телефон компании. Ищи в шапке, футере, контактах. Формат: +7 (XXX) XXX-XX-XX. Если несколько — бери первый городской или мобильный.
+
+support_email — email компании. Ищи в футере, контактах, разделе "о нас". Игнорируй личные почты. Пример: info@company.ru, zakaz@company.ru.
+
+telegram — ссылка на Telegram. Ищи t.me/... или @username в контактах и соцсетях. Верни полный URL: https://t.me/username.
+
+website — домен сайта без протокола. Пример: {domain}.
+
+working_hours — РЕЖИМ РАБОТЫ. Это КРИТИЧЕСКИ важное поле. Ищи везде:
+  * блоки "Режим работы", "Часы работы", "График", "Время работы"
+  * аббревиатуры дней: Пн, Пт, Сб, Вс, ПН-ПТ, МО-ФР
+  * любые временные диапазоны рядом с днями: "9:00-18:00", "с 8:30 до 17:00"
+  * слова "ежедневно", "круглосуточно", "выходной"
+  Примеры результата: "Пн-Пт: 9:00-18:00, Сб: 10:00-15:00", "Ежедневно 9:00-21:00", "ПН-ПТ с 8:30 до 17:00, СБ до 14:00, ВС выходной".
+  ВАЖНО: если в тексте есть хоть намёк на время работы — обязательно верни его, не ставь null!
+
+pdf_footer_address — полный почтовый адрес. Ищи в контактах, футере, разделе "о нас". Формат: город, улица, дом. Пример: "г. Пушкино, ул. Луговая, д. 47А". Если есть индекс — включи.
+
+brand_color — ГЛАВНЫЙ фирменный цвет в HEX. Смотри на цвет кнопок, заголовков, логотипа, акцентов. Примеры: "#e63946", "#1d7afc", "#10b981". НЕ ставь null если видишь явный фирменный цвет. НЕ используй белый (#ffffff) или чёрный (#000000).
+
+{{
+  "company_name": "...",
+  "bot_name": "...",
+  "bot_greeting": "...",
+  "support_phone": "...",
+  "support_email": "...",
+  "telegram": "...",
+  "website": "...",
+  "working_hours": "...",
+  "pdf_footer_address": "...",
+  "brand_color": "..."
+}}
+
+Верни ТОЛЬКО JSON. Без markdown, без пояснений. Если поле не найдено — null.
+"""
+    raw = ask_openai(prompt)
+    # Вырезаем JSON из ответа
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not match:
+        raise ValueError(f"AI не вернул JSON: {raw[:200]}")
+    result = json.loads(match.group())
+
+    # Пост-обработка: если bot_name пустой — берём первое слово company_name
+    if not result.get("bot_name") and result.get("company_name"):
+        result["bot_name"] = result["company_name"].split()[0]
+
+    # Если bot_greeting пустой — генерируем из company_name
+    if not result.get("bot_greeting") and result.get("company_name"):
+        name = result["company_name"]
+        result["bot_greeting"] = f"Здравствуйте! Я помощник компании «{name}». Помогу рассчитать стоимость и ответить на вопросы."
+
+    return result
+
+def _strip_markdown(text: str) -> str:
+    """Убирает markdown-разметку из текста чтобы не попадать мусор в поля."""
+    # Убираем ссылки: [текст](url) → текст
+    text = re.sub(r'\[([^\]]+)\]\([^\)]*\)', r'\1', text)
+    # Убираем изображения: ![alt](url) → ''
+    text = re.sub(r'!\[[^\]]*\]\([^\)]*\)', '', text)
+    # Убираем заголовки: ## текст → текст
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # Убираем bold/italic: **текст** → текст
+    text = re.sub(r'\*{1,3}([^\*]+)\*{1,3}', r'\1', text)
+    text = re.sub(r'_{1,3}([^_]+)_{1,3}', r'\1', text)
+    # Убираем inline code: `код` → код
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+    return text
+
+
+def extract_with_regex(text: str, field: str) -> str | None:
+    """Быстрое извлечение через regex — без AI, мгновенно."""
+    text = _strip_markdown(text)
+
+    if field == "support_phone":
+        # +7 или 8, затем 10 цифр в разных форматах
+        m = re.search(
+            r'(?:\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+            text
+        )
+        return m.group().strip() if m else None
+
+    if field == "support_email":
+        # Исключаем технические адреса
+        m = re.search(
+            r'\b(?!noreply|no-reply|donotreply|robot|mailer)[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b',
+            text, re.IGNORECASE
+        )
+        return m.group().strip() if m else None
+
+    if field == "telegram" or field == "telegram_url":
+        # t.me/username или @username (минимум 4 символа)
+        m = re.search(r'(?:https?://)?t\.me/([a-zA-Z0-9_]{4,})', text)
+        if m:
+            return f"https://t.me/{m.group(1)}"
+        m = re.search(r'(?<!\w)@([a-zA-Z0-9_]{4,})', text)
+        if m:
+            return f"https://t.me/{m.group(1)}"
+        return None
+
+    if field == "pdf_footer_address":
+        # Индекс + город + улица
+        m = re.search(
+            r'\d{6}[\s,]+(?:г\.?\s*)?[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе|пл\.?)[^,\n]{3,50}(?:,?\s*д\.?\s*\d[\w/]*)?',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()
+        # г. Город, ул. Улица, д. N
+        m = re.search(
+            r'г\.?\s*[А-ЯЁ][а-яё\-]+[\s,]+(?:ул\.?|пр\.?|пр-т|переулок|бул\.?|шоссе|пл\.?)[\s.]*[^,\n]{3,40}(?:,\s*д\.?\s*\d[\w/]*)?',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()
+        # Fallback: просто "г. Город"
+        m = re.search(r'г\.?\s*[А-ЯЁ][а-яё\-]{2,}', text)
+        return m.group().strip() if m else None
+
+    if field == "working_hours":
+        # Паттерн 1: "Режим работы" / "Часы работы" + что после
+        m = re.search(
+            r'(?:режим\s+работы|часы\s+работы|время\s+работы|график\s+работы)[:\s]*([^\n.]{5,120})',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group(1)).strip()[:120]
+
+        # Паттерн 2: дни недели + время
+        m = re.search(
+            r'(?:пн|пон|вт|ср|чт|пт|сб|вс|пятн|понед|ежедн|ежедневно|будн|круглосут)'
+            r'[^.!?]{2,100}\d{1,2}[:.]\d{2}',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()[:120]
+
+        # Паттерн 3: "с 9:00 до 18:00" или диапазон "9:00-18:00"
+        m = re.search(
+            r'(?:с\s+)?\d{1,2}[:.]\d{2}\s*[-–—до]\s*\d{1,2}[:.]\d{2}(?:\s*,\s*[^\n.]{3,60})?',
+            text, re.IGNORECASE
+        )
+        if m:
+            return re.sub(r'\s+', ' ', m.group()).strip()[:100]
+
+        return None
+
+    return None
+
+
+def search_missing_fields(brand: dict, site_url: str) -> dict:
+    """Ищет недостающие поля через Tavily Search + regex (без AI — быстро)."""
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        return brand
+
+    domain = re.sub(r"https?://", "", site_url).split("/")[0]
+    company = brand.get("company_name") or domain
+
+    # Все поля которые умеем искать через regex
+    search_queries = {
+        "support_phone":      f'site:{domain} телефон контакты',
+        "support_email":      f'site:{domain} email почта контакты',
+        "telegram_url":       f'{company} {domain} telegram t.me',
+        "pdf_footer_address": f'site:{domain} адрес офис контакты',
+        "working_hours":      f'site:{domain} часы работы режим график',
+    }
+
+    to_search = {k: q for k, q in search_queries.items() if not brand.get(k)}
+    if not to_search:
+        return brand
+
+    print(f"[parse-site] searching missing: {list(to_search.keys())}")
+
+    # Один широкий поиск по странице контактов
+    site_query = f'site:{domain} контакты телефон email адрес часы работы режим telegram'
+    all_snippets = ""
+    try:
+        data = tavily_post("https://api.tavily.com/search", {
+            "query": site_query,
+            "search_depth": "advanced",
+            "max_results": 5,
+            "include_raw_content": True,
+        }, api_key, timeout=12)
+        all_snippets = " ".join(
+            (r.get("raw_content") or r.get("content") or "")
+            for r in data.get("results", [])
+        )
+        print(f"[parse-site] search got {len(all_snippets)} chars")
+    except Exception as e:
+        print(f"[parse-site] search error: {e}")
+
+    # Пробуем regex по общему контенту
+    for field in list(to_search.keys()):
+        if all_snippets:
+            try:
+                result = extract_with_regex(all_snippets, field)
+                if result:
+                    brand[field] = result
+                    print(f"[parse-site] found {field} via regex: {result[:60]}")
+                    continue
+            except Exception as e:
+                print(f"[parse-site] regex {field} error: {e}")
+
+        # Целевой поиск если не нашли в общем
+        try:
+            data2 = tavily_post("https://api.tavily.com/search", {
+                "query": to_search[field],
+                "search_depth": "advanced",
+                "max_results": 4,
+                "include_raw_content": True,
+            }, api_key, timeout=10)
+            snippets2 = " ".join(
+                (r.get("raw_content") or r.get("content") or "")
+                for r in data2.get("results", [])
+            )
+            if snippets2:
+                result = extract_with_regex(snippets2, field)
+                if result:
+                    brand[field] = result
+                    print(f"[parse-site] found {field} via targeted: {result[:60]}")
+        except Exception as e:
+            print(f"[parse-site] targeted {field} error: {e}")
+
+    return brand
+
+
+def hash_password(password: str) -> str:
+    """Хеширует пароль современным способом (bcrypt)."""
+    import bcrypt
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def normalize_site_url(url: str) -> str:
+    """Нормализует URL: IDN (punycode xn--) → кириллица/unicode через encodings.idna."""
+    try:
+        if not url.startswith("http"):
+            url = "https://" + url
+        # Декодируем punycode-метки домена в unicode
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        if "xn--" in host:
+            try:
+                import encodings.idna as _idna
+                labels = host.split(".")
+                decoded_labels = []
+                for label in labels:
+                    try:
+                        decoded_labels.append(_idna.ToUnicode(label))
+                    except Exception:
+                        decoded_labels.append(label)
+                unicode_host = ".".join(decoded_labels)
+                # Пересобираем URL с unicode-хостом
+                netloc = unicode_host
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                url = urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+            except Exception:
+                pass  # оставляем как есть
+    except Exception:
+        pass
+    return url
+
+
+def create_demo_company(site_url: str, brand: dict, wl_manager_id=None) -> tuple[int, str, int]:
+    """
+    Создаёт новый аккаунт company с has_own_agent=true и запись в demo_companies.
+    Возвращает (company_id, token, demo_id).
+    """
+    import secrets as _sec
+    site_url = normalize_site_url(site_url)
+    slug = re.sub(r"https?://", "", site_url).split("/")[0].replace(".", "-")
+    demo_email = f"demo-{slug}-{_sec.token_hex(4)}@demo.local"
+    temp_pass  = _sec.token_urlsafe(10)
+    pw_hash    = hash_password(temp_pass)
+    company_name = (brand.get("company_name") or slug)
+
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.users
+          (email, password_hash, name, role, approved, has_own_agent,
+           estimates_balance, trial_until,
+           company_name, bot_name, bot_greeting,
+           brand_color, brand_logo_url, bot_avatar_url,
+           support_phone, support_email, telegram, website,
+           working_hours, pdf_footer_address)
+        VALUES (%s,%s,%s,'company',TRUE,TRUE,
+                10, NOW() + INTERVAL '10 days',
+                %s,%s,%s,
+                %s,%s,%s,
+                %s,%s,%s,%s,
+                %s,%s)
+        RETURNING id
+    """, (
+        demo_email, pw_hash, company_name,
+        company_name,
+        brand.get("bot_name") or company_name,
+        brand.get("bot_greeting") or f"Здравствуйте! Я помощник компании «{company_name}».",
+        brand.get("brand_color"),
+        brand.get("brand_logo_url"),
+        brand.get("bot_avatar_url"),
+        brand.get("support_phone"),
+        brand.get("support_email"),
+        brand.get("telegram"),
+        brand.get("website"),
+        brand.get("working_hours"),
+        brand.get("pdf_footer_address"),
+    ))
+    new_id = cur.fetchone()[0]
+
+    token = _sec.token_hex(32)
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.user_sessions (user_id, token, expires_at)
+        VALUES (%s, %s, NOW() + INTERVAL '30 days')
+    """, (new_id, token))
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.demo_companies (site_url, company_id, manager_id)
+        VALUES (%s, %s, %s)
+        RETURNING id
+    """, (site_url, new_id, wl_manager_id))
+    demo_id = cur.fetchone()[0]
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[parse-site] created demo company id={new_id} demo_id={demo_id} email={demo_email}")
+    return new_id, token, demo_id
+
+def save_brand_to_db(company_id: int, brand: dict):
+    """Сохраняет бренд-данные в таблицу users."""
+    allowed = [
+        "company_name", "bot_name", "bot_greeting", "support_phone",
+        "support_email", "telegram", "website", "working_hours",
+        "pdf_footer_address", "brand_color", "brand_logo_url", "bot_avatar_url",
+    ]
+    sets, vals = [], []
+    for key in allowed:
+        val = brand.get(key)
+        if val is not None:
+            sets.append(f"{key} = %s")
+            vals.append(str(val).strip() if val else None)
+    if not sets:
+        return
+    vals.append(company_id)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"UPDATE {SCHEMA}.users SET {', '.join(sets)} WHERE id = %s", vals)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def build_report(brand: dict) -> dict:
+    """Строит отчёт: что заполнилось, что нет."""
+    labels = {
+        "company_name":       "Название компании",
+        "bot_name":           "Имя бота",
+        "bot_greeting":       "Приветствие бота",
+        "brand_logo_url":     "Логотип",
+        "bot_avatar_url":     "Фото бота",
+        "support_phone":      "Телефон",
+        "support_email":      "Email",
+        "telegram":           "Telegram",
+        "website":            "Сайт",
+        "working_hours":      "Часы работы",
+        "pdf_footer_address": "Адрес",
+        "brand_color":        "Цвет бренда",
+    }
+    filled, missing = [], []
+    for key, label in labels.items():
+        val = brand.get(key)
+        if val and str(val).strip():
+            filled.append({"field": key, "label": label, "value": str(val).strip()})
+        else:
+            missing.append({"field": key, "label": label})
+    return {"filled": filled, "missing": missing}
+
+def handler(event: dict, context) -> dict:
+    """Парсит сайт клиента через AI и заполняет демо-компанию данными бренда."""
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS, "body": ""}
+
+    if event.get("httpMethod") != "POST":
+        return err("Только POST", 405)
+
+    # Проверяем токен мастера или wl-менеджера
+    headers = event.get("headers") or {}
+    raw_token = (headers.get("X-Authorization") or "").replace("Bearer ", "").strip()
+    if not raw_token:
+        return err("Требуется авторизация", 401)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Сначала проверяем wl_managers (чтобы не было коллизии id с users)
+    cur.execute(f"""
+        SELECT m.id, m.wl_role, m.approved FROM {SCHEMA}.wl_managers m
+        JOIN {SCHEMA}.user_sessions s ON s.user_id = m.id
+        WHERE s.token=%s AND s.expires_at > NOW() AND s.session_type = 'wl_manager'
+    """, (raw_token,))
+    wl_row = cur.fetchone()
+
+    is_company_user = False
+    company_user_id = None
+
+    if wl_row:
+        if not wl_row[2]:
+            cur.close(); conn.close()
+            return err("Аккаунт не одобрен", 403)
+        # wl-менеджер авторизован — запоминаем его id для назначения компании
+        wl_manager_id = wl_row[0]
+    else:
+        # Проверяем обычного пользователя (мастер или company)
+        cur.execute(f"""
+            SELECT u.email, u.role, u.id, u.website FROM {SCHEMA}.user_sessions s
+            JOIN {SCHEMA}.users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (raw_token,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return err("Доступ запрещён", 403)
+        user_email, user_role, user_uid, user_website = row
+        is_master = (user_email == "19.jeka.94@gmail.com")
+        is_company_user = (user_role in ("company", "installer"))
+        if not is_master and not is_company_user:
+            cur.close(); conn.close()
+            return err("Доступ запрещён", 403)
+        if is_company_user:
+            company_user_id = user_uid
+        wl_manager_id = None  # мастер/компания — без привязки к менеджеру
+
+    body = {}
+    if event.get("body"):
+        try:
+            body = json.loads(event["body"])
+        except Exception:
+            pass
+
+    site_url   = (body.get("url") or "").strip()
+    company_id = body.get("company_id")  # None при полном парсинге (создаём новый)
+    if company_id is not None:
+        company_id = int(company_id)
+    only_field = (body.get("only_field") or "").strip()  # если задано — ищем только одно поле
+    parse_only = bool(body.get("parse_only"))  # True — только парсинг, без создания компании
+    check_only = bool(body.get("check_only"))  # True — только проверка дубликата, без парсинга
+
+    # Если запрос от company-пользователя — подставляем его id автоматически,
+    # переключаемся в режим parse_only (не создаём новую демо-компанию),
+    # отключаем check_only (дубликат-чек не нужен для редактирования своего бренда)
+    if is_company_user:
+        if company_id is None:
+            company_id = company_user_id
+        parse_only = True
+        check_only = False
+
+    if not site_url:
+        return err("url обязателен")
+
+    # ── Проверка дубликата: этот сайт уже парсили ────────────────────────────
+    if company_id is None and not only_field:
+        chk_conn = get_conn(); chk_cur = chk_conn.cursor()
+        # Берём домен без протокола для сравнения
+        domain_check = re.sub(r"https?://", "", site_url).split("/")[0].lower()
+        chk_cur.execute(f"""
+            SELECT dc.id, u.company_name, dc.site_url
+            FROM {SCHEMA}.demo_companies dc
+            JOIN {SCHEMA}.users u ON u.id = dc.company_id
+            WHERE u.removed_at IS NULL
+        """)
+        all_sites = chk_cur.fetchall()
+        chk_cur.close(); chk_conn.close()
+        for row_ in all_sites:
+            existing_domain = re.sub(r"https?://", "", row_[2] or "").split("/")[0].lower()
+            if existing_domain == domain_check:
+                return err(f"Этот сайт уже добавлен: «{row_[1]}»")
+        # check_only=True — только проверка дубликата, возвращаем ОК без парсинга
+        if check_only:
+            return ok({"ok": True, "duplicate": False})
+
+    # ── Режим поиска одного поля ─────────────────────────────────────────────
+    if only_field:
+        domain  = re.sub(r"https?://", "", site_url).split("/")[0]
+        # Читаем текущее название компании из БД
+        conn2 = get_conn(); cur2 = conn2.cursor()
+        cur2.execute(f"SELECT company_name FROM {SCHEMA}.users WHERE id=%s", (company_id,))
+        row2 = cur2.fetchone(); cur2.close(); conn2.close()
+        company = (row2[0] if row2 else None) or domain
+
+        label_map = {
+            "support_email":      "Email",
+            "support_phone":      "Телефон",
+            "telegram_url":       "Telegram",
+            "telegram":           "Telegram",
+            "pdf_footer_address": "Адрес",
+            "working_hours":      "Часы работы",
+            "brand_color":        "Цвет бренда",
+            "brand_logo_url":     "Логотип",
+            "bot_avatar_url":     "Фото бота",
+        }
+
+        brand = {}
+
+        # ── Логотип: парсим HTML сайта напрямую + загружаем в S3 ────────────
+        if only_field == "brand_logo_url":
+            logo_src, favicon_src = find_logo_url(site_url)
+            if logo_src:
+                result = fetch_image_bytes(logo_src)
+                if result:
+                    img_bytes, ext = result
+                    if len(img_bytes) > 500:
+                        try:
+                            brand["brand_logo_url"] = upload_image_to_s3(img_bytes, ext, "logo")
+                        except Exception as e:
+                            print(f"[parse-site] logo upload failed: {e}")
+            # Если логотип не нашли — пробуем фавикон как запасной вариант
+            if not brand.get("brand_logo_url") and favicon_src:
+                result2 = fetch_image_bytes(favicon_src)
+                if result2:
+                    img_bytes2, ext2 = result2
+                    if len(img_bytes2) > 100:
+                        try:
+                            brand["brand_logo_url"] = upload_image_to_s3(img_bytes2, ext2, "logo")
+                        except Exception as e:
+                            print(f"[parse-site] favicon-as-logo upload failed: {e}")
+
+        # ── Аватар бота: сначала ищем логотип, иначе фавикон ────────────────
+        elif only_field == "bot_avatar_url":
+            logo_src, favicon_src = find_logo_url(site_url)
+            img_src = logo_src or favicon_src
+            if img_src:
+                result = fetch_image_bytes(img_src)
+                if result:
+                    img_bytes, ext = result
+                    if len(img_bytes) > 100:
+                        try:
+                            brand["bot_avatar_url"] = upload_image_to_s3(img_bytes, ext, "avatar")
+                        except Exception as e:
+                            print(f"[parse-site] avatar upload failed: {e}")
+
+        # ── Цвет бренда: напрямую парсим CSS сайта ──────────────────────────
+        elif only_field == "brand_color":
+            css_color = fetch_brand_color(site_url)
+            if css_color:
+                brand["brand_color"] = css_color
+                print(f"[parse-site] only_field brand_color from CSS: {css_color}")
+
+        # ── Остальные поля: Tavily Search + regex ────────────────────────────
+        else:
+            # Нормализуем: telegram_url → telegram для поиска
+            search_field = "telegram" if only_field == "telegram_url" else only_field
+            queries = {
+                "support_email":      f'{domain} email почта официальный контакты сайт',
+                "support_phone":      f'{domain} телефон номер позвонить контакты',
+                "telegram":           f'{company} {domain} telegram t.me официальный канал',
+                "pdf_footer_address": f'{company} {domain} адрес офис город улица официальный',
+                "working_hours":      f'{domain} часы работы режим график работы',
+            }
+            query = queries.get(search_field, f'{domain} {company} {search_field}')
+            api_key = os.environ.get("TAVILY_API_KEY", "")
+            try:
+                data = tavily_post("https://api.tavily.com/search", {
+                    "query": query, "search_depth": "advanced",
+                    "max_results": 8, "include_raw_content": True,
+                }, api_key, timeout=20)
+                snippets = " ".join(
+                    (r.get("raw_content") or r.get("content") or "")
+                    for r in data.get("results", [])
+                )
+                val = extract_with_regex(snippets, search_field) if snippets else None
+                if val:
+                    # Сохраняем под правильным ключом (telegram_url → telegram в БД)
+                    db_field = "telegram" if only_field == "telegram_url" else only_field
+                    brand[db_field] = val
+            except Exception as e:
+                print(f"[parse-site] only_field search error: {e}")
+
+        # Сохраняем в БД если нашли
+        if brand:
+            save_brand_to_db(company_id, brand)
+
+        # Нормализуем ключ для отчёта фронтенду (всегда возвращаем only_field)
+        found_val = brand.get(only_field) or brand.get("telegram") if only_field == "telegram_url" else brand.get(only_field)
+        report = {
+            "filled":  [{"field": only_field, "label": label_map.get(only_field, only_field), "value": found_val}] if found_val else [],
+            "missing": [] if found_val else [{"field": only_field, "label": label_map.get(only_field, only_field)}],
+        }
+        return ok({"brand": brand, "report": report, "company_id": company_id})
+
+    # ── Полный парсинг ───────────────────────────────────────────────────────
+    try:
+        page_text = fetch_page_text(site_url)
+    except ValueError as e:
+        return err(str(e))
+
+    try:
+        brand = extract_brand_info(site_url, page_text)
+    except Exception as e:
+        return err(f"AI ошибка: {e}")
+
+    # Если AI не нашёл цвет — пробуем вытащить из CSS
+    if not brand.get("brand_color"):
+        css_color = fetch_brand_color(site_url)
+        if css_color:
+            brand["brand_color"] = css_color
+            print(f"[parse-site] brand_color from CSS: {css_color}")
+
+    # Доищем пустые поля через Tavily Search
+    try:
+        brand = search_missing_fields(brand, site_url)
+    except Exception as e:
+        print(f"[parse-site] search_missing_fields error: {e}")
+
+    # Парсим логотип и фавикон → загружаем в S3
+    logo_src, favicon_src = find_logo_url(site_url)
+
+    if logo_src and not brand.get("brand_logo_url"):
+        result = fetch_image_bytes(logo_src)
+        if result:
+            img_bytes, ext = result
+            if len(img_bytes) > 500:  # не пустой файл
+                try:
+                    brand["brand_logo_url"] = upload_image_to_s3(img_bytes, ext, "logo")
+                except Exception as e:
+                    print(f"[parse-site] logo upload failed: {e}")
+
+    if not brand.get("bot_avatar_url"):
+        # Аватар бота = логотип (если загрузили) или фавикон
+        if brand.get("brand_logo_url"):
+            brand["bot_avatar_url"] = brand["brand_logo_url"]
+        elif favicon_src:
+            result = fetch_image_bytes(favicon_src)
+            if result:
+                img_bytes, ext = result
+                if len(img_bytes) > 100:
+                    try:
+                        brand["bot_avatar_url"] = upload_image_to_s3(img_bytes, ext, "avatar")
+                    except Exception as e:
+                        print(f"[parse-site] avatar upload failed: {e}")
+
+    # parse_only=True — возвращаем только результат парсинга, не создаём компанию
+    if parse_only:
+        # Для company-пользователя сохраняем найденные данные в их аккаунт
+        if is_company_user and company_id:
+            try:
+                save_brand_to_db(company_id, brand)
+            except Exception as e:
+                print(f"[parse-site] save_brand_to_db for company user failed: {e}")
+        report = build_report(brand)
+        return ok({"brand": brand, "report": report})
+
+    # Создаём новый демо-аккаунт (или обновляем существующий, если company_id передан)
+    demo_id = None
+    if company_id is None:
+        try:
+            company_id, token, demo_id = create_demo_company(site_url, brand, wl_manager_id)
+        except Exception as e:
+            return err(f"Ошибка создания аккаунта: {e}")
+    else:
+        token = None
+        try:
+            save_brand_to_db(company_id, brand)
+        except Exception as e:
+            return err(f"Ошибка сохранения: {e}")
+
+    report = build_report(brand)
+    return ok({
+        "brand":      brand,
+        "report":     report,
+        "company_id": company_id,
+        "demo_id":    demo_id,
+        "token":      token,
+    })
