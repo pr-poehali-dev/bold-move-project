@@ -1,3 +1,12 @@
+# functions/price-image.py
+# ============================================================
+# ФУНКЦИЯ: price-image.py
+# Размер: 211 строк
+# Путь в проекте: backend/price-image/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/3d2be918-8b94-4277-a23f-443017789f07
+# ============================================================
+
 # redeploy-marker: 1786609864
 """Загрузка картинок для товаров и категорий прайса.
 GET /upload?type=item&id=42 или type=category&category=Полотна

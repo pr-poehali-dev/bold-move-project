@@ -1,3 +1,12 @@
+# functions/voice-edit-prompt.py
+# ============================================================
+# ФУНКЦИЯ: voice-edit-prompt.py
+# Размер: 81 строк
+# Путь в проекте: backend/voice-edit-prompt/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/b0ae5665-fd99-4e2a-9c56-cd3aeba5be49
+# ============================================================
+
 # redeploy-marker: 1786609864
 import os
 import json

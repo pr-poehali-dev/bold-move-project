@@ -1,3 +1,12 @@
+# functions/crm-ai.py
+# ============================================================
+# ФУНКЦИЯ: crm-ai.py
+# Размер: 683 строк
+# Путь в проекте: backend/crm-ai/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/87c0eb8b-961e-4b3c-9b6b-e8b1cfa3aae7
+# ============================================================
+
 import json
 import os
 import re

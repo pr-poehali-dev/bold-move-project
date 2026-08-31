@@ -1,3 +1,12 @@
+# functions/deepgram-transcribe.py
+# ============================================================
+# ФУНКЦИЯ: deepgram-transcribe.py
+# Размер: 46 строк
+# Путь в проекте: backend/deepgram-transcribe/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/8fa7fd9e-1b44-4d3c-9f63-9eb83ab95ad9
+# ============================================================
+
 # redeploy-marker: 1786609864
 import os
 import json

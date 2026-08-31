@@ -1,3 +1,12 @@
+# functions/whisper-transcribe.py
+# ============================================================
+# ФУНКЦИЯ: whisper-transcribe.py
+# Размер: 66 строк
+# Путь в проекте: backend/whisper-transcribe/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/30aa899c-e961-461c-822b-d0eff073c5a3
+# ============================================================
+
 # redeploy-marker: 1786609864
 import os
 import json

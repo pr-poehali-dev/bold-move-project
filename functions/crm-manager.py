@@ -1,3 +1,12 @@
+# functions/crm-manager.py
+# ============================================================
+# ФУНКЦИЯ: crm-manager.py
+# Размер: 6803 строк
+# Путь в проекте: backend/crm-manager/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/37f12dd8-c3c7-4bc9-9451-27dd60d66a3b
+# ============================================================
+
 # redeploy-marker: 1786609864
 import json
 import os

@@ -1,3 +1,12 @@
+# functions/crm-auto-rules.py
+# ============================================================
+# ФУНКЦИЯ: crm-auto-rules.py
+# Размер: 266 строк
+# Путь в проекте: backend/crm-auto-rules/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/5e79f038-550c-41c6-8064-443681d7f8b4
+# ============================================================
+
 # redeploy-marker: 1786609864
 import json, os
 import psycopg2

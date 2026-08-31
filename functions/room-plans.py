@@ -1,3 +1,12 @@
+# functions/room-plans.py
+# ============================================================
+# ФУНКЦИЯ: room-plans.py
+# Размер: 172 строк
+# Путь в проекте: backend/room-plans/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/ac1604b1-f687-4d22-9985-feb2c63adfd4
+# ============================================================
+
 # redeploy-marker: 1786609864
 import os, json, psycopg2
 from datetime import datetime

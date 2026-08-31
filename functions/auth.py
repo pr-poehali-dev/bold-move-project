@@ -1,3 +1,12 @@
+# functions/auth.py
+# ============================================================
+# ФУНКЦИЯ: auth.py
+# Размер: 45 строк
+# Путь в проекте: backend/auth/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/70179633-b3cd-4a23-b101-49c124403b0c
+# ============================================================
+
 # redeploy-marker: 1786609864
 import json  # v3-cleanup
 from shared import get_conn, ok, err

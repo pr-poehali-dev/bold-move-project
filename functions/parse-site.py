@@ -1,3 +1,12 @@
+# functions/parse-site.py
+# ============================================================
+# ФУНКЦИЯ: parse-site.py
+# Размер: 1038 строк
+# Путь в проекте: backend/parse-site/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/0f8000f8-2d90-4883-a4d0-02078d604d00
+# ============================================================
+
 # redeploy-marker: 1786609864
 import json
 import os

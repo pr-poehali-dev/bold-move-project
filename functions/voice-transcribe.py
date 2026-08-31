@@ -1,3 +1,12 @@
+# functions/voice-transcribe.py
+# ============================================================
+# ФУНКЦИЯ: voice-transcribe.py
+# Размер: 64 строк
+# Путь в проекте: backend/voice-transcribe/index.py
+# Дата: 2026-08-31 11:59
+# URL: https://functions.poehali.dev/eb9e6186-1535-4f79-9832-e0da1ae71e22
+# ============================================================
+
 # redeploy-marker: 1786609864
 import os
 import json
