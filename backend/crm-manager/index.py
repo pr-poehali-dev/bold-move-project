@@ -1738,11 +1738,15 @@ def handler(event: dict, context) -> dict:
                 # даты и без явного подэтапа — не открываем модалку "укажите дату", а сразу
                 # ставим подэтап «Дата замера не назначена». Дату менеджер добавит позже,
                 # когда согласует её с клиентом.
-                if new_status_val == "measure" and "sub_status" not in body and not body.get("measure_date"):
-                    cur.execute(f"SELECT company_id FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
+                # ⚠️ Дату проверяем не только в теле запроса, но и уже сохранённую в
+                # карточке — иначе у заявки, где дата замера пришла заранее (например
+                # с сайта), подэтап «Дата не назначена» наезжал поверх уже известной даты.
+                if new_status_val == "measure" and "sub_status" not in body:
+                    cur.execute(f"SELECT company_id, measure_date FROM {SCHEMA}.live_chats WHERE id=%s", (int(cid),))
                     orow = cur.fetchone()
                     owner_cmp = (orow[0] if orow else None) or company_id
-                    if owner_cmp is not None:
+                    has_measure_date = bool(body.get("measure_date")) or bool(orow[1] if orow else None)
+                    if owner_cmp is not None and not has_measure_date:
                         cur.execute(f"""SELECT id FROM {SCHEMA}.order_substatuses
                             WHERE company_id=%s AND parent_status='measures' AND label='Дата замера не назначена'
                             ORDER BY position, id LIMIT 1""", (owner_cmp,))

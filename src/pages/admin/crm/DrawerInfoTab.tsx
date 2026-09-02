@@ -5,6 +5,8 @@ import { useTheme } from "./themeContext";
 import { Section } from "./drawerComponents";
 import { Switch } from "@/components/ui/switch";
 import { StatusSelector } from "./StatusSelector";
+import { needStageDate } from "./stageDateRules";
+import { StageDateConfirm, StageDatePatch } from "./StageDateConfirm";
 import { DrawerPLBlock } from "./DrawerPLBlock";
 import { DrawerDiscountBlock } from "./DrawerDiscountBlock";
 import { ActivityFeed, ActivityEvent } from "./ActivityFeed";
@@ -64,6 +66,10 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
   const [showAddBlock, setShowAddBlock]   = useState<0 | 1 | "wide" | null>(null);
   const [rowVisibility, setRowVisibility] = useState<Record<string, boolean>>(loadRowVisibility);
   const [customFinRows, setCustomFinRows] = useState<CustomFinRow[]>(loadCustomFinRows);
+  // Модалка «когда назначен замер/монтаж» — та же защита, что и в списке заявок
+  // (useStageDateGuard), только здесь статус меняется прямо из карточки кнопкой
+  // детализации этапа (StatusSelector → onSaveStatusAndSub), а не через «Далее».
+  const [pendingStageDate, setPendingStageDate] = useState<string | null>(null);
 
   // Настройки Доходов/Затрат — общие на компанию (БД), localStorage — быстрый локальный кэш.
   // При первом заходе после обновления: если в БД пусто, а локально что-то настроено —
@@ -354,6 +360,15 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
             }}
             onSaveSubStatus={v => save({ sub_status: v })}
             onSaveStatusAndSub={(s, sub) => {
+              // Системный статус этапа (напр. «Замер назначен») без даты сервер
+              // отклонит с ошибкой — раньше это выглядело так, будто кнопка вообще
+              // не работает. Вместо тихого отказа открываем ту же модалку с датой,
+              // что и в списке заявок (см. useStageDateGuard), и только после
+              // подтверждения отправляем статус+дату одним запросом.
+              if (sub === null && needStageDate(data, s)) {
+                setPendingStageDate(s);
+                return;
+              }
               // Одним запросом: иначе сервер, получив только status='measure' без
               // sub_status, снова подставил бы подэтап «Дата замера не назначена»,
               // и на этапе опять горели бы сразу две кнопки.
@@ -361,6 +376,20 @@ export default function DrawerInfoTab({ data, client, setData, save, hideHidden,
             }}
           />
         </Section>
+      )}
+
+      {pendingStageDate && (
+        <StageDateConfirm
+          t={t}
+          nextStatus={pendingStageDate}
+          currentDate={pendingStageDate === "measure" ? data.measure_date : data.install_date}
+          currentComment={pendingStageDate === "measure" ? data.comment_measure : data.comment_install}
+          onConfirm={(patch: StageDatePatch) => {
+            setPendingStageDate(null);
+            saveWithLog({ ...patch, sub_status: null } as Partial<Client>, `Статус → ${STATUS_LABELS[patch.status] || patch.status}`, "GitBranch", "#8b5cf6");
+          }}
+          onCancel={() => setPendingStageDate(null)}
+        />
       )}
 
       {/* P&L — на всю ширину под воронкой (только с правом finance) */}
