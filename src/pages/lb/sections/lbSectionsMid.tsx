@@ -54,7 +54,7 @@ export function LBStackAbout() {
                 }}
               >
                 <img
-                  src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg"
+                  src="/assets/cdn/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg"
                   alt="Евгений Красноруцкий"
                   className="w-full h-full object-cover object-top"
                 />
@@ -145,9 +145,9 @@ const ANALYTICS_TABS = [
       { icon: "⚠️", text: "Автоматические алерты при просроченных событиях" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c506c61e-4161-4bae-b929-90e70814ce92.png", label: "Обзор метрик" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/2d466914-6eae-455d-b18f-8d21a26b7569.png", label: "Финансы P&L" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/5959ad19-5d27-4d4c-8828-12a95c55513b.png", label: "Динамика продаж" },
+      { url: "/assets/cdn/c506c61e-4161-4bae-b929-90e70814ce92.png", label: "Обзор метрик" },
+      { url: "/assets/cdn/2d466914-6eae-455d-b18f-8d21a26b7569.png", label: "Финансы P&L" },
+      { url: "/assets/cdn/5959ad19-5d27-4d4c-8828-12a95c55513b.png", label: "Динамика продаж" },
     ],
   },
   {
@@ -164,9 +164,9 @@ const ANALYTICS_TABS = [
       { icon: "📉", text: "Встроенная аналитика — MRR, Churn, LTV, конверсии" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png", label: "SaaS: панель клиента" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", label: "SaaS: white-label настройки" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png", label: "SaaS: интеграции и PDF" },
+      { url: "/assets/cdn/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png", label: "SaaS: панель клиента" },
+      { url: "/assets/cdn/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", label: "SaaS: white-label настройки" },
+      { url: "/assets/cdn/50afc0df-5ddb-48d4-9569-e1f37b898421.png", label: "SaaS: интеграции и PDF" },
     ],
   },
   {
@@ -183,9 +183,9 @@ const ANALYTICS_TABS = [
       { icon: "📨", text: "Telegram, MAX, WhatsApp, веб-виджет" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", label: "Агент: чат" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3416564e-b468-4a79-8b8e-eaade4459b53.png", label: "Агент: голосовой ввод" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", label: "Агент: готовая смета" },
+      { url: "/assets/cdn/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", label: "Агент: чат" },
+      { url: "/assets/cdn/3416564e-b468-4a79-8b8e-eaade4459b53.png", label: "Агент: голосовой ввод" },
+      { url: "/assets/cdn/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", label: "Агент: готовая смета" },
     ],
   },
   {
@@ -202,9 +202,9 @@ const ANALYTICS_TABS = [
       { icon: "👥", text: "Матрица прав: менеджер, РОП, директор" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b515b10a-e8bf-4688-90d3-5ac68107f14e.png", label: "CRM: воронка заявок" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a27669c1-a604-4b08-b399-93e45198ecc5.png", label: "CRM: канбан-доска" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/326f400c-4845-4d7c-990b-4d4a918273e2.png", label: "CRM: календарь" },
+      { url: "/assets/cdn/b515b10a-e8bf-4688-90d3-5ac68107f14e.png", label: "CRM: воронка заявок" },
+      { url: "/assets/cdn/a27669c1-a604-4b08-b399-93e45198ecc5.png", label: "CRM: канбан-доска" },
+      { url: "/assets/cdn/326f400c-4845-4d7c-990b-4d4a918273e2.png", label: "CRM: календарь" },
     ],
   },
   {
@@ -221,9 +221,9 @@ const ANALYTICS_TABS = [
       { icon: "📄", text: "Экспорт в PDF с чертежом и детализацией" },
     ],
     shots: [
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3b311dfe-644d-46a7-9072-ddef2335e583.png", label: "Построитель: чертёж" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", label: "Построитель: мультикомнатный" },
-      { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", label: "Построитель: выгрузка PDF" },
+      { url: "/assets/cdn/3b311dfe-644d-46a7-9072-ddef2335e583.png", label: "Построитель: чертёж" },
+      { url: "/assets/cdn/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", label: "Построитель: мультикомнатный" },
+      { url: "/assets/cdn/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", label: "Построитель: выгрузка PDF" },
     ],
   },
 ];

@@ -99,8 +99,8 @@ export default function BrandPreview({ brand, isDark, companyName: companyNamePr
 
   const accent      = brand.brand_color  || "#f97316";
   const pdfText     = brand.pdf_text_color || "#111827";
-  const logoUrl     = brand.brand_logo_url || "https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png";
-  const avatarUrl   = brand.bot_avatar_url || "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
+  const logoUrl     = brand.brand_logo_url || "/assets/cdn/7105828c-c33e-48f9-ac90-02134e3cd4d7.png";
+  const avatarUrl   = brand.bot_avatar_url || "/assets/cdn/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg";
   const botName     = brand.bot_name || "Женя";
   const greeting    = brand.bot_greeting || "Привет! Я Женя — ваш персональный консультант 👋";
   const companyName = companyNameProp || user?.company_name || "Ваша компания";

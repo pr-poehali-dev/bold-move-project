@@ -422,7 +422,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, Props>(
                       </div>
                       {/* MAX */}
                       <div className="flex flex-col items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl py-2.5 text-center">
-                        <img src="https://cdn.poehali.dev/files/dc3bd406-b8e7-4faf-a027-22420f5483ee.png" alt="MAX" className="w-6 h-6 rounded-md object-cover" />
+                        <img src="/assets/cdn/dc3bd406-b8e7-4faf-a027-22420f5483ee.png" alt="MAX" className="w-6 h-6 rounded-md object-cover" />
                         <span className="text-white/40 text-[10px]">MAX</span>
                       </div>
                       {/* WhatsApp */}

@@ -378,7 +378,7 @@ export default function Index() {
                 {/* Avatar + title */}
                 <div className="flex flex-col items-center text-center mb-5">
                   <div className="relative mb-3">
-                    <img src="https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg"
+                    <img src="/assets/cdn/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg"
                       alt="Женя" className="w-16 h-16 rounded-2xl object-cover border-2 border-orange-500/30 shadow-lg shadow-orange-500/15" />
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange-500 rounded-full border-2 border-[#16100a] flex items-center justify-center">
                       <Icon name="Check" size={10} className="text-white" />

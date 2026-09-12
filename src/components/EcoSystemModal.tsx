@@ -31,7 +31,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "Mic",
     status: "ready",
     href: "/",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
+    image: "/assets/cdn/8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
   },
   {
     icon: "LayoutDashboard",
@@ -43,7 +43,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "CheckSquare",
     status: "ready",
     href: "/company?tab=crm",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
+    image: "/assets/cdn/25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
   },
   {
     icon: "BarChart3",
@@ -55,7 +55,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "TrendingUp",
     status: "ready",
     href: "/company?tab=crm&crm_tab=analytics",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
+    image: "/assets/cdn/ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
   },
   {
     icon: "PenTool",
@@ -67,7 +67,7 @@ const FEATURES: Feature[] = [
     badgeIcon: "Mic2",
     status: "beta",
     href: "/plan",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
+    image: "/assets/cdn/e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
   },
   {
     icon: "FileSearch",
@@ -78,7 +78,7 @@ const FEATURES: Feature[] = [
     badge: "Загрузи файл",
     badgeIcon: "Upload",
     status: "soon",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/64d39d46-539d-49f3-be65-3281579c62ad.jpg",
+    image: "/assets/cdn/64d39d46-539d-49f3-be65-3281579c62ad.jpg",
   },
   {
     icon: "Megaphone",
@@ -89,7 +89,7 @@ const FEATURES: Feature[] = [
     badge: "Автопилот",
     badgeIcon: "Zap",
     status: "soon",
-    image: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
+    image: "/assets/cdn/8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
   },
 ];
 

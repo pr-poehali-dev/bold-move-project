@@ -1,6 +1,6 @@
 // ── Все константы и данные страницы личного бренда ───────────────────────────
 
-export const PHOTO_URL = "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg";
+export const PHOTO_URL = "/assets/cdn/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg";
 
 export const TG_LINK = "https://telegram.me/JoniKras";
 export const MAX_LINK = "https://max.ru/u/f9LHodD0cOKSEfyoFHNHDKKda2DJEQla4TIbxIDSi7pGygeScJtM9PafS5g";
@@ -8,34 +8,34 @@ export const MAX_LINK = "https://max.ru/u/f9LHodD0cOKSEfyoFHNHDKKda2DJEQla4TIbxI
 // ── Все скриншоты для общей галереи ──────────────────────────────────────────
 export const ALL_SCREENSHOTS = [
   // AI-агент
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", caption: "AI-агент: чат-интерфейс" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3416564e-b468-4a79-8b8e-eaade4459b53.png", caption: "AI-агент: голосовой ввод" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", caption: "AI-агент: готовая смета" },
+  { url: "/assets/cdn/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png", caption: "AI-агент: чат-интерфейс" },
+  { url: "/assets/cdn/3416564e-b468-4a79-8b8e-eaade4459b53.png", caption: "AI-агент: голосовой ввод" },
+  { url: "/assets/cdn/81d9f4de-68ac-481f-9ddd-432a4dd308af.png", caption: "AI-агент: готовая смета" },
   // CRM
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b515b10a-e8bf-4688-90d3-5ac68107f14e.png", caption: "CRM: воронка заявок" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a27669c1-a604-4b08-b399-93e45198ecc5.png", caption: "CRM: канбан-доска" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/326f400c-4845-4d7c-990b-4d4a918273e2.png", caption: "CRM: календарь" },
+  { url: "/assets/cdn/b515b10a-e8bf-4688-90d3-5ac68107f14e.png", caption: "CRM: воронка заявок" },
+  { url: "/assets/cdn/a27669c1-a604-4b08-b399-93e45198ecc5.png", caption: "CRM: канбан-доска" },
+  { url: "/assets/cdn/326f400c-4845-4d7c-990b-4d4a918273e2.png", caption: "CRM: календарь" },
   // Аналитика
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c506c61e-4161-4bae-b929-90e70814ce92.png", caption: "Аналитика: обзор" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/2d466914-6eae-455d-b18f-8d21a26b7569.png", caption: "Аналитика: финансы P&L" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/5959ad19-5d27-4d4c-8828-12a95c55513b.png", caption: "Аналитика: динамика" },
+  { url: "/assets/cdn/c506c61e-4161-4bae-b929-90e70814ce92.png", caption: "Аналитика: обзор" },
+  { url: "/assets/cdn/2d466914-6eae-455d-b18f-8d21a26b7569.png", caption: "Аналитика: финансы P&L" },
+  { url: "/assets/cdn/5959ad19-5d27-4d4c-8828-12a95c55513b.png", caption: "Аналитика: динамика" },
   // CAD-построитель
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3b311dfe-644d-46a7-9072-ddef2335e583.png", caption: "Построитель: чертёж комнаты" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png", caption: "Построитель: сложный контур" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png", caption: "Построитель: диагонали" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/64854ee6-cee5-47bc-829f-bc2796aa079b.png", caption: "Построитель: материалы на чертеже" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", caption: "Построитель: мультикомнатный" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", caption: "Построитель: выгрузка PDF" },
+  { url: "/assets/cdn/3b311dfe-644d-46a7-9072-ddef2335e583.png", caption: "Построитель: чертёж комнаты" },
+  { url: "/assets/cdn/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png", caption: "Построитель: сложный контур" },
+  { url: "/assets/cdn/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png", caption: "Построитель: диагонали" },
+  { url: "/assets/cdn/64854ee6-cee5-47bc-829f-bc2796aa079b.png", caption: "Построитель: материалы на чертеже" },
+  { url: "/assets/cdn/9c53f861-98e1-49a0-bfe5-2494dca933d5.png", caption: "Построитель: мультикомнатный" },
+  { url: "/assets/cdn/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png", caption: "Построитель: выгрузка PDF" },
   // White-label панель
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", caption: "Панель: настройка агента" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png", caption: "Панель: управление прайсами" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png", caption: "Панель: мультикомнатные проекты" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png", caption: "Панель: PDF-сметы, Telegram и MAX интеграции" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0de086d-51dc-47ee-8e37-ae33bae26172.jpg", caption: "Галерея скриншотов проекта" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg", caption: "CRM: мобильная воронка заявок" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg", caption: "CRM: P&L по заказу" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg", caption: "AI-агент: мобильный интерфейс" },
-  { url: "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg", caption: "CAD: мобильный построитель" },
+  { url: "/assets/cdn/8ad1558a-3630-4de7-bc86-0867d74be5e7.png", caption: "Панель: настройка агента" },
+  { url: "/assets/cdn/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png", caption: "Панель: управление прайсами" },
+  { url: "/assets/cdn/1ee941f1-5b50-4584-86e4-973dde134db0.png", caption: "Панель: мультикомнатные проекты" },
+  { url: "/assets/cdn/50afc0df-5ddb-48d4-9569-e1f37b898421.png", caption: "Панель: PDF-сметы, Telegram и MAX интеграции" },
+  { url: "/assets/cdn/f0de086d-51dc-47ee-8e37-ae33bae26172.jpg", caption: "Галерея скриншотов проекта" },
+  { url: "/assets/cdn/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg", caption: "CRM: мобильная воронка заявок" },
+  { url: "/assets/cdn/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg", caption: "CRM: P&L по заказу" },
+  { url: "/assets/cdn/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg", caption: "AI-агент: мобильный интерфейс" },
+  { url: "/assets/cdn/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg", caption: "CAD: мобильный построитель" },
 ];
 
 export const PROJECTS = [
@@ -49,9 +49,9 @@ export const PROJECTS = [
     glow: "rgba(249,115,22,0.25)",
     link: "/",
     screenshots: [
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3416564e-b468-4a79-8b8e-eaade4459b53.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png",
+      "/assets/cdn/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png",
+      "/assets/cdn/3416564e-b468-4a79-8b8e-eaade4459b53.png",
+      "/assets/cdn/81d9f4de-68ac-481f-9ddd-432a4dd308af.png",
     ],
     features: ["Голосовой ввод и ответ", "RAG по базе прайсов", "Мгновенный расчёт сметы", "PDF-выгрузка КП", "Telegram-интеграция"],
   },
@@ -65,12 +65,12 @@ export const PROJECTS = [
     glow: "rgba(139,92,246,0.25)",
     link: "/crm",
     screenshots: [
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b515b10a-e8bf-4688-90d3-5ac68107f14e.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a27669c1-a604-4b08-b399-93e45198ecc5.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/326f400c-4845-4d7c-990b-4d4a918273e2.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c506c61e-4161-4bae-b929-90e70814ce92.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/2d466914-6eae-455d-b18f-8d21a26b7569.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/5959ad19-5d27-4d4c-8828-12a95c55513b.png",
+      "/assets/cdn/b515b10a-e8bf-4688-90d3-5ac68107f14e.png",
+      "/assets/cdn/a27669c1-a604-4b08-b399-93e45198ecc5.png",
+      "/assets/cdn/326f400c-4845-4d7c-990b-4d4a918273e2.png",
+      "/assets/cdn/c506c61e-4161-4bae-b929-90e70814ce92.png",
+      "/assets/cdn/2d466914-6eae-455d-b18f-8d21a26b7569.png",
+      "/assets/cdn/5959ad19-5d27-4d4c-8828-12a95c55513b.png",
     ],
     features: ["Воронка заявок + Канбан", "Финансы P&L в реальном времени", "Динамика выручки/затрат — графики", "Календарь замеров/монтажей", "Матрица прав менеджеров"],
   },
@@ -84,12 +84,12 @@ export const PROJECTS = [
     glow: "rgba(6,182,212,0.25)",
     link: "/plan",
     screenshots: [
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3b311dfe-644d-46a7-9072-ddef2335e583.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/64854ee6-cee5-47bc-829f-bc2796aa079b.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png",
+      "/assets/cdn/3b311dfe-644d-46a7-9072-ddef2335e583.png",
+      "/assets/cdn/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png",
+      "/assets/cdn/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png",
+      "/assets/cdn/64854ee6-cee5-47bc-829f-bc2796aa079b.png",
+      "/assets/cdn/9c53f861-98e1-49a0-bfe5-2494dca933d5.png",
+      "/assets/cdn/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png",
     ],
     features: ["Произвольные контуры комнат", "Авто-расчёт периметра и площади", "Интерактивные диагонали", "Мультикомнатные проекты", "Экспорт PDF с чертежом"],
   },
@@ -103,10 +103,10 @@ export const PROJECTS = [
     glow: "rgba(16,185,129,0.25)",
     link: "/company",
     screenshots: [
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png",
-      "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png",
+      "/assets/cdn/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
+      "/assets/cdn/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
+      "/assets/cdn/1ee941f1-5b50-4584-86e4-973dde134db0.png",
+      "/assets/cdn/50afc0df-5ddb-48d4-9569-e1f37b898421.png",
     ],
     features: ["White-label брендинг агента", "Управление прайсами и правилами", "Роли: компания / менеджер / мастер", "Telegram-бот под своим именем", "Аналитика по всей компании"],
   },
