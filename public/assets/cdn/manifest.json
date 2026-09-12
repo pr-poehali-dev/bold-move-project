@@ -1,0 +1,3463 @@
+{
+  "total_files": 343,
+  "total_bytes": 112364441,
+  "generated": "12.09.2026",
+  "base_dir": "public/assets/cdn",
+  "web_prefix": "/assets/cdn/",
+  "files": [
+    {
+      "path": "0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0263eb88-1d0a-4c36-9be1-f0d1db6730ec.png",
+      "size_bytes": 34804,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "0882c3c6-0cd9-4d0e-a406-a4e367e7150d.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/0882c3c6-0cd9-4d0e-a406-a4e367e7150d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/0882c3c6-0cd9-4d0e-a406-a4e367e7150d.jpg",
+      "size_bytes": 108137,
+      "used_in": [
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "15478a1b-e4a1-406c-93b7-05f07653da6a.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/15478a1b-e4a1-406c-93b7-05f07653da6a.jpg",
+      "size_bytes": 152092,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "1ee941f1-5b50-4584-86e4-973dde134db0.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/1ee941f1-5b50-4584-86e4-973dde134db0.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/1ee941f1-5b50-4584-86e4-973dde134db0.png",
+      "size_bytes": 25458,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/25dd27b1-2d7d-427e-beca-0786d7b4f77d.jpg",
+      "size_bytes": 96539,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "2d466914-6eae-455d-b18f-8d21a26b7569.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/2d466914-6eae-455d-b18f-8d21a26b7569.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/2d466914-6eae-455d-b18f-8d21a26b7569.png",
+      "size_bytes": 47793,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "326f400c-4845-4d7c-990b-4d4a918273e2.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/326f400c-4845-4d7c-990b-4d4a918273e2.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/326f400c-4845-4d7c-990b-4d4a918273e2.png",
+      "size_bytes": 79497,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "3416564e-b468-4a79-8b8e-eaade4459b53.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/3416564e-b468-4a79-8b8e-eaade4459b53.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3416564e-b468-4a79-8b8e-eaade4459b53.png",
+      "size_bytes": 80123,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "3a96cf97-dbfb-47e7-8b6a-f8f01d5998e2.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/3a96cf97-dbfb-47e7-8b6a-f8f01d5998e2.png",
+      "original_url": "https://cdn.poehali.dev/files/3a96cf97-dbfb-47e7-8b6a-f8f01d5998e2.png",
+      "size_bytes": 10201,
+      "used_in": [
+        "backend/generate-pdf/index.py"
+      ]
+    },
+    {
+      "path": "3b311dfe-644d-46a7-9072-ddef2335e583.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/3b311dfe-644d-46a7-9072-ddef2335e583.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3b311dfe-644d-46a7-9072-ddef2335e583.png",
+      "size_bytes": 30931,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/3df2c7ac-4cdc-4747-958f-0946f4db2fe3.png",
+      "size_bytes": 29252,
+      "used_in": [
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/4ecbbf9f-399f-4dfa-9f82-0f510e65acf4.png",
+      "size_bytes": 67656,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/507e3a3f-22eb-41d0-b4a9-91c7063e5099.jpg",
+      "size_bytes": 121082,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "50afc0df-5ddb-48d4-9569-e1f37b898421.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/50afc0df-5ddb-48d4-9569-e1f37b898421.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/50afc0df-5ddb-48d4-9569-e1f37b898421.png",
+      "size_bytes": 60109,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "5959ad19-5d27-4d4c-8828-12a95c55513b.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/5959ad19-5d27-4d4c-8828-12a95c55513b.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/5959ad19-5d27-4d4c-8828-12a95c55513b.png",
+      "size_bytes": 42768,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/60e2335c-4916-41e5-b894-7f4d9ca6a923.jpg",
+      "size_bytes": 135219,
+      "used_in": [
+        "db_migrations/V0089__V17__demo_whitelabel_company.sql",
+        "src/context/BrandContext.tsx",
+        "src/pages/admin/own-agent/BrandPreview.tsx",
+        "src/pages/chatConfig.ts"
+      ]
+    },
+    {
+      "path": "64854ee6-cee5-47bc-829f-bc2796aa079b.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/64854ee6-cee5-47bc-829f-bc2796aa079b.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/64854ee6-cee5-47bc-829f-bc2796aa079b.png",
+      "size_bytes": 66047,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "64d39d46-539d-49f3-be65-3281579c62ad.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/64d39d46-539d-49f3-be65-3281579c62ad.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/64d39d46-539d-49f3-be65-3281579c62ad.jpg",
+      "size_bytes": 119324,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "6ac33c1e-a2a6-4211-abba-7095f4923d5f.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/6ac33c1e-a2a6-4211-abba-7095f4923d5f.png",
+      "size_bytes": 84655,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "7105828c-c33e-48f9-ac90-02134e3cd4d7.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/7105828c-c33e-48f9-ac90-02134e3cd4d7.png",
+      "original_url": "https://cdn.poehali.dev/files/7105828c-c33e-48f9-ac90-02134e3cd4d7.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "db_migrations/V0089__V17__demo_whitelabel_company.sql",
+        "src/context/BrandContext.tsx",
+        "src/pages/admin/own-agent/BrandPreview.tsx"
+      ]
+    },
+    {
+      "path": "81d9f4de-68ac-481f-9ddd-432a4dd308af.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/81d9f4de-68ac-481f-9ddd-432a4dd308af.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/81d9f4de-68ac-481f-9ddd-432a4dd308af.png",
+      "size_bytes": 66850,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "82f4b066-784b-4cbd-a290-a14082d16b96.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/82f4b066-784b-4cbd-a290-a14082d16b96.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/82f4b066-784b-4cbd-a290-a14082d16b96.jpg",
+      "size_bytes": 87474,
+      "used_in": [
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "8444e268-91e3-402f-9a48-88ffb3459a57.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/8444e268-91e3-402f-9a48-88ffb3459a57.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8444e268-91e3-402f-9a48-88ffb3459a57.jpg",
+      "size_bytes": 141250,
+      "used_in": [
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/8ad1558a-3630-4de7-bc86-0867d74be5e7.png",
+      "size_bytes": 123752,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca1f811-9c71-4742-bb4a-8a81b2a5952e.jpg",
+      "size_bytes": 100054,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/8ca8e39a-1009-4258-a2cb-c1cdd8a0a50e.jpg",
+      "size_bytes": 102110,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "98f77739-d739-4bf0-8fe1-4c43e055b76f.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/98f77739-d739-4bf0-8fe1-4c43e055b76f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/98f77739-d739-4bf0-8fe1-4c43e055b76f.jpg",
+      "size_bytes": 95268,
+      "used_in": [
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9b9146e8-90d5-4a1f-b978-2a4c40af7af9.jpg",
+      "size_bytes": 93728,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "9c53f861-98e1-49a0-bfe5-2494dca933d5.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/9c53f861-98e1-49a0-bfe5-2494dca933d5.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/9c53f861-98e1-49a0-bfe5-2494dca933d5.png",
+      "size_bytes": 30178,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "a27669c1-a604-4b08-b399-93e45198ecc5.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/a27669c1-a604-4b08-b399-93e45198ecc5.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a27669c1-a604-4b08-b399-93e45198ecc5.png",
+      "size_bytes": 41944,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/a9e8b3c2-947f-4019-ab92-ba13b0ca8182.png",
+      "size_bytes": 68688,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/ae4900c1-c75d-4914-ba7c-a46b470891dd.jpg",
+      "size_bytes": 113803,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/b12f254a-ee38-4ef7-abc3-2517a55b4909.jpg",
+      "size_bytes": 110641,
+      "used_in": [
+        "src/pages/Index.tsx"
+      ]
+    },
+    {
+      "path": "b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b355fa9e-7615-40f9-8131-9f6dbb3311ae.jpg",
+      "size_bytes": 102527,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/LbMobileSection.tsx"
+      ]
+    },
+    {
+      "path": "b515b10a-e8bf-4688-90d3-5ac68107f14e.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/b515b10a-e8bf-4688-90d3-5ac68107f14e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/b515b10a-e8bf-4688-90d3-5ac68107f14e.png",
+      "size_bytes": 41957,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c04d82f2-0303-48f7-b069-9c96c191ffb8.xlsx",
+      "size_bytes": 22129,
+      "used_in": [
+        "backend/parse-xlsx/index.py"
+      ]
+    },
+    {
+      "path": "c506c61e-4161-4bae-b929-90e70814ce92.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/c506c61e-4161-4bae-b929-90e70814ce92.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/c506c61e-4161-4bae-b929-90e70814ce92.png",
+      "size_bytes": 58516,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/dc3581be-1604-4c86-b70f-dbd17ca4d283.jpg",
+      "size_bytes": 113201,
+      "used_in": [
+        "src/pages/lb/lbData.ts",
+        "src/pages/lb/sections/lbSectionsMid.tsx"
+      ]
+    },
+    {
+      "path": "dc3bd406-b8e7-4faf-a027-22420f5483ee.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/dc3bd406-b8e7-4faf-a027-22420f5483ee.png",
+      "original_url": "https://cdn.poehali.dev/files/dc3bd406-b8e7-4faf-a027-22420f5483ee.png",
+      "size_bytes": 95633,
+      "used_in": [
+        "src/components/ui/ai-prompt-box.tsx"
+      ]
+    },
+    {
+      "path": "e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/e60d5107-51f9-469f-8dad-ac02a6035ca4.jpg",
+      "size_bytes": 164340,
+      "used_in": [
+        "src/components/EcoSystemModal.tsx"
+      ]
+    },
+    {
+      "path": "f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0aa33cd-c1f8-416e-9e9e-82974e4e7e87.png",
+      "size_bytes": 91645,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "f0de086d-51dc-47ee-8e37-ae33bae26172.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/f0de086d-51dc-47ee-8e37-ae33bae26172.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/f0de086d-51dc-47ee-8e37-ae33bae26172.jpg",
+      "size_bytes": 159053,
+      "used_in": [
+        "src/pages/lb/lbData.ts"
+      ]
+    },
+    {
+      "path": "og-image-1778181212766.jpg",
+      "group": "код сайта",
+      "web_path": "/assets/cdn/og-image-1778181212766.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/files/og-image-1778181212766.jpg",
+      "size_bytes": 90861,
+      "used_in": [
+        "index.html"
+      ]
+    },
+    {
+      "path": "price-images/014837e3b64e48d2a1d6cda2f9f388fa.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/014837e3b64e48d2a1d6cda2f9f388fa.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/014837e3b64e48d2a1d6cda2f9f388fa.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0540c8269c3645f5a204b78f82c47cbf.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0540c8269c3645f5a204b78f82c47cbf.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0540c8269c3645f5a204b78f82c47cbf.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0624f397fc91449a8d792825a52e18ad.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0624f397fc91449a8d792825a52e18ad.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0624f397fc91449a8d792825a52e18ad.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/083901f951d04c9faed15fdea9c560c2.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/083901f951d04c9faed15fdea9c560c2.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/083901f951d04c9faed15fdea9c560c2.jpg",
+      "size_bytes": 49425,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/08c76937f2e54596a6f74a0dd70e7ef2.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/08c76937f2e54596a6f74a0dd70e7ef2.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/08c76937f2e54596a6f74a0dd70e7ef2.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/092c31466c0847f58fe7e1d99f687f8e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/092c31466c0847f58fe7e1d99f687f8e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/092c31466c0847f58fe7e1d99f687f8e.png",
+      "size_bytes": 323876,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0980c7ee6b0e4956ac262f99efbd8999.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0980c7ee6b0e4956ac262f99efbd8999.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0980c7ee6b0e4956ac262f99efbd8999.png",
+      "size_bytes": 83002,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0ba6dfd4c48b47beb649eca80f407fe2.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0ba6dfd4c48b47beb649eca80f407fe2.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0ba6dfd4c48b47beb649eca80f407fe2.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0c654883abc046dbade48cac2ca4ef56.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0c654883abc046dbade48cac2ca4ef56.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0c654883abc046dbade48cac2ca4ef56.png",
+      "size_bytes": 179254,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/0e4bcd31243741708e8f3c75ff27431d.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/0e4bcd31243741708e8f3c75ff27431d.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/0e4bcd31243741708e8f3c75ff27431d.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/102201632f0b4369a3eaccac27879ac9.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/102201632f0b4369a3eaccac27879ac9.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/102201632f0b4369a3eaccac27879ac9.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/105a699ce61a4c2ca31eaf33a0f613c6.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/105a699ce61a4c2ca31eaf33a0f613c6.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/105a699ce61a4c2ca31eaf33a0f613c6.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/10af8dddc31b494580f9aef843251af7.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/10af8dddc31b494580f9aef843251af7.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/10af8dddc31b494580f9aef843251af7.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/10c38acb75544787a81bc863d032ada8.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/10c38acb75544787a81bc863d032ada8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/10c38acb75544787a81bc863d032ada8.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/118fdba923b541d582a29b21a649e0c9.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/118fdba923b541d582a29b21a649e0c9.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/118fdba923b541d582a29b21a649e0c9.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/11dfc652690a4211b4f8dc7161e0c927.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/11dfc652690a4211b4f8dc7161e0c927.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/11dfc652690a4211b4f8dc7161e0c927.png",
+      "size_bytes": 113534,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/1357851e2bf84f53afebf8f6ebd4f35e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/1357851e2bf84f53afebf8f6ebd4f35e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/1357851e2bf84f53afebf8f6ebd4f35e.png",
+      "size_bytes": 85798,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/1524b66c4a7b4bbaa0b3ffba735d2d78.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/1524b66c4a7b4bbaa0b3ffba735d2d78.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/1524b66c4a7b4bbaa0b3ffba735d2d78.png",
+      "size_bytes": 28971,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/15efb2a2fb844f7d87c04bfb467550b8.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/15efb2a2fb844f7d87c04bfb467550b8.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/15efb2a2fb844f7d87c04bfb467550b8.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/16a8a1fdbdbd434989c3e12a608f057c.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/16a8a1fdbdbd434989c3e12a608f057c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/16a8a1fdbdbd434989c3e12a608f057c.jpg",
+      "size_bytes": 49425,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/17953d653eab4d16bfce31c57abe5b0a.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/17953d653eab4d16bfce31c57abe5b0a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/17953d653eab4d16bfce31c57abe5b0a.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/1e7873f265ce4c39aec39e4e643b19c3.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/1e7873f265ce4c39aec39e4e643b19c3.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/1e7873f265ce4c39aec39e4e643b19c3.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/1eea7d7fc8274c28ba0970f57170221d.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/1eea7d7fc8274c28ba0970f57170221d.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/1eea7d7fc8274c28ba0970f57170221d.png",
+      "size_bytes": 661269,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/204ddbb83512423e83d241d2760d7865.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/204ddbb83512423e83d241d2760d7865.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/204ddbb83512423e83d241d2760d7865.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/22c6e2f545cb45459b0dc8b600280b3e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/22c6e2f545cb45459b0dc8b600280b3e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/22c6e2f545cb45459b0dc8b600280b3e.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/25ef9392bf41441598159e1dba51c43d.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/25ef9392bf41441598159e1dba51c43d.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/25ef9392bf41441598159e1dba51c43d.png",
+      "size_bytes": 291673,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/2c0ca672ab9c43c18922b4b1b2893d91.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/2c0ca672ab9c43c18922b4b1b2893d91.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/2c0ca672ab9c43c18922b4b1b2893d91.png",
+      "size_bytes": 238368,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/2c7311053f4848a78a3aceda48ff0e67.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/2c7311053f4848a78a3aceda48ff0e67.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/2c7311053f4848a78a3aceda48ff0e67.png",
+      "size_bytes": 130009,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/2d3fad41138c4f699df4866f66635046.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/2d3fad41138c4f699df4866f66635046.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/2d3fad41138c4f699df4866f66635046.png",
+      "size_bytes": 147930,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/3470d0a6c8b747e9843273575b46c04e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/3470d0a6c8b747e9843273575b46c04e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/3470d0a6c8b747e9843273575b46c04e.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/376f2d0d928a410b89f962f4843a89e6.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/376f2d0d928a410b89f962f4843a89e6.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/376f2d0d928a410b89f962f4843a89e6.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/37a18701f4674466a800b891846754bc.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/37a18701f4674466a800b891846754bc.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/37a18701f4674466a800b891846754bc.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/39aa16d3286a40769f03fc33190e2460.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/39aa16d3286a40769f03fc33190e2460.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/39aa16d3286a40769f03fc33190e2460.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/3a0c0ec0e05f441cbc96418b36b4e3e7.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/3a0c0ec0e05f441cbc96418b36b4e3e7.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/3a0c0ec0e05f441cbc96418b36b4e3e7.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/3e355cfaf189464aa9f01a55235c1b28.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/3e355cfaf189464aa9f01a55235c1b28.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/3e355cfaf189464aa9f01a55235c1b28.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/3e441467015e4e28865a1b92cc8c73f2.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/3e441467015e4e28865a1b92cc8c73f2.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/3e441467015e4e28865a1b92cc8c73f2.png",
+      "size_bytes": 102605,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/41d409ce5cec42968b8796359a8dc9d5.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/41d409ce5cec42968b8796359a8dc9d5.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/41d409ce5cec42968b8796359a8dc9d5.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/458320654b4b4f8db4222a9fd578c13a.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/458320654b4b4f8db4222a9fd578c13a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/458320654b4b4f8db4222a9fd578c13a.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/45d4d5d69543471aa3aaa537d2006bc4.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/45d4d5d69543471aa3aaa537d2006bc4.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/45d4d5d69543471aa3aaa537d2006bc4.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/4c275d437c6d4eeb8503cdb9f6492dd8.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/4c275d437c6d4eeb8503cdb9f6492dd8.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/4c275d437c6d4eeb8503cdb9f6492dd8.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/55520af9bda74b56a5869719ccdeaf94.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/55520af9bda74b56a5869719ccdeaf94.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/55520af9bda74b56a5869719ccdeaf94.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/55b2611757a944669f6de3f1e758724b.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/55b2611757a944669f6de3f1e758724b.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/55b2611757a944669f6de3f1e758724b.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/55fde52b6d614e568396feb0b30959d0.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/55fde52b6d614e568396feb0b30959d0.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/55fde52b6d614e568396feb0b30959d0.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/570210b3aeeb479896a37f65988849bb.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/570210b3aeeb479896a37f65988849bb.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/570210b3aeeb479896a37f65988849bb.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/57369dc5d33a4092b657faecafeba1c0.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/57369dc5d33a4092b657faecafeba1c0.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/57369dc5d33a4092b657faecafeba1c0.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/5b8a7681fa6d475b90b2c1d19cd31f1b.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/5b8a7681fa6d475b90b2c1d19cd31f1b.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/5b8a7681fa6d475b90b2c1d19cd31f1b.png",
+      "size_bytes": 274884,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/5c5ef5e2c48045c0ab5aaa8e44a9de18.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/5c5ef5e2c48045c0ab5aaa8e44a9de18.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/5c5ef5e2c48045c0ab5aaa8e44a9de18.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/5e1cc131eae64f859507da5402d6bc33.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/5e1cc131eae64f859507da5402d6bc33.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/5e1cc131eae64f859507da5402d6bc33.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/6621f3d140014c8ca7db12b987e4f6f8.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/6621f3d140014c8ca7db12b987e4f6f8.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/6621f3d140014c8ca7db12b987e4f6f8.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/67e3601aeb2b41a0a33efaf8b9cafae6.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/67e3601aeb2b41a0a33efaf8b9cafae6.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/67e3601aeb2b41a0a33efaf8b9cafae6.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/688b55e3545c498aafa39c1ac62329c8.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/688b55e3545c498aafa39c1ac62329c8.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/688b55e3545c498aafa39c1ac62329c8.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/6ef0e6ef988141888ea00bd2a7d713e0.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/6ef0e6ef988141888ea00bd2a7d713e0.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/6ef0e6ef988141888ea00bd2a7d713e0.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/75e7433c311446ac9bd56404eb2ca606.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/75e7433c311446ac9bd56404eb2ca606.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/75e7433c311446ac9bd56404eb2ca606.png",
+      "size_bytes": 28971,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/7c8aacaac05840628979c6f8f0d292f4.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/7c8aacaac05840628979c6f8f0d292f4.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/7c8aacaac05840628979c6f8f0d292f4.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/7d19bd18d7a446c0a01cb65fa1939a0f.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/7d19bd18d7a446c0a01cb65fa1939a0f.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/7d19bd18d7a446c0a01cb65fa1939a0f.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/82e61adc6e674cb9ad4a2a863f0dc7f7.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/82e61adc6e674cb9ad4a2a863f0dc7f7.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/82e61adc6e674cb9ad4a2a863f0dc7f7.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/879822533a9c4c61aa3e98e45dc6b25a.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/879822533a9c4c61aa3e98e45dc6b25a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/879822533a9c4c61aa3e98e45dc6b25a.png",
+      "size_bytes": 44376,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/87b7976b4f464cf99462e7cfefda2122.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/87b7976b4f464cf99462e7cfefda2122.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/87b7976b4f464cf99462e7cfefda2122.png",
+      "size_bytes": 147930,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/8dbb9b86499c40399779426df2af414a.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/8dbb9b86499c40399779426df2af414a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/8dbb9b86499c40399779426df2af414a.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/9214af7f5f794eb3b0809530e0514a65.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/9214af7f5f794eb3b0809530e0514a65.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9214af7f5f794eb3b0809530e0514a65.png",
+      "size_bytes": 105171,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/9b59ecfec7e54355aee2ce1a72f9ff13.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/9b59ecfec7e54355aee2ce1a72f9ff13.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9b59ecfec7e54355aee2ce1a72f9ff13.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/9d36997ffcfa4a168732da440a75ab56.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/9d36997ffcfa4a168732da440a75ab56.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9d36997ffcfa4a168732da440a75ab56.png",
+      "size_bytes": 137796,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/9d6c9db4731045879e7041e4fb84481b.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/9d6c9db4731045879e7041e4fb84481b.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9d6c9db4731045879e7041e4fb84481b.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/9d7ec38b035a42bda0b92a32f88e975e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/9d7ec38b035a42bda0b92a32f88e975e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/9d7ec38b035a42bda0b92a32f88e975e.png",
+      "size_bytes": 50968,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a0706c72ccbc469a847d1b95991a9668.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a0706c72ccbc469a847d1b95991a9668.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a0706c72ccbc469a847d1b95991a9668.png",
+      "size_bytes": 139103,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a143958d6b1a4448a20e600f1c8c88a0.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a143958d6b1a4448a20e600f1c8c88a0.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a143958d6b1a4448a20e600f1c8c88a0.png",
+      "size_bytes": 83752,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a211efffda124089b4980d803de73f6d.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a211efffda124089b4980d803de73f6d.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a211efffda124089b4980d803de73f6d.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a38985cb40b5453ea58afe8f55ff9c4b.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a38985cb40b5453ea58afe8f55ff9c4b.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a38985cb40b5453ea58afe8f55ff9c4b.png",
+      "size_bytes": 166285,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a9af8e639cd44f5bb3d8286f3a59ccbf.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a9af8e639cd44f5bb3d8286f3a59ccbf.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a9af8e639cd44f5bb3d8286f3a59ccbf.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/a9fdc284c1784fde8cea77bb7096406e.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/a9fdc284c1784fde8cea77bb7096406e.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/a9fdc284c1784fde8cea77bb7096406e.png",
+      "size_bytes": 131218,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/ae02002a6ac240b99d954bb5383d42aa.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/ae02002a6ac240b99d954bb5383d42aa.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/ae02002a6ac240b99d954bb5383d42aa.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/aef27acd03454fe0a790607bf9ad1b18.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/aef27acd03454fe0a790607bf9ad1b18.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/aef27acd03454fe0a790607bf9ad1b18.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/af468d493e2345ce8c71ecd094e567ba.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/af468d493e2345ce8c71ecd094e567ba.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/af468d493e2345ce8c71ecd094e567ba.png",
+      "size_bytes": 274884,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/b47c8890eb77439a8e83f519f18594da.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/b47c8890eb77439a8e83f519f18594da.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/b47c8890eb77439a8e83f519f18594da.png",
+      "size_bytes": 69120,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/b72e56b4fe1440538d7ab4516a3256de.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/b72e56b4fe1440538d7ab4516a3256de.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/b72e56b4fe1440538d7ab4516a3256de.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/b8f3be54b9ac49688ff026bdb854da2c.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/b8f3be54b9ac49688ff026bdb854da2c.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/b8f3be54b9ac49688ff026bdb854da2c.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/b8f57c821e4e47edbd6eddd6d542048f.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/b8f57c821e4e47edbd6eddd6d542048f.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/b8f57c821e4e47edbd6eddd6d542048f.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/b964d6daf7a04ee3b11762ba1b4612b6.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/b964d6daf7a04ee3b11762ba1b4612b6.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/b964d6daf7a04ee3b11762ba1b4612b6.png",
+      "size_bytes": 195214,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/c49ab8449a1641889c266d5bd50f8856.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/c49ab8449a1641889c266d5bd50f8856.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/c49ab8449a1641889c266d5bd50f8856.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/c885e02cdf2f4345ab4488e824c1f014.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/c885e02cdf2f4345ab4488e824c1f014.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/c885e02cdf2f4345ab4488e824c1f014.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/cbaa617115724765a54df24b5301afe4.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/cbaa617115724765a54df24b5301afe4.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/cbaa617115724765a54df24b5301afe4.png",
+      "size_bytes": 52678,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/cc88f5f3156a44a6a88140ad3ffd6b39.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/cc88f5f3156a44a6a88140ad3ffd6b39.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/cc88f5f3156a44a6a88140ad3ffd6b39.png",
+      "size_bytes": 146021,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/cebaee1bbc324b5ca6373e9ffd970a30.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/cebaee1bbc324b5ca6373e9ffd970a30.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/cebaee1bbc324b5ca6373e9ffd970a30.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/cf8d7a28cad54d6da8ff1602869f4264.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/cf8d7a28cad54d6da8ff1602869f4264.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/cf8d7a28cad54d6da8ff1602869f4264.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/d1c80df75e92417eb27cc7463bb19645.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/d1c80df75e92417eb27cc7463bb19645.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/d1c80df75e92417eb27cc7463bb19645.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/d5c1e383c26544c18b14449864225c13.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/d5c1e383c26544c18b14449864225c13.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/d5c1e383c26544c18b14449864225c13.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/d7fc5e3363f54741805c21ff710a04e7.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/d7fc5e3363f54741805c21ff710a04e7.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/d7fc5e3363f54741805c21ff710a04e7.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/d96f5ae9510345629f0ac79ba81aebcc.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/d96f5ae9510345629f0ac79ba81aebcc.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/d96f5ae9510345629f0ac79ba81aebcc.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/db0d5d7ce4124187a2c4d324984fe4ed.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/db0d5d7ce4124187a2c4d324984fe4ed.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/db0d5d7ce4124187a2c4d324984fe4ed.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/deee68621346418489017e887b1569ad.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/deee68621346418489017e887b1569ad.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/deee68621346418489017e887b1569ad.png",
+      "size_bytes": 94768,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/e38a88a2783f40fcb34ed77cd91fc905.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/e38a88a2783f40fcb34ed77cd91fc905.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/e38a88a2783f40fcb34ed77cd91fc905.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/e877217f42e143ffbd1eb33d6bdec341.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/e877217f42e143ffbd1eb33d6bdec341.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/e877217f42e143ffbd1eb33d6bdec341.png",
+      "size_bytes": 37533,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/eb0ae7f689f144d6942ae89b9bf139a4.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/eb0ae7f689f144d6942ae89b9bf139a4.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/eb0ae7f689f144d6942ae89b9bf139a4.png",
+      "size_bytes": 115188,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/ec2281e1e4ff47bdacbee60272577658.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/ec2281e1e4ff47bdacbee60272577658.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/ec2281e1e4ff47bdacbee60272577658.png",
+      "size_bytes": 274884,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/ee4ecb12d7744ddd942c93c64b026414.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/ee4ecb12d7744ddd942c93c64b026414.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/ee4ecb12d7744ddd942c93c64b026414.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/f1c93735dcb54dcda432a0242dc12347.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/f1c93735dcb54dcda432a0242dc12347.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/f1c93735dcb54dcda432a0242dc12347.jpg",
+      "size_bytes": 49425,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/f4a2c0357533489288423edd053f05c2.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/f4a2c0357533489288423edd053f05c2.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/f4a2c0357533489288423edd053f05c2.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/fa7d29c8a9e74ef1b1f5c608f686fb60.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/fa7d29c8a9e74ef1b1f5c608f686fb60.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/fa7d29c8a9e74ef1b1f5c608f686fb60.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/fc495fa746c34f11a26f47ff13da79fd.png",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/fc495fa746c34f11a26f47ff13da79fd.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/fc495fa746c34f11a26f47ff13da79fd.png",
+      "size_bytes": 41648,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "price-images/ffb835bbaa2345daa5dfb231ff3f8ea9.jpg",
+      "group": "картинки прайса",
+      "web_path": "/assets/cdn/price-images/ffb835bbaa2345daa5dfb231ff3f8ea9.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/price-images/ffb835bbaa2345daa5dfb231ff3f8ea9.jpg",
+      "size_bytes": 26019,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/avatar_4480fa1e.jpg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/avatar_4480fa1e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/avatar_4480fa1e.jpg",
+      "size_bytes": 6937,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/avatar_c1028e4a.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/avatar_c1028e4a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/avatar_c1028e4a.png",
+      "size_bytes": 8656,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/avatar_c4243bd6.ico",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/avatar_c4243bd6.ico",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/avatar_c4243bd6.ico",
+      "size_bytes": 1150,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/avatar_f1b556d4.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/avatar_f1b556d4.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/avatar_f1b556d4.svg",
+      "size_bytes": 14681,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_0382a0c4.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_0382a0c4.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_0382a0c4.svg",
+      "size_bytes": 2853,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_0ed96d07.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_0ed96d07.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_0ed96d07.png",
+      "size_bytes": 119460,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_2b1b4a99.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_2b1b4a99.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_2b1b4a99.png",
+      "size_bytes": 23791,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_5a056118.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_5a056118.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_5a056118.png",
+      "size_bytes": 5754,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_5f6d5ed0.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_5f6d5ed0.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_5f6d5ed0.svg",
+      "size_bytes": 14295,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_5f7dfbd7.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_5f7dfbd7.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_5f7dfbd7.png",
+      "size_bytes": 2202,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_6bd76399.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_6bd76399.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_6bd76399.svg",
+      "size_bytes": 18041,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_6cbd8cfb.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_6cbd8cfb.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_6cbd8cfb.png",
+      "size_bytes": 119460,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_88ac650d.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_88ac650d.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_88ac650d.png",
+      "size_bytes": 3671,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_9b596bce.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_9b596bce.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_9b596bce.svg",
+      "size_bytes": 4538,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_ae380516.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_ae380516.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_ae380516.png",
+      "size_bytes": 2202,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_b3695076.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_b3695076.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_b3695076.png",
+      "size_bytes": 26133,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_bf0506b3.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_bf0506b3.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_bf0506b3.png",
+      "size_bytes": 3671,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_c3e88805.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_c3e88805.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_c3e88805.png",
+      "size_bytes": 12289,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_d50aa6af.jpg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_d50aa6af.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_d50aa6af.jpg",
+      "size_bytes": 6937,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_e4fde303.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_e4fde303.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_e4fde303.png",
+      "size_bytes": 5754,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_e6b8df07.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_e6b8df07.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_e6b8df07.png",
+      "size_bytes": 6713,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_f0304224.svg",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_f0304224.svg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_f0304224.svg",
+      "size_bytes": 18041,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "brand/logo_fd212636.png",
+      "group": "логотипы и аватары",
+      "web_path": "/assets/cdn/brand/logo_fd212636.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/brand/logo_fd212636.png",
+      "size_bytes": 22356,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/017817a7-3baa-4933-9a00-bb0493d73d00.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/017817a7-3baa-4933-9a00-bb0493d73d00.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/017817a7-3baa-4933-9a00-bb0493d73d00.jpg",
+      "size_bytes": 204178,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/021be2c5-c173-4d17-b6ad-13593b0689c4.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/021be2c5-c173-4d17-b6ad-13593b0689c4.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/021be2c5-c173-4d17-b6ad-13593b0689c4.jpg",
+      "size_bytes": 391188,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/038c8b79-9896-4091-9789-57d7bef12c2e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/038c8b79-9896-4091-9789-57d7bef12c2e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/038c8b79-9896-4091-9789-57d7bef12c2e.jpg",
+      "size_bytes": 2005319,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/0531b285-b6e8-42b5-8a50-e8b52ccdcb58.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/0531b285-b6e8-42b5-8a50-e8b52ccdcb58.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/0531b285-b6e8-42b5-8a50-e8b52ccdcb58.jpg",
+      "size_bytes": 177113,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/05917120-3be4-4125-8974-37d625594080.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/05917120-3be4-4125-8974-37d625594080.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/05917120-3be4-4125-8974-37d625594080.jpg",
+      "size_bytes": 135687,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/06c10d54-3ac7-48c2-a31b-6acc3bb1f1ff.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/06c10d54-3ac7-48c2-a31b-6acc3bb1f1ff.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/06c10d54-3ac7-48c2-a31b-6acc3bb1f1ff.jpg",
+      "size_bytes": 326542,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/09cf5151-f711-4914-a68d-c26c584545fa.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/09cf5151-f711-4914-a68d-c26c584545fa.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/09cf5151-f711-4914-a68d-c26c584545fa.jpg",
+      "size_bytes": 1564622,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/0a43307c-b0d8-4808-adb9-827e74c6d204.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/0a43307c-b0d8-4808-adb9-827e74c6d204.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/0a43307c-b0d8-4808-adb9-827e74c6d204.jpg",
+      "size_bytes": 92747,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/0f3884c9-a471-4f73-9d05-efd9c1a076f1.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/0f3884c9-a471-4f73-9d05-efd9c1a076f1.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/0f3884c9-a471-4f73-9d05-efd9c1a076f1.png",
+      "size_bytes": 18761,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/0fbb3088-434d-44ac-a473-678c6ff5f750.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/0fbb3088-434d-44ac-a473-678c6ff5f750.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/0fbb3088-434d-44ac-a473-678c6ff5f750.jpg",
+      "size_bytes": 414552,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/11b73bcb-ccdd-4a2f-9c6a-75d97454f031.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/11b73bcb-ccdd-4a2f-9c6a-75d97454f031.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/11b73bcb-ccdd-4a2f-9c6a-75d97454f031.jpg",
+      "size_bytes": 217117,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/129f157a-cfaf-49d2-9075-c085d319deb1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/129f157a-cfaf-49d2-9075-c085d319deb1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/129f157a-cfaf-49d2-9075-c085d319deb1.jpg",
+      "size_bytes": 82095,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/178c299b-c9f6-45e5-8129-9aa5671b6542.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/178c299b-c9f6-45e5-8129-9aa5671b6542.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/178c299b-c9f6-45e5-8129-9aa5671b6542.jpg",
+      "size_bytes": 277321,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/17f76ede-f5b2-442b-afd3-2b6d62820212.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/17f76ede-f5b2-442b-afd3-2b6d62820212.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/17f76ede-f5b2-442b-afd3-2b6d62820212.jpg",
+      "size_bytes": 292177,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1ab3db0f-ce94-43b3-99dd-481e45571104.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1ab3db0f-ce94-43b3-99dd-481e45571104.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1ab3db0f-ce94-43b3-99dd-481e45571104.jpg",
+      "size_bytes": 139627,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1ac021db-6da9-4fdb-9236-c4b3d734798c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1ac021db-6da9-4fdb-9236-c4b3d734798c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1ac021db-6da9-4fdb-9236-c4b3d734798c.jpg",
+      "size_bytes": 129713,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1b8457b2-4e18-4080-8ca3-f604a883c0a6.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1b8457b2-4e18-4080-8ca3-f604a883c0a6.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1b8457b2-4e18-4080-8ca3-f604a883c0a6.jpg",
+      "size_bytes": 47685,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1c84971b-1a07-4bf7-ad59-b497fc2de910.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1c84971b-1a07-4bf7-ad59-b497fc2de910.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1c84971b-1a07-4bf7-ad59-b497fc2de910.jpg",
+      "size_bytes": 2688940,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1ccd1b56-bdfa-4730-825e-a0705d553925.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1ccd1b56-bdfa-4730-825e-a0705d553925.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1ccd1b56-bdfa-4730-825e-a0705d553925.jpg",
+      "size_bytes": 82502,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/1e882f9d-42b6-4d5e-b771-35b3cc5b4931.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/1e882f9d-42b6-4d5e-b771-35b3cc5b4931.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/1e882f9d-42b6-4d5e-b771-35b3cc5b4931.jpg",
+      "size_bytes": 693814,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/23e4c27f-12e1-4ecf-8582-bc71696c8ed0.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/23e4c27f-12e1-4ecf-8582-bc71696c8ed0.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/23e4c27f-12e1-4ecf-8582-bc71696c8ed0.jpg",
+      "size_bytes": 2264902,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/244e62a4-53b9-4e1d-8940-0c6307659485.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/244e62a4-53b9-4e1d-8940-0c6307659485.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/244e62a4-53b9-4e1d-8940-0c6307659485.jpg",
+      "size_bytes": 325127,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/24b1ea04-50a6-4b1f-9152-ad8b66b37067.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/24b1ea04-50a6-4b1f-9152-ad8b66b37067.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/24b1ea04-50a6-4b1f-9152-ad8b66b37067.jpg",
+      "size_bytes": 181960,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/26bbdf9f-4b58-4ef3-9dda-e3b61c238eaa.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/26bbdf9f-4b58-4ef3-9dda-e3b61c238eaa.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/26bbdf9f-4b58-4ef3-9dda-e3b61c238eaa.jpg",
+      "size_bytes": 528666,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2795fdf9-440c-4f33-934d-54cdb3e384f2.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2795fdf9-440c-4f33-934d-54cdb3e384f2.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2795fdf9-440c-4f33-934d-54cdb3e384f2.jpg",
+      "size_bytes": 996055,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2ae607c1-eb38-495a-ab89-e604e26b4c1c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2ae607c1-eb38-495a-ab89-e604e26b4c1c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2ae607c1-eb38-495a-ab89-e604e26b4c1c.jpg",
+      "size_bytes": 630654,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2b6f67c3-78cd-44d5-b129-85423961537a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2b6f67c3-78cd-44d5-b129-85423961537a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2b6f67c3-78cd-44d5-b129-85423961537a.jpg",
+      "size_bytes": 623049,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2b950662-7691-435f-b753-45ad1dd6deec.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2b950662-7691-435f-b753-45ad1dd6deec.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2b950662-7691-435f-b753-45ad1dd6deec.jpg",
+      "size_bytes": 381537,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2c125e0b-f888-44a1-8033-51f0ae5bf176.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2c125e0b-f888-44a1-8033-51f0ae5bf176.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2c125e0b-f888-44a1-8033-51f0ae5bf176.jpg",
+      "size_bytes": 138726,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2c951ac3-57b2-4441-9b8e-5e24f1eb9eae.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2c951ac3-57b2-4441-9b8e-5e24f1eb9eae.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2c951ac3-57b2-4441-9b8e-5e24f1eb9eae.jpg",
+      "size_bytes": 178747,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/2f1c3b9d-d32f-4275-ac23-28bac7bdac55.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/2f1c3b9d-d32f-4275-ac23-28bac7bdac55.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/2f1c3b9d-d32f-4275-ac23-28bac7bdac55.jpg",
+      "size_bytes": 231794,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/3451e80f-7589-4a7b-8aab-7e65fd3e528f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/3451e80f-7589-4a7b-8aab-7e65fd3e528f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/3451e80f-7589-4a7b-8aab-7e65fd3e528f.jpg",
+      "size_bytes": 588703,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/36a3edbc-e14f-43ad-a3f6-f513a361312f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/36a3edbc-e14f-43ad-a3f6-f513a361312f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/36a3edbc-e14f-43ad-a3f6-f513a361312f.jpg",
+      "size_bytes": 553313,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/3796c1e9-16c1-41d0-a9fa-d870c181cb4c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/3796c1e9-16c1-41d0-a9fa-d870c181cb4c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/3796c1e9-16c1-41d0-a9fa-d870c181cb4c.jpg",
+      "size_bytes": 171258,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/38c504c5-0aca-4fd5-b75a-b5d61000233e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/38c504c5-0aca-4fd5-b75a-b5d61000233e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/38c504c5-0aca-4fd5-b75a-b5d61000233e.jpg",
+      "size_bytes": 123089,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/38ed990e-8702-4d82-a881-8486f76e57a0.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/38ed990e-8702-4d82-a881-8486f76e57a0.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/38ed990e-8702-4d82-a881-8486f76e57a0.jpg",
+      "size_bytes": 2037667,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/38f366da-c83b-476c-98ba-63d4980cf53d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/38f366da-c83b-476c-98ba-63d4980cf53d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/38f366da-c83b-476c-98ba-63d4980cf53d.jpg",
+      "size_bytes": 1759896,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/39db3c86-6f2e-46ca-93dc-fa4708d22c34.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/39db3c86-6f2e-46ca-93dc-fa4708d22c34.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/39db3c86-6f2e-46ca-93dc-fa4708d22c34.jpg",
+      "size_bytes": 191248,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/3c75243b-4069-4c63-b528-af77ae2a6236.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/3c75243b-4069-4c63-b528-af77ae2a6236.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/3c75243b-4069-4c63-b528-af77ae2a6236.jpg",
+      "size_bytes": 167167,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/401af834-66c4-43dc-b764-0dd143ec3d01.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/401af834-66c4-43dc-b764-0dd143ec3d01.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/401af834-66c4-43dc-b764-0dd143ec3d01.jpg",
+      "size_bytes": 205224,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4098d7ff-3a0e-471d-8e95-a4ca0ee034e0.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4098d7ff-3a0e-471d-8e95-a4ca0ee034e0.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4098d7ff-3a0e-471d-8e95-a4ca0ee034e0.jpg",
+      "size_bytes": 733819,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4134e549-3922-49c6-b11e-bb64b608aa9b.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4134e549-3922-49c6-b11e-bb64b608aa9b.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4134e549-3922-49c6-b11e-bb64b608aa9b.jpg",
+      "size_bytes": 104040,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/44cc3e5f-56dc-40c8-9760-5d3e51ecdcd3.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/44cc3e5f-56dc-40c8-9760-5d3e51ecdcd3.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/44cc3e5f-56dc-40c8-9760-5d3e51ecdcd3.jpg",
+      "size_bytes": 450323,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/492eba4f-bd63-41aa-bb7e-f9af6388f5d2.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/492eba4f-bd63-41aa-bb7e-f9af6388f5d2.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/492eba4f-bd63-41aa-bb7e-f9af6388f5d2.jpg",
+      "size_bytes": 178704,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4a2d9576-9302-4c2c-b7ff-a9be631c4b7a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4a2d9576-9302-4c2c-b7ff-a9be631c4b7a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4a2d9576-9302-4c2c-b7ff-a9be631c4b7a.jpg",
+      "size_bytes": 158055,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4a812e81-19a4-4b42-ace1-3f4ac272a05e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4a812e81-19a4-4b42-ace1-3f4ac272a05e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4a812e81-19a4-4b42-ace1-3f4ac272a05e.jpg",
+      "size_bytes": 2281556,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4d3c57e7-642b-4c55-a2e4-5873639638c8.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4d3c57e7-642b-4c55-a2e4-5873639638c8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4d3c57e7-642b-4c55-a2e4-5873639638c8.jpg",
+      "size_bytes": 2587165,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/4f27009c-c61d-4e0a-a652-418b2d494706.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/4f27009c-c61d-4e0a-a652-418b2d494706.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/4f27009c-c61d-4e0a-a652-418b2d494706.png",
+      "size_bytes": 6077,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/518ba5ff-868f-4f93-85a9-95339722be6a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/518ba5ff-868f-4f93-85a9-95339722be6a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/518ba5ff-868f-4f93-85a9-95339722be6a.jpg",
+      "size_bytes": 503910,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/545bdf44-3001-4e6d-9b4c-d544965849dc.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/545bdf44-3001-4e6d-9b4c-d544965849dc.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/545bdf44-3001-4e6d-9b4c-d544965849dc.jpg",
+      "size_bytes": 2060323,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/567730eb-c688-436c-a548-5f148c10cb80.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/567730eb-c688-436c-a548-5f148c10cb80.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/567730eb-c688-436c-a548-5f148c10cb80.jpg",
+      "size_bytes": 155792,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/574267f4-4e08-4e1f-99b6-cc7fce35677e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/574267f4-4e08-4e1f-99b6-cc7fce35677e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/574267f4-4e08-4e1f-99b6-cc7fce35677e.jpg",
+      "size_bytes": 450553,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/5c62a857-026f-4b7b-b112-d28aecc3d4ec.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/5c62a857-026f-4b7b-b112-d28aecc3d4ec.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/5c62a857-026f-4b7b-b112-d28aecc3d4ec.png",
+      "size_bytes": 18761,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/5d4b8200-9139-4b9d-a3aa-51e1fb3fd13c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/5d4b8200-9139-4b9d-a3aa-51e1fb3fd13c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/5d4b8200-9139-4b9d-a3aa-51e1fb3fd13c.jpg",
+      "size_bytes": 171218,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/5f568e41-e222-4a61-a165-ddb6af6e4799.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/5f568e41-e222-4a61-a165-ddb6af6e4799.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/5f568e41-e222-4a61-a165-ddb6af6e4799.jpg",
+      "size_bytes": 145160,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/66791d2c-121c-42e1-ad52-0f3e326042b3.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/66791d2c-121c-42e1-ad52-0f3e326042b3.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/66791d2c-121c-42e1-ad52-0f3e326042b3.jpg",
+      "size_bytes": 255914,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/67b0e107-e3b0-4031-a24b-fe0ec2e5e525.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/67b0e107-e3b0-4031-a24b-fe0ec2e5e525.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/67b0e107-e3b0-4031-a24b-fe0ec2e5e525.jpg",
+      "size_bytes": 181597,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/67e0ff42-fa93-47d1-b373-7ad3b93d3025.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/67e0ff42-fa93-47d1-b373-7ad3b93d3025.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/67e0ff42-fa93-47d1-b373-7ad3b93d3025.jpg",
+      "size_bytes": 126411,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6869fdc4-1956-49d2-9f8f-9af3e5519485.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6869fdc4-1956-49d2-9f8f-9af3e5519485.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6869fdc4-1956-49d2-9f8f-9af3e5519485.jpg",
+      "size_bytes": 412989,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/686f9b28-679e-4dc1-8d36-e839f2da0cf7.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/686f9b28-679e-4dc1-8d36-e839f2da0cf7.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/686f9b28-679e-4dc1-8d36-e839f2da0cf7.jpg",
+      "size_bytes": 255392,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/68c2a966-67da-47d8-9f5f-5aa36eda60f3.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/68c2a966-67da-47d8-9f5f-5aa36eda60f3.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/68c2a966-67da-47d8-9f5f-5aa36eda60f3.jpg",
+      "size_bytes": 2660077,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6a1169fd-5296-4412-a43f-a6d4d024e9e6.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6a1169fd-5296-4412-a43f-a6d4d024e9e6.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6a1169fd-5296-4412-a43f-a6d4d024e9e6.jpg",
+      "size_bytes": 225413,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6ad5cc3c-fd92-4bae-b8b5-e88d832c66f6.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6ad5cc3c-fd92-4bae-b8b5-e88d832c66f6.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6ad5cc3c-fd92-4bae-b8b5-e88d832c66f6.jpg",
+      "size_bytes": 148125,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6b74a544-4119-45fe-9995-f703125f0e0f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6b74a544-4119-45fe-9995-f703125f0e0f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6b74a544-4119-45fe-9995-f703125f0e0f.jpg",
+      "size_bytes": 288342,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6ce9b725-b151-4778-b85f-337d73c870c1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6ce9b725-b151-4778-b85f-337d73c870c1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6ce9b725-b151-4778-b85f-337d73c870c1.jpg",
+      "size_bytes": 145297,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6d0ca7e2-dd60-40d0-83fc-84d44cf1be2f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6d0ca7e2-dd60-40d0-83fc-84d44cf1be2f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6d0ca7e2-dd60-40d0-83fc-84d44cf1be2f.jpg",
+      "size_bytes": 1753971,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6d124315-0f8e-4f39-b239-c90cb6240b78.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6d124315-0f8e-4f39-b239-c90cb6240b78.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6d124315-0f8e-4f39-b239-c90cb6240b78.jpg",
+      "size_bytes": 2190257,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6db0aab7-6a40-49a8-af3b-b4c1d08a02ef.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6db0aab7-6a40-49a8-af3b-b4c1d08a02ef.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6db0aab7-6a40-49a8-af3b-b4c1d08a02ef.jpg",
+      "size_bytes": 211369,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/6fc85e48-c68d-41a1-a3ed-f10e3e566996.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/6fc85e48-c68d-41a1-a3ed-f10e3e566996.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/6fc85e48-c68d-41a1-a3ed-f10e3e566996.jpg",
+      "size_bytes": 215602,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/71350fef-cfb2-4779-b1db-55adf6e85237.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/71350fef-cfb2-4779-b1db-55adf6e85237.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/71350fef-cfb2-4779-b1db-55adf6e85237.jpg",
+      "size_bytes": 374459,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/72a6f30a-a955-47ea-9c8c-2a2e840094a8.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/72a6f30a-a955-47ea-9c8c-2a2e840094a8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/72a6f30a-a955-47ea-9c8c-2a2e840094a8.jpg",
+      "size_bytes": 343755,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/73693d6c-a959-4e2d-9ed2-454df3cbc66d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/73693d6c-a959-4e2d-9ed2-454df3cbc66d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/73693d6c-a959-4e2d-9ed2-454df3cbc66d.jpg",
+      "size_bytes": 349625,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/746a437f-8a96-4721-b526-a0ab0d13e5fc.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/746a437f-8a96-4721-b526-a0ab0d13e5fc.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/746a437f-8a96-4721-b526-a0ab0d13e5fc.jpg",
+      "size_bytes": 192880,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7610a900-fc2d-4856-b923-f5340ebf3e5d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7610a900-fc2d-4856-b923-f5340ebf3e5d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7610a900-fc2d-4856-b923-f5340ebf3e5d.jpg",
+      "size_bytes": 590170,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/763eeba6-206d-4949-ae49-f77d82256033.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/763eeba6-206d-4949-ae49-f77d82256033.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/763eeba6-206d-4949-ae49-f77d82256033.jpg",
+      "size_bytes": 154101,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/76a25285-e242-49d6-9378-a35fae646d4c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/76a25285-e242-49d6-9378-a35fae646d4c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/76a25285-e242-49d6-9378-a35fae646d4c.jpg",
+      "size_bytes": 76452,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/78b57cfe-9bdc-42ef-9050-e0d52a39250e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/78b57cfe-9bdc-42ef-9050-e0d52a39250e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/78b57cfe-9bdc-42ef-9050-e0d52a39250e.jpg",
+      "size_bytes": 73471,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7993c1f6-223c-401c-90b6-2f66dc5b4e0d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7993c1f6-223c-401c-90b6-2f66dc5b4e0d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7993c1f6-223c-401c-90b6-2f66dc5b4e0d.jpg",
+      "size_bytes": 259929,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/799de59e-8375-4db6-8fba-1ac3504ab669.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/799de59e-8375-4db6-8fba-1ac3504ab669.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/799de59e-8375-4db6-8fba-1ac3504ab669.jpg",
+      "size_bytes": 185016,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ac85c7c-20b2-45d9-8c5e-cf3bb73c5314.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ac85c7c-20b2-45d9-8c5e-cf3bb73c5314.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ac85c7c-20b2-45d9-8c5e-cf3bb73c5314.jpg",
+      "size_bytes": 145562,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7b1d60d5-5518-400a-a43c-3c5d1e8d18ba.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7b1d60d5-5518-400a-a43c-3c5d1e8d18ba.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7b1d60d5-5518-400a-a43c-3c5d1e8d18ba.jpg",
+      "size_bytes": 128237,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ba41e69-cc9a-4b17-9cf5-5358ae5947e5.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ba41e69-cc9a-4b17-9cf5-5358ae5947e5.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ba41e69-cc9a-4b17-9cf5-5358ae5947e5.jpg",
+      "size_bytes": 493124,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7c6f3fed-f79b-4f90-bc67-ed34b0b7a38e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7c6f3fed-f79b-4f90-bc67-ed34b0b7a38e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7c6f3fed-f79b-4f90-bc67-ed34b0b7a38e.jpg",
+      "size_bytes": 2482232,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ddedd4f-ce57-4c49-b510-e30dac0ca6e0.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ddedd4f-ce57-4c49-b510-e30dac0ca6e0.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ddedd4f-ce57-4c49-b510-e30dac0ca6e0.jpg",
+      "size_bytes": 101251,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7deb9f6e-68bf-4763-a302-f16a0191006a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7deb9f6e-68bf-4763-a302-f16a0191006a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7deb9f6e-68bf-4763-a302-f16a0191006a.jpg",
+      "size_bytes": 112126,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ec0cc59-224f-49af-86eb-c20e60b32f37.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ec0cc59-224f-49af-86eb-c20e60b32f37.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ec0cc59-224f-49af-86eb-c20e60b32f37.jpg",
+      "size_bytes": 339288,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ee9bede-b335-4a2c-9108-c9807cb918fe.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ee9bede-b335-4a2c-9108-c9807cb918fe.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ee9bede-b335-4a2c-9108-c9807cb918fe.jpg",
+      "size_bytes": 2422293,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7ef08f03-35f6-4c5b-a63d-d33876f74940.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7ef08f03-35f6-4c5b-a63d-d33876f74940.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7ef08f03-35f6-4c5b-a63d-d33876f74940.jpg",
+      "size_bytes": 570268,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/7f9ad0f5-b048-4fc0-9df1-796d4d017f0e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/7f9ad0f5-b048-4fc0-9df1-796d4d017f0e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/7f9ad0f5-b048-4fc0-9df1-796d4d017f0e.jpg",
+      "size_bytes": 218159,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/800d10ae-88dd-46e3-b1f3-9e6fcdc18776.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/800d10ae-88dd-46e3-b1f3-9e6fcdc18776.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/800d10ae-88dd-46e3-b1f3-9e6fcdc18776.jpg",
+      "size_bytes": 93420,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/830e4668-c8f7-4ab3-9dc6-f2cba75256ae.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/830e4668-c8f7-4ab3-9dc6-f2cba75256ae.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/830e4668-c8f7-4ab3-9dc6-f2cba75256ae.jpg",
+      "size_bytes": 557758,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/834ecdf7-aacc-4d3c-bc8f-63abb2606e80.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/834ecdf7-aacc-4d3c-bc8f-63abb2606e80.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/834ecdf7-aacc-4d3c-bc8f-63abb2606e80.jpg",
+      "size_bytes": 268230,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/8372499b-30a4-4852-80fd-bbe4f0f3a725.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/8372499b-30a4-4852-80fd-bbe4f0f3a725.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/8372499b-30a4-4852-80fd-bbe4f0f3a725.jpg",
+      "size_bytes": 325329,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/83f6358d-4a1d-457f-925c-ac9a2e09997a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/83f6358d-4a1d-457f-925c-ac9a2e09997a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/83f6358d-4a1d-457f-925c-ac9a2e09997a.jpg",
+      "size_bytes": 200093,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/84c6a6d8-63cf-4ce3-8407-a1f329821b0a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/84c6a6d8-63cf-4ce3-8407-a1f329821b0a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/84c6a6d8-63cf-4ce3-8407-a1f329821b0a.jpg",
+      "size_bytes": 643094,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/8523411a-ba38-4b9a-813c-f802290205c3.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/8523411a-ba38-4b9a-813c-f802290205c3.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/8523411a-ba38-4b9a-813c-f802290205c3.jpg",
+      "size_bytes": 2240935,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/864323e4-1c28-4529-804e-c1f0d3e9c5ba.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/864323e4-1c28-4529-804e-c1f0d3e9c5ba.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/864323e4-1c28-4529-804e-c1f0d3e9c5ba.jpg",
+      "size_bytes": 1707272,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/87ac897a-350f-4aae-9004-81e801345ad1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/87ac897a-350f-4aae-9004-81e801345ad1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/87ac897a-350f-4aae-9004-81e801345ad1.jpg",
+      "size_bytes": 492401,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/87d74a66-179a-4dfb-bcb8-dc41e3b06310.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/87d74a66-179a-4dfb-bcb8-dc41e3b06310.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/87d74a66-179a-4dfb-bcb8-dc41e3b06310.jpg",
+      "size_bytes": 2646619,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/88644d8f-218c-4529-8034-d6b4ef73af48.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/88644d8f-218c-4529-8034-d6b4ef73af48.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/88644d8f-218c-4529-8034-d6b4ef73af48.jpg",
+      "size_bytes": 2733327,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/8c8641ed-a46e-47db-b911-fefbb24e610b.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/8c8641ed-a46e-47db-b911-fefbb24e610b.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/8c8641ed-a46e-47db-b911-fefbb24e610b.jpg",
+      "size_bytes": 176793,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/8c99d9ff-cff2-467e-adb4-6f99e45f3d8f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/8c99d9ff-cff2-467e-adb4-6f99e45f3d8f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/8c99d9ff-cff2-467e-adb4-6f99e45f3d8f.jpg",
+      "size_bytes": 291684,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/8fed0241-0de2-4a7d-a524-072b380fa0cc.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/8fed0241-0de2-4a7d-a524-072b380fa0cc.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/8fed0241-0de2-4a7d-a524-072b380fa0cc.jpg",
+      "size_bytes": 173012,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9069263d-70de-4278-93bf-88232ee9d7cd.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9069263d-70de-4278-93bf-88232ee9d7cd.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9069263d-70de-4278-93bf-88232ee9d7cd.jpg",
+      "size_bytes": 145297,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/933f196d-ffcc-426a-bbe8-9858cdcf2eba.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/933f196d-ffcc-426a-bbe8-9858cdcf2eba.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/933f196d-ffcc-426a-bbe8-9858cdcf2eba.jpg",
+      "size_bytes": 73930,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/94d17644-7563-4be5-ac0e-74fd6a6e4209.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/94d17644-7563-4be5-ac0e-74fd6a6e4209.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/94d17644-7563-4be5-ac0e-74fd6a6e4209.jpg",
+      "size_bytes": 2537656,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9566efe9-8b71-4880-8bb5-6a342c203401.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9566efe9-8b71-4880-8bb5-6a342c203401.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9566efe9-8b71-4880-8bb5-6a342c203401.jpg",
+      "size_bytes": 2012410,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9625dee9-791a-45a0-bafa-a01dfba16c67.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9625dee9-791a-45a0-bafa-a01dfba16c67.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9625dee9-791a-45a0-bafa-a01dfba16c67.jpg",
+      "size_bytes": 198378,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/96e85d38-cd33-4e3c-bbc4-591eb23062b1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/96e85d38-cd33-4e3c-bbc4-591eb23062b1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/96e85d38-cd33-4e3c-bbc4-591eb23062b1.jpg",
+      "size_bytes": 503910,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/981b0508-1eb0-410b-a9d3-37f779e13610.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/981b0508-1eb0-410b-a9d3-37f779e13610.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/981b0508-1eb0-410b-a9d3-37f779e13610.jpg",
+      "size_bytes": 522305,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/98a4fbce-9238-4bc0-959c-ac854f33aa51.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/98a4fbce-9238-4bc0-959c-ac854f33aa51.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/98a4fbce-9238-4bc0-959c-ac854f33aa51.jpg",
+      "size_bytes": 148147,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9a2417b0-4d7a-446f-8865-36d7673339fc.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9a2417b0-4d7a-446f-8865-36d7673339fc.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9a2417b0-4d7a-446f-8865-36d7673339fc.jpg",
+      "size_bytes": 515033,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9ac40ab1-7e9c-405f-962c-a1a64b918e9d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9ac40ab1-7e9c-405f-962c-a1a64b918e9d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9ac40ab1-7e9c-405f-962c-a1a64b918e9d.jpg",
+      "size_bytes": 122920,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9ad0b282-e972-426b-96a7-4220f7c51b23.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9ad0b282-e972-426b-96a7-4220f7c51b23.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9ad0b282-e972-426b-96a7-4220f7c51b23.jpg",
+      "size_bytes": 182665,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/9edfc05e-5366-4224-9119-57ad81ec10a6.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/9edfc05e-5366-4224-9119-57ad81ec10a6.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/9edfc05e-5366-4224-9119-57ad81ec10a6.jpg",
+      "size_bytes": 455762,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a3365fcf-875a-40f8-8f2a-cb36f4cc5ca1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a3365fcf-875a-40f8-8f2a-cb36f4cc5ca1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a3365fcf-875a-40f8-8f2a-cb36f4cc5ca1.jpg",
+      "size_bytes": 88115,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a35755d4-1c6d-4649-9954-9f38b824ec9e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a35755d4-1c6d-4649-9954-9f38b824ec9e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a35755d4-1c6d-4649-9954-9f38b824ec9e.jpg",
+      "size_bytes": 134622,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a7274fe7-6505-4421-88c7-92fa53757425.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a7274fe7-6505-4421-88c7-92fa53757425.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a7274fe7-6505-4421-88c7-92fa53757425.jpg",
+      "size_bytes": 554673,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a73a0bdf-7c3e-4278-8d6b-22bc27793fa7.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a73a0bdf-7c3e-4278-8d6b-22bc27793fa7.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a73a0bdf-7c3e-4278-8d6b-22bc27793fa7.jpg",
+      "size_bytes": 67841,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a7e931a5-ac7c-4a38-9e53-8ef0b365d991.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a7e931a5-ac7c-4a38-9e53-8ef0b365d991.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a7e931a5-ac7c-4a38-9e53-8ef0b365d991.jpg",
+      "size_bytes": 264573,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/a934bda9-e510-4e23-9a83-bcfc65c1d735.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/a934bda9-e510-4e23-9a83-bcfc65c1d735.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/a934bda9-e510-4e23-9a83-bcfc65c1d735.jpg",
+      "size_bytes": 241761,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ab17342a-8ebb-4c28-9f1a-0979e0014202.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ab17342a-8ebb-4c28-9f1a-0979e0014202.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ab17342a-8ebb-4c28-9f1a-0979e0014202.jpg",
+      "size_bytes": 216487,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/acc6e91e-9c25-4594-a215-e9909097409d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/acc6e91e-9c25-4594-a215-e9909097409d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/acc6e91e-9c25-4594-a215-e9909097409d.jpg",
+      "size_bytes": 2295427,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ad3cf4de-78e1-469d-bdcb-7008751fdef9.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ad3cf4de-78e1-469d-bdcb-7008751fdef9.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ad3cf4de-78e1-469d-bdcb-7008751fdef9.jpg",
+      "size_bytes": 94989,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ae91149a-3b60-4a0d-b784-66b5a67fbd87.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ae91149a-3b60-4a0d-b784-66b5a67fbd87.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ae91149a-3b60-4a0d-b784-66b5a67fbd87.jpg",
+      "size_bytes": 252138,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/afe18b59-03bd-407d-b1b2-4cc5315ab849.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/afe18b59-03bd-407d-b1b2-4cc5315ab849.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/afe18b59-03bd-407d-b1b2-4cc5315ab849.jpg",
+      "size_bytes": 150109,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b02078bf-90c8-470d-afac-359cf7fa0554.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b02078bf-90c8-470d-afac-359cf7fa0554.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b02078bf-90c8-470d-afac-359cf7fa0554.jpg",
+      "size_bytes": 2453064,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b1f53ec0-56e4-4371-9f75-c537161b7575.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b1f53ec0-56e4-4371-9f75-c537161b7575.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b1f53ec0-56e4-4371-9f75-c537161b7575.jpg",
+      "size_bytes": 283183,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b3f42352-0247-4b68-a838-a903f213b751.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b3f42352-0247-4b68-a838-a903f213b751.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b3f42352-0247-4b68-a838-a903f213b751.jpg",
+      "size_bytes": 389594,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b4e63053-285f-4027-83b6-fe77a404a0c7.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b4e63053-285f-4027-83b6-fe77a404a0c7.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b4e63053-285f-4027-83b6-fe77a404a0c7.jpg",
+      "size_bytes": 169891,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b55d2e01-727b-4ff3-94be-fb711d94c78a.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b55d2e01-727b-4ff3-94be-fb711d94c78a.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b55d2e01-727b-4ff3-94be-fb711d94c78a.png",
+      "size_bytes": 15811,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b6805ff5-370a-462e-88d3-790a2e3b04b8.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b6805ff5-370a-462e-88d3-790a2e3b04b8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b6805ff5-370a-462e-88d3-790a2e3b04b8.jpg",
+      "size_bytes": 350149,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b6cdf155-32a4-4395-8b39-9ecbcade8bb6.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b6cdf155-32a4-4395-8b39-9ecbcade8bb6.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b6cdf155-32a4-4395-8b39-9ecbcade8bb6.jpg",
+      "size_bytes": 139032,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b7bca74d-4407-4193-9843-14293d510779.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b7bca74d-4407-4193-9843-14293d510779.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b7bca74d-4407-4193-9843-14293d510779.jpg",
+      "size_bytes": 232153,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/b853a088-9e30-4d95-9702-62ea00f3fa10.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/b853a088-9e30-4d95-9702-62ea00f3fa10.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/b853a088-9e30-4d95-9702-62ea00f3fa10.jpg",
+      "size_bytes": 534752,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ba3ab88a-0d52-4d0f-823f-8c2f72746dd4.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ba3ab88a-0d52-4d0f-823f-8c2f72746dd4.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ba3ab88a-0d52-4d0f-823f-8c2f72746dd4.jpg",
+      "size_bytes": 2663336,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/bd2a5c98-ec3a-4da9-a5ce-f269f7616b2f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/bd2a5c98-ec3a-4da9-a5ce-f269f7616b2f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/bd2a5c98-ec3a-4da9-a5ce-f269f7616b2f.jpg",
+      "size_bytes": 1694356,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/bd85bb88-8fa5-4a4c-86bc-50d445945137.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/bd85bb88-8fa5-4a4c-86bc-50d445945137.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/bd85bb88-8fa5-4a4c-86bc-50d445945137.jpg",
+      "size_bytes": 2080799,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/bdf49315-9e30-43d9-a0e9-a6a22f6dc68a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/bdf49315-9e30-43d9-a0e9-a6a22f6dc68a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/bdf49315-9e30-43d9-a0e9-a6a22f6dc68a.jpg",
+      "size_bytes": 213557,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/bf01cdb4-33ba-4194-ad90-c2ef7970ff64.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/bf01cdb4-33ba-4194-ad90-c2ef7970ff64.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/bf01cdb4-33ba-4194-ad90-c2ef7970ff64.jpg",
+      "size_bytes": 91122,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c176809a-825a-492f-a3ec-2f9f5f4b8f0d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c176809a-825a-492f-a3ec-2f9f5f4b8f0d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c176809a-825a-492f-a3ec-2f9f5f4b8f0d.jpg",
+      "size_bytes": 179080,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c67f2150-45b4-4fdd-a9a3-bafd3ee6ae44.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c67f2150-45b4-4fdd-a9a3-bafd3ee6ae44.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c67f2150-45b4-4fdd-a9a3-bafd3ee6ae44.jpg",
+      "size_bytes": 1304864,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c81c2696-b305-45ca-9d73-6d1e097c9aeb.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c81c2696-b305-45ca-9d73-6d1e097c9aeb.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c81c2696-b305-45ca-9d73-6d1e097c9aeb.jpg",
+      "size_bytes": 122592,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c8225460-fa76-4fbb-8758-da8752741497.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c8225460-fa76-4fbb-8758-da8752741497.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c8225460-fa76-4fbb-8758-da8752741497.jpg",
+      "size_bytes": 110823,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c82fbd9d-cd37-4003-b4df-e49b6478c3e0.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c82fbd9d-cd37-4003-b4df-e49b6478c3e0.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c82fbd9d-cd37-4003-b4df-e49b6478c3e0.jpg",
+      "size_bytes": 2258756,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/c8b58d5b-3854-49f7-a100-895bab538bb9.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/c8b58d5b-3854-49f7-a100-895bab538bb9.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/c8b58d5b-3854-49f7-a100-895bab538bb9.jpg",
+      "size_bytes": 210583,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/cad52713-d001-4a1a-90e9-fec63bf0e8cc.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/cad52713-d001-4a1a-90e9-fec63bf0e8cc.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/cad52713-d001-4a1a-90e9-fec63bf0e8cc.jpg",
+      "size_bytes": 174797,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/cc05324c-0168-47fe-8555-95c2ba50ec4f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/cc05324c-0168-47fe-8555-95c2ba50ec4f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/cc05324c-0168-47fe-8555-95c2ba50ec4f.jpg",
+      "size_bytes": 502768,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/cc095981-ca15-4f6f-b8f0-737275dbb17c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/cc095981-ca15-4f6f-b8f0-737275dbb17c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/cc095981-ca15-4f6f-b8f0-737275dbb17c.jpg",
+      "size_bytes": 538975,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/cc65036d-0d37-4092-ae8e-b34eda5fe600.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/cc65036d-0d37-4092-ae8e-b34eda5fe600.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/cc65036d-0d37-4092-ae8e-b34eda5fe600.jpg",
+      "size_bytes": 305368,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ce315d18-f310-4b14-8fcb-951e67a44a67.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ce315d18-f310-4b14-8fcb-951e67a44a67.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ce315d18-f310-4b14-8fcb-951e67a44a67.jpg",
+      "size_bytes": 122749,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ceee6222-7e0b-4923-9ad1-03861761c8e2.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ceee6222-7e0b-4923-9ad1-03861761c8e2.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ceee6222-7e0b-4923-9ad1-03861761c8e2.jpg",
+      "size_bytes": 68149,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/db1924a5-9a4e-4a52-b925-6131f2f9b0ed.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/db1924a5-9a4e-4a52-b925-6131f2f9b0ed.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/db1924a5-9a4e-4a52-b925-6131f2f9b0ed.jpg",
+      "size_bytes": 148668,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/db33188d-59c4-4f69-a0ce-39a6a5605d4e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/db33188d-59c4-4f69-a0ce-39a6a5605d4e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/db33188d-59c4-4f69-a0ce-39a6a5605d4e.jpg",
+      "size_bytes": 170836,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/de259451-d8cc-497b-8aac-968f8b679867.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/de259451-d8cc-497b-8aac-968f8b679867.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/de259451-d8cc-497b-8aac-968f8b679867.jpg",
+      "size_bytes": 370792,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/df5ab456-dcba-44ff-9393-9e2a4acaec3f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/df5ab456-dcba-44ff-9393-9e2a4acaec3f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/df5ab456-dcba-44ff-9393-9e2a4acaec3f.jpg",
+      "size_bytes": 121585,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e0db34ea-8272-4741-99b6-cc91239e403a.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e0db34ea-8272-4741-99b6-cc91239e403a.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e0db34ea-8272-4741-99b6-cc91239e403a.jpg",
+      "size_bytes": 257601,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e147e82e-bbdc-496b-bc3c-de518b3a64f8.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e147e82e-bbdc-496b-bc3c-de518b3a64f8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e147e82e-bbdc-496b-bc3c-de518b3a64f8.jpg",
+      "size_bytes": 1938570,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e1b16b8a-374c-4bf3-bd2e-5cc6448c3f46.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e1b16b8a-374c-4bf3-bd2e-5cc6448c3f46.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e1b16b8a-374c-4bf3-bd2e-5cc6448c3f46.jpg",
+      "size_bytes": 402047,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e32d6223-becf-48f1-b356-2a3d38b5f84b.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e32d6223-becf-48f1-b356-2a3d38b5f84b.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e32d6223-becf-48f1-b356-2a3d38b5f84b.jpg",
+      "size_bytes": 169891,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e50b22de-4f71-4df5-a982-d369fb0e23a3.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e50b22de-4f71-4df5-a982-d369fb0e23a3.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e50b22de-4f71-4df5-a982-d369fb0e23a3.jpg",
+      "size_bytes": 213557,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/e9c59404-ad1e-4d7c-86aa-68bbc315f031.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/e9c59404-ad1e-4d7c-86aa-68bbc315f031.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/e9c59404-ad1e-4d7c-86aa-68bbc315f031.jpg",
+      "size_bytes": 243635,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/eb549f4a-0992-476d-9f1d-0648eb1452b8.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/eb549f4a-0992-476d-9f1d-0648eb1452b8.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/eb549f4a-0992-476d-9f1d-0648eb1452b8.jpg",
+      "size_bytes": 70536,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/eb7bd947-a20d-40af-a32e-96b75c18eab1.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/eb7bd947-a20d-40af-a32e-96b75c18eab1.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/eb7bd947-a20d-40af-a32e-96b75c18eab1.jpg",
+      "size_bytes": 122448,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/ec73a18e-783c-4405-bf24-869e0bc3cb50.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/ec73a18e-783c-4405-bf24-869e0bc3cb50.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/ec73a18e-783c-4405-bf24-869e0bc3cb50.png",
+      "size_bytes": 72496,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f18f09e7-249f-4778-98c4-9e363ea828dd.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f18f09e7-249f-4778-98c4-9e363ea828dd.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f18f09e7-249f-4778-98c4-9e363ea828dd.jpg",
+      "size_bytes": 380553,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f2bcdaad-f51b-481b-8031-56274d1ccd11.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f2bcdaad-f51b-481b-8031-56274d1ccd11.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f2bcdaad-f51b-481b-8031-56274d1ccd11.jpg",
+      "size_bytes": 173677,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f2ee5666-3ed1-4d3a-a46e-3eb4f9aca82f.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f2ee5666-3ed1-4d3a-a46e-3eb4f9aca82f.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f2ee5666-3ed1-4d3a-a46e-3eb4f9aca82f.jpg",
+      "size_bytes": 120453,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f48247d6-a316-4d51-82d9-e59dbd5ea297.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f48247d6-a316-4d51-82d9-e59dbd5ea297.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f48247d6-a316-4d51-82d9-e59dbd5ea297.jpg",
+      "size_bytes": 142493,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f48e479a-80b8-4903-a9af-c63782087a72.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f48e479a-80b8-4903-a9af-c63782087a72.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f48e479a-80b8-4903-a9af-c63782087a72.jpg",
+      "size_bytes": 278634,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f5fd262f-7ed5-4738-aca0-3202a0bcc500.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f5fd262f-7ed5-4738-aca0-3202a0bcc500.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f5fd262f-7ed5-4738-aca0-3202a0bcc500.jpg",
+      "size_bytes": 206979,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f63019a5-89eb-459a-b504-efb330fcc476.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f63019a5-89eb-459a-b504-efb330fcc476.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f63019a5-89eb-459a-b504-efb330fcc476.jpg",
+      "size_bytes": 117220,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/f6b6f65a-e8ed-49a6-b4ed-1dc60e8c4770.png",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/f6b6f65a-e8ed-49a6-b4ed-1dc60e8c4770.png",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/f6b6f65a-e8ed-49a6-b4ed-1dc60e8c4770.png",
+      "size_bytes": 3319,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/fbb32268-5d09-4e13-b55f-cb9d6cc8e58d.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/fbb32268-5d09-4e13-b55f-cb9d6cc8e58d.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/fbb32268-5d09-4e13-b55f-cb9d6cc8e58d.jpg",
+      "size_bytes": 153114,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/fcf79e17-9d9d-4d1f-9d19-b8b20b1b0d2e.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/fcf79e17-9d9d-4d1f-9d19-b8b20b1b0d2e.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/fcf79e17-9d9d-4d1f-9d19-b8b20b1b0d2e.jpg",
+      "size_bytes": 179647,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/fd0b3b71-0f51-4222-8ff5-6f6f6c440d4c.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/fd0b3b71-0f51-4222-8ff5-6f6f6c440d4c.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/fd0b3b71-0f51-4222-8ff5-6f6f6c440d4c.jpg",
+      "size_bytes": 625216,
+      "used_in": [
+        "база данных"
+      ]
+    },
+    {
+      "path": "crm/fd17470a-c93c-4f94-9058-c9219cc233c4.jpg",
+      "group": "файлы заявок (CRM)",
+      "web_path": "/assets/cdn/crm/fd17470a-c93c-4f94-9058-c9219cc233c4.jpg",
+      "original_url": "https://cdn.poehali.dev/projects/73fc8821-802d-4489-8ce7-ef196540fbf0/bucket/crm/fd17470a-c93c-4f94-9058-c9219cc233c4.jpg",
+      "size_bytes": 272126,
+      "used_in": [
+        "база данных"
+      ]
+    }
+  ]
+}
