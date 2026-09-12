@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET without key is rejected",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET with wrong key is rejected",
+      "method": "GET",
+      "path": "/?key=wrong-key-123",
+      "expectedStatus": 401
+    }
+  ]
+}
