@@ -2,7 +2,9 @@ import json
 import os
 import decimal
 import datetime
+import uuid
 import psycopg2
+import boto3
 
 '''
 Вебхук полной выгрузки данных CRM и админ-панели.
@@ -14,6 +16,11 @@ import psycopg2
 Режимы (параметр entity):
   - entity=all         — список всех таблиц: имя, количество строк, колонки
                          (без учёта закрытых полей), пример ссылки на выгрузку.
+  - entity=full        — ОДИН общий вебхук: собирает данные всех таблиц целиком
+                         в единый JSON-файл, кладёт в файловое хранилище и
+                         возвращает прямую ссылку на скачивание (сами данные
+                         слишком велики, чтобы уместиться в один HTTP-ответ
+                         облачной функции — поэтому файл, а не текст в ответе).
   - entity=<имя_таблицы>&limit=500&offset=0 — сами данные таблицы, порциями.
 
 Из соображений безопасности НИКОГДА не отдаются: пароли (password_hash,
@@ -42,6 +49,19 @@ CORS_HEADERS = {
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
+
+
+def get_s3():
+    return boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+
+
+def cdn_url(key: str) -> str:
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
 
 
 def json_default(o):
@@ -126,6 +146,56 @@ def handler(event: dict, context):
                 'total_tables': len(tables_info),
                 'usage': 'Добавьте entity=<имя_таблицы>&limit=500&offset=0 к этому же адресу, чтобы получить данные конкретной таблицы',
                 'tables': tables_info,
+            })
+
+        if entity == 'full':
+            # Один общий вебхук: собираем ВСЕ таблицы целиком в один JSON-файл.
+            # Сами данные (десятки тысяч строк) не помещаются в единый HTTP-ответ
+            # облачной функции (жёсткий лимит ~3.5 МБ на ответ) — поэтому файл
+            # собирается и кладётся в S3, а в ответе приходит короткая ссылка
+            # на скачивание. Таблица-бэкап облачных ссылок на картинки (чисто
+            # техническая, не часть CRM) пропускается.
+            #
+            # ⚠️ Раньше на каждую из 71 таблицы уходило по 2 отдельных запроса
+            # (колонки + данные) — это упирало общее время в таймаут функции.
+            # Теперь колонки берём из cur.description того же SELECT * — один
+            # запрос на таблицу вместо двух. ORDER BY тоже убран (для полного
+            # дампа порядок строк не важен, а сортировка больших таблиц без
+            # необходимости — лишние впустую потраченные секунды).
+            skip_tables = {'image_url_backup_cloud'}
+            data = {}
+            for t in all_tables:
+                if t in skip_tables:
+                    continue
+                try:
+                    cur.execute(f'SELECT * FROM "{SCHEMA}"."{t}"')
+                    cols = [d[0] for d in cur.description]
+                    visible_idx = [i for i, c in enumerate(cols) if not is_sensitive(c)]
+                    visible_cols = [cols[i] for i in visible_idx]
+                    rows = cur.fetchall()
+                    data[t] = [{visible_cols[j]: row[i] for j, i in enumerate(visible_idx)} for row in rows]
+                except Exception:
+                    conn.rollback()
+                    data[t] = {'error': 'не удалось прочитать таблицу'}
+
+            payload = json.dumps({
+                'generated_at': datetime.datetime.utcnow().isoformat(),
+                'total_tables': len(data),
+                'data': data,
+            }, ensure_ascii=False, default=json_default)
+
+            file_key = f"data-export/full_{uuid.uuid4().hex}.json"
+            s3 = get_s3()
+            s3.put_object(Bucket='files', Key=file_key, Body=payload.encode('utf-8'),
+                           ContentType='application/json; charset=utf-8')
+
+            return resp(200, {
+                'generated_at': datetime.datetime.utcnow().isoformat(),
+                'total_tables': len(data),
+                'total_rows': sum(len(v) for v in data.values() if isinstance(v, list)),
+                'size_bytes': len(payload.encode('utf-8')),
+                'download_url': cdn_url(file_key),
+                'note': 'Файл доступен по прямой ссылке скачивания. Хранится в общем файловом хранилище проекта.',
             })
 
         if entity not in all_tables:
