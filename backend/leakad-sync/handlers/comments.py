@@ -9,7 +9,7 @@
 
 import json
 
-from shared import SCHEMA, clip, parse_dt, pick, to_bool
+from shared import BatchMode, SCHEMA, clip, parse_dt, pick, to_bool
 from . import store
 
 
@@ -65,7 +65,7 @@ def apply_comment(conn, account_id, envelope, item, default_lead=None, client_id
              json.dumps(item.get("raw_snapshot") or item, ensure_ascii=False)),
         )
         row = c.fetchone()
-    conn.commit()
+    BatchMode.commit(conn)
 
     _mirror_to_chat(conn, row[0], row[1], client_id, item, deleted)
 
@@ -110,7 +110,7 @@ def _mirror_to_chat(conn, comment_row_id, existing_msg_id, client_id, item, dele
                 msg = c.fetchone()
                 c.execute(f"UPDATE {SCHEMA}.leakad_comments SET live_message_id=%s WHERE id=%s",
                           (msg[0], comment_row_id))
-        conn.commit()
+        BatchMode.commit(conn)
     except Exception as exc:
         print(f"[leakad-sync] mirror comment failed: {type(exc).__name__}: {exc}")
         conn.rollback()
@@ -131,8 +131,11 @@ def delete_comment(conn, account_id, envelope, item):
         )
         row = c.fetchone()
         if row and row[1]:
-            c.execute(f"DELETE FROM {SCHEMA}.live_messages WHERE id=%s", (row[1],))
-    conn.commit()
+            # Не стираем строку (прав на удаление нет, да и история переписки
+            # ценна) — помечаем текст как удалённый прямо в ленте карточки.
+            c.execute(f"UPDATE {SCHEMA}.live_messages SET text=%s WHERE id=%s",
+                      ("[сообщение удалено в LeakAD]", row[1]))
+    BatchMode.commit(conn)
     store.upsert_entity(
         conn, account_id, "comment", ext_id,
         entity_updated_at=parse_dt(envelope.get("entity_updated_at")),

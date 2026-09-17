@@ -9,7 +9,7 @@
 import json
 from datetime import datetime, timezone
 
-from shared import SCHEMA, record_hash, parse_dt
+from shared import BatchMode, SCHEMA, record_hash, parse_dt
 
 
 # ── Журнал событий (идемпотентность, DLQ, восстановление по sequence) ────────
@@ -33,7 +33,7 @@ def find_event(conn, account_id, event_id):
 def bump_attempt(conn, row_id):
     with conn.cursor() as c:
         c.execute(f"UPDATE {SCHEMA}.leakad_events SET attempts = attempts + 1 WHERE id=%s", (row_id,))
-    conn.commit()
+    BatchMode.commit(conn)
 
 
 def log_event(conn, envelope, raw_sha, payload):
@@ -55,7 +55,7 @@ def log_event(conn, envelope, raw_sha, payload):
              json.dumps(payload, ensure_ascii=False)),
         )
         row_id = c.fetchone()[0]
-    conn.commit()
+    BatchMode.commit(conn)
     return row_id
 
 
@@ -71,7 +71,7 @@ def finish_event(conn, row_id, outcome, http_status=None, internal_entity_id=Non
                     WHERE id=%s""",
                 (outcome, http_status, internal_entity_id, error, row_id),
             )
-        conn.commit()
+        BatchMode.commit(conn)
     except Exception as exc:                                  # журнал не должен ронять приём
         print(f"[leakad-sync] finish_event failed: {type(exc).__name__}: {exc}")
         conn.rollback()
@@ -183,7 +183,7 @@ def upsert_entity(conn, account_id, entity_type, external_id, *,
              is_removed),
         )
         result = c.fetchone()
-    conn.commit()
+    BatchMode.commit(conn)
     return result[0] if result else None
 
 
@@ -206,8 +206,18 @@ def upsert_dictionary(conn, account_id, dict_type, item):
              int(item.get("sort_order") or 0), bool(item.get("deleted", False)),
              json.dumps(item, ensure_ascii=False)),
         )
-    conn.commit()
+    BatchMode.commit(conn)
     return True
+
+
+# Таблица соответствия статусов меняется редко, а читается на каждую заявку.
+# Держим её в памяти в пределах одного выполнения функции — при импорте
+# истории это убирает тысячи одинаковых запросов к БД.
+_STATUS_MAP_CACHE = {}
+
+
+def reset_status_cache():
+    _STATUS_MAP_CACHE.clear()
 
 
 def map_status(conn, *args):
@@ -218,17 +228,18 @@ def map_status(conn, *args):
     keys = [str(a).strip().lower() for a in args if a not in (None, "")]
     if not keys:
         return None, None
-    with conn.cursor() as c:
-        c.execute(
-            f"""SELECT internal_status, internal_substatus, lower(external_key)
-                FROM {SCHEMA}.leakad_status_map
-                WHERE lower(external_key) = ANY(%s)""",
-            (keys,),
-        )
-        rows = {r[2]: (r[0], r[1]) for r in c.fetchall()}
+
+    if not _STATUS_MAP_CACHE:
+        with conn.cursor() as c:
+            c.execute(
+                f"""SELECT lower(external_key), internal_status, internal_substatus
+                    FROM {SCHEMA}.leakad_status_map""")
+            for key, st, sub in c.fetchall():
+                _STATUS_MAP_CACHE[key] = (st, sub)
+
     for key in keys:
-        if key in rows:
-            return rows[key]
+        if key in _STATUS_MAP_CACHE:
+            return _STATUS_MAP_CACHE[key]
     return None, None
 
 

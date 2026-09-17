@@ -44,6 +44,50 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
+class BatchMode:
+    """Отложенный коммит для пакетного импорта.
+
+    Приём одного события вебхука коммитит каждый шаг — это правильно: событие
+    должно быть либо применено целиком, либо не применено. Но при заливке
+    истории (тысячи записей) каждый commit — отдельный поход в БД, и обход
+    упирается в таймаут функции. В этом режиме промежуточные commit()
+    пропускаются, а фиксация делается пачкой.
+
+    Включается только импортом. Вебхук работает как раньше.
+    """
+    enabled = False
+    _pending = 0
+    _every = 50
+
+    @classmethod
+    def start(cls, every=50):
+        cls.enabled = True
+        cls._pending = 0
+        cls._every = max(1, int(every))
+
+    @classmethod
+    def stop(cls):
+        cls.enabled = False
+        cls._pending = 0
+
+    @classmethod
+    def commit(cls, conn):
+        """Вызывается вместо conn.commit() внутри обработчиков."""
+        if not cls.enabled:
+            conn.commit()
+            return
+        cls._pending += 1
+        if cls._pending >= cls._every:
+            conn.commit()
+            cls._pending = 0
+
+    @classmethod
+    def flush(cls, conn):
+        if cls._pending:
+            conn.commit()
+            cls._pending = 0
+
+
 def resp(status: int, payload: dict) -> dict:
     return {
         "statusCode": status,

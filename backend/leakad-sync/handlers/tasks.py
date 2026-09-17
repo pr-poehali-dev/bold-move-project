@@ -7,7 +7,7 @@
 
 import json
 
-from shared import SCHEMA, clip, parse_dt, to_bool
+from shared import BatchMode, SCHEMA, clip, parse_dt, to_bool
 from . import store
 
 # Тип задачи LeakAD -> тип и цвет события календаря. Таблица правится в одном
@@ -71,7 +71,7 @@ def apply_task(conn, account_id, envelope, item, default_lead=None, client_id=No
              json.dumps(item.get("raw_snapshot") or item, ensure_ascii=False)),
         )
         row = c.fetchone()
-    conn.commit()
+    BatchMode.commit(conn)
 
     _sync_calendar(conn, row[0], row[1], client_id, item, due_at, completed, deleted)
 
@@ -91,10 +91,17 @@ def _sync_calendar(conn, task_row_id, event_id, client_id, item, due_at, complet
         with conn.cursor() as c:
             if deleted or completed or not due_at:
                 if event_id:
-                    c.execute(f"DELETE FROM {SCHEMA}.calendar_events WHERE id=%s", (event_id,))
+                    # Завершённую/удалённую задачу убираем из активного календаря,
+                    # сдвигая её в прошлое (прав на удаление строк у функции нет).
+                    c.execute(
+                        f"""UPDATE {SCHEMA}.calendar_events
+                            SET start_time='2000-01-01'::timestamptz,
+                                title = CASE WHEN title LIKE '[archived]%%' THEN title
+                                             ELSE '[archived] ' || title END
+                            WHERE id=%s""", (event_id,))
                     c.execute(f"UPDATE {SCHEMA}.leakad_tasks SET calendar_event_id=NULL WHERE id=%s",
                               (task_row_id,))
-                conn.commit()
+                BatchMode.commit(conn)
                 return
 
             ev_type, color = TASK_TYPE_MAP.get(str(item.get("type") or "").lower(), ("task", "#64748b"))
@@ -119,7 +126,7 @@ def _sync_calendar(conn, task_row_id, event_id, client_id, item, due_at, complet
                 new_ev = c.fetchone()
                 c.execute(f"UPDATE {SCHEMA}.leakad_tasks SET calendar_event_id=%s WHERE id=%s",
                           (new_ev[0], task_row_id))
-        conn.commit()
+        BatchMode.commit(conn)
     except Exception as exc:
         print(f"[leakad-sync] calendar sync failed: {type(exc).__name__}: {exc}")
         conn.rollback()

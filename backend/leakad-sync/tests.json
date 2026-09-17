@@ -16,8 +16,14 @@
       "name": "POST без подписи отклоняется",
       "method": "POST",
       "path": "/",
-      "headers": {"Content-Type": "application/json"},
-      "body": {"event_id": "evt_test_1", "event_type": "lead.created", "event_version": 1},
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "event_id": "evt_test_1",
+        "event_type": "lead.created",
+        "event_version": 1
+      },
       "expectedStatus": 401
     },
     {
@@ -29,7 +35,11 @@
         "X-Webhook-Timestamp": "1789649130",
         "X-Webhook-Signature": "v1=deadbeef"
       },
-      "body": {"event_id": "evt_test_2", "event_type": "lead.created", "event_version": 1},
+      "body": {
+        "event_id": "evt_test_2",
+        "event_type": "lead.created",
+        "event_version": 1
+      },
       "expectedStatus": 401
     },
     {
@@ -42,6 +52,34 @@
       "name": "GET checksums без ключа отклоняется",
       "method": "GET",
       "path": "/?r=checksums",
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST pull без ключа отклоняется",
+      "method": "POST",
+      "path": "/?r=pull",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {},
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET pull-status без ключа отклоняется",
+      "method": "GET",
+      "path": "/?r=pull-status",
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST import-archive без ключа отклоняется",
+      "method": "POST",
+      "path": "/?r=import-archive",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "url": "https://example.com/x.zip"
+      },
       "expectedStatus": 401
     }
   ]

@@ -14,7 +14,7 @@ import uuid
 
 import boto3
 
-from shared import SCHEMA, clip, parse_dt, to_bool, to_num
+from shared import BatchMode, SCHEMA, clip, parse_dt, to_bool, to_num
 from . import store
 
 MAX_FILE_BYTES = int(os.environ.get("LEAKAD_MAX_FILE_BYTES", str(25 * 1024 * 1024)))
@@ -65,7 +65,7 @@ def apply_file(conn, account_id, envelope, item, default_lead=None, client_id=No
              json.dumps(item.get("raw_snapshot") or item, ensure_ascii=False)),
         )
         row = c.fetchone()
-    conn.commit()
+    BatchMode.commit(conn)
 
     if not deleted and not row[1]:
         fetch_file(conn, row[0])
@@ -136,7 +136,7 @@ def fetch_file(conn, file_row_id):
                 cf = c.fetchone()
                 c.execute(f"UPDATE {SCHEMA}.leakad_files SET client_file_id=%s WHERE id=%s",
                           (cf[0], file_row_id))
-        conn.commit()
+        BatchMode.commit(conn)
         return {"ok": True, "url": stored_url, "sha256": actual_sha}
     except Exception as exc:
         conn.rollback()
@@ -149,7 +149,7 @@ def _mark(conn, file_row_id, status, error):
         with conn.cursor() as c:
             c.execute(f"UPDATE {SCHEMA}.leakad_files SET fetch_status=%s, fetch_error=%s WHERE id=%s",
                       (status, clip(error, 1000), file_row_id))
-        conn.commit()
+        BatchMode.commit(conn)
     except Exception:
         conn.rollback()
 
@@ -165,8 +165,12 @@ def delete_file(conn, account_id, envelope, item):
             (account_id or "-", ext_id))
         row = c.fetchone()
         if row and row[1]:
-            c.execute(f"DELETE FROM {SCHEMA}.client_files WHERE id=%s", (row[1],))
-    conn.commit()
+            # Файл, удалённый в LeakAD, помечаем в карточке, но не стираем:
+            # прав на удаление у функции нет, а сам файл может понадобиться
+            # для акта сверки.
+            c.execute(f"UPDATE {SCHEMA}.client_files SET category='leakad_deleted' WHERE id=%s",
+                      (row[1],))
+    BatchMode.commit(conn)
     store.upsert_entity(conn, account_id, "file", ext_id, is_removed=True,
                         sequence_no=envelope.get("sequence"), data=item)
     return (row[0] if row else None), "deleted"
@@ -201,7 +205,7 @@ def apply_payment(conn, account_id, envelope, item, deleted=False):
              bool(deleted or to_bool(item.get("deleted"), False)),
              json.dumps(item.get("raw_snapshot") or item, ensure_ascii=False)))
         row = c.fetchone()
-    conn.commit()
+    BatchMode.commit(conn)
 
     store.upsert_entity(conn, account_id, "payment", ext_id, internal_id=row[0],
                         internal_table="leakad_payments", parent_lead=lead_ext,

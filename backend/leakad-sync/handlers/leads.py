@@ -10,7 +10,7 @@ lead_id (колонка live_chats.leakad_lead_id + реестр leakad_entities
 
 import json
 
-from shared import SCHEMA, clip, normalize_phone, parse_dt, pick, to_bool, to_num
+from shared import BatchMode, SCHEMA, clip, normalize_phone, parse_dt, pick, to_bool, to_num
 from . import store
 
 
@@ -88,16 +88,31 @@ def build_card_fields(conn, data: dict) -> dict:
 
 
 def _card_by_lead(conn, account_id, lead_ext_id):
-    """Ищем карточку: сначала по реестру, затем по колонке leakad_lead_id
-    (страховка, если запись реестра была потеряна)."""
-    ent = store.get_entity(conn, account_id, "lead", lead_ext_id)
-    if ent and ent.get("internal_id"):
-        return ent["internal_id"], ent
+    """Ищем карточку одним запросом: по реестру внешних ID и, как страховка,
+    по колонке live_chats.leakad_lead_id (если запись реестра была потеряна).
+    Один поход в БД вместо двух — на импорте истории это заметная разница."""
     with conn.cursor() as c:
-        c.execute(f"SELECT id FROM {SCHEMA}.live_chats WHERE leakad_lead_id=%s LIMIT 1",
-                  (str(lead_ext_id),))
+        c.execute(
+            f"""SELECT e.internal_id, e.entity_updated_at, e.last_sequence,
+                       e.is_removed, e.merged_into, e.data, lc.id
+                FROM (SELECT 1) AS dummy
+                LEFT JOIN {SCHEMA}.leakad_entities e
+                       ON e.account_id=%s AND e.entity_type='lead' AND e.external_id=%s
+                LEFT JOIN {SCHEMA}.live_chats lc
+                       ON lc.leakad_lead_id=%s
+                LIMIT 1""",
+            (account_id or "-", str(lead_ext_id), str(lead_ext_id)),
+        )
         row = c.fetchone()
-    return (row[0] if row else None), ent
+    if not row:
+        return None, None
+    internal_id, upd, seq, removed, merged, data, card_id = row
+    ent = None
+    if internal_id is not None or upd is not None or seq is not None:
+        ent = {"internal_id": internal_id, "entity_updated_at": upd,
+               "last_sequence": seq, "is_removed": removed,
+               "merged_into": merged, "data": data or {}}
+    return (internal_id or card_id), ent
 
 
 def apply_lead(conn, account_id, company_id, envelope, data):
@@ -137,7 +152,7 @@ def apply_lead(conn, account_id, company_id, envelope, data):
         vals.append(existing_id)
         with conn.cursor() as c:
             c.execute(f"UPDATE {SCHEMA}.live_chats SET {', '.join(sets)} WHERE id=%s", vals)
-        conn.commit()
+        BatchMode.commit(conn)
         internal_id, action = existing_id, "updated"
     else:
         cols = ["session_id", "company_id", "created_via"] + list(fields.keys())
@@ -152,7 +167,7 @@ def apply_lead(conn, account_id, company_id, envelope, data):
                 vals,
             )
             row = c.fetchone()
-        conn.commit()
+        BatchMode.commit(conn)
         internal_id, action = (row[0] if row else None), "created"
 
     contact = data.get("contact") or {}
@@ -223,7 +238,7 @@ def soft_delete_lead(conn, account_id, envelope, data, restore=False):
                         SET status_before_removal = COALESCE(status_before_removal, status),
                             status = 'deleted', removed_at = NOW(), updated_at = NOW()
                         WHERE id=%s""", (internal_id,))
-        conn.commit()
+        BatchMode.commit(conn)
 
     store.upsert_entity(
         conn, account_id, "lead", lead_ext_id,
@@ -287,7 +302,7 @@ def apply_contact(conn, account_id, envelope, contact, lead_ext_id=None):
                       AND e.parent_contact_ext=%s AND e.internal_id = lc.id""",
                 (primary, name, account_id or "-", contact_ext),
             )
-        conn.commit()
+        BatchMode.commit(conn)
     return None, "ok"
 
 
@@ -318,5 +333,5 @@ def merge_contacts(conn, account_id, envelope, data):
                     WHERE account_id=%s AND entity_type='contact' AND external_id=%s""",
                 (target, account_id or "-", src),
             )
-    conn.commit()
+    BatchMode.commit(conn)
     return None, "merged"
