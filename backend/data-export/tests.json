@@ -7,16 +7,16 @@
       "expectedStatus": 200
     },
     {
-      "name": "GET without key is rejected",
+      "name": "GET без ключа отдаёт список таблиц (защита отключена)",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 401
+      "expectedStatus": 200
     },
     {
-      "name": "GET with wrong key is rejected",
+      "name": "GET несуществующей таблицы возвращает 404",
       "method": "GET",
-      "path": "/?key=wrong-key-123",
-      "expectedStatus": 401
+      "path": "/?entity=no_such_table_xyz",
+      "expectedStatus": 404
     }
   ]
 }

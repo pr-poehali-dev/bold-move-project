@@ -99,10 +99,16 @@ def handler(event: dict, context):
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
     params = event.get('queryStringParameters') or {}
-    key = params.get('key', '')
-    expected = os.environ.get('DATA_EXPORT_KEY', '')
-    if not expected or key != expected:
-        return resp(401, {'error': 'Неверный или отсутствующий ключ доступа (?key=...)'})
+
+    # ⚠️ ВНИМАНИЕ: защита ключом отключена по явному требованию владельца проекта.
+    # Функция отдаёт ВСЮ базу (клиенты, телефоны, суммы сделок, переписка) любому,
+    # кто знает адрес. Ссылку нельзя публиковать и пересылать.
+    # Чтобы вернуть защиту — раскомментируйте блок ниже и задайте DATA_EXPORT_KEY:
+    #
+    # key = params.get('key', '')
+    # expected = os.environ.get('DATA_EXPORT_KEY', '')
+    # if not expected or key != expected:
+    #     return resp(401, {'error': 'Неверный или отсутствующий ключ доступа (?key=...)'})
 
     entity = (params.get('entity') or 'all').strip()
 
