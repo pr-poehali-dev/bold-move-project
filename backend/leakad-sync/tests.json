@@ -1,0 +1,48 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET schema доступна без авторизации",
+      "method": "GET",
+      "path": "/?r=schema",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST без подписи отклоняется",
+      "method": "POST",
+      "path": "/",
+      "headers": {"Content-Type": "application/json"},
+      "body": {"event_id": "evt_test_1", "event_type": "lead.created", "event_version": 1},
+      "expectedStatus": 401
+    },
+    {
+      "name": "POST с неверной подписью отклоняется",
+      "method": "POST",
+      "path": "/",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Webhook-Timestamp": "1789649130",
+        "X-Webhook-Signature": "v1=deadbeef"
+      },
+      "body": {"event_id": "evt_test_2", "event_type": "lead.created", "event_version": 1},
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET status без ключа отклоняется",
+      "method": "GET",
+      "path": "/?r=status",
+      "expectedStatus": 401
+    },
+    {
+      "name": "GET checksums без ключа отклоняется",
+      "method": "GET",
+      "path": "/?r=checksums",
+      "expectedStatus": 401
+    }
+  ]
+}
