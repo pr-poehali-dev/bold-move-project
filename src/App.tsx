@@ -32,8 +32,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
 import RoleSelectModal from "@/components/RoleSelectModal";
 import OfflineScreen from "@/components/OfflineScreen";
-import MovedBanner from "@/components/MovedBanner";
-import { SHOW_MOVED_BANNER, MOVED_URL } from "@/config/moved";
+import MovedGate from "@/components/MovedGate";
 
 // Показывает модалку выбора роли новому соц-пользователю (role_selected === false),
 // поверх любой страницы — модалка не закрывается без выбора.
@@ -75,15 +74,13 @@ const App = () => (
           <BrandProvider>
             <ErrorBoundary>
             <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
+              {/* Заглушка «проект переехал» — закрывает сразу ВСЕ страницы.
+                  Стоит выше Routes, поэтому под ней ни одна страница не
+                  монтируется и обойти её нечем. Исключения (адрес переезда,
+                  ссылки клиентам, входы) — в src/config/moved.ts */}
+              <MovedGate>
               <Routes>
-                {/* Главная: пока проект переехал — вместо неё полноэкранная
-                    заглушка со ссылкой на новый адрес. Обойти её нельзя:
-                    старая страница на этом маршруте просто не монтируется.
-                    Выключается флагом SHOW_MOVED_BANNER в src/config/moved.ts */}
-                <Route
-                  path="/"
-                  element={SHOW_MOVED_BANNER ? <MovedBanner url={MOVED_URL} /> : <Index />}
-                />
+                <Route path="/" element={<Index />} />
                 <Route path="/company"    element={<AdminPanel />} />
                 <Route path="/master"    element={<MasterAdmin />} />
                 <Route path="/my-orders" element={<MyOrders />} />
@@ -102,6 +99,7 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </MovedGate>
             </Suspense>
             </ErrorBoundary>
           </BrandProvider>
