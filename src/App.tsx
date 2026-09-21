@@ -32,6 +32,8 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
 import RoleSelectModal from "@/components/RoleSelectModal";
 import OfflineScreen from "@/components/OfflineScreen";
+import MovedBanner from "@/components/MovedBanner";
+import { SHOW_MOVED_BANNER, MOVED_URL } from "@/config/moved";
 
 // Показывает модалку выбора роли новому соц-пользователю (role_selected === false),
 // поверх любой страницы — модалка не закрывается без выбора.
@@ -74,7 +76,14 @@ const App = () => (
             <ErrorBoundary>
             <Suspense fallback={<div className="bg-[#0b0b11]" style={{ height: "100dvh" }} />}>
               <Routes>
-                <Route path="/" element={<Index />} />
+                {/* Главная: пока проект переехал — вместо неё полноэкранная
+                    заглушка со ссылкой на новый адрес. Обойти её нельзя:
+                    старая страница на этом маршруте просто не монтируется.
+                    Выключается флагом SHOW_MOVED_BANNER в src/config/moved.ts */}
+                <Route
+                  path="/"
+                  element={SHOW_MOVED_BANNER ? <MovedBanner url={MOVED_URL} /> : <Index />}
+                />
                 <Route path="/company"    element={<AdminPanel />} />
                 <Route path="/master"    element={<MasterAdmin />} />
                 <Route path="/my-orders" element={<MyOrders />} />
